@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Checklist, InputPassword } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
-import { api, type RuleResult } from '../lib/api'
+import { api, publicApi, type RuleResult } from '../lib/api'
 
 /**
  * A new password, with the rules it must meet ticked off as you type. Keston
@@ -15,6 +15,8 @@ const props = withDefaults(
     /** The account's username: the password can't be the same. */
     username?: string
     errorText?: string
+    /** Self-service sign-up: check without signing in (baseline rules). */
+    public?: boolean
   }>(),
   { label: 'Password' },
 )
@@ -29,7 +31,9 @@ let latest = 0
 
 async function check() {
   const n = ++latest
-  const result = await api.passwordCheck(password.value, { organisationId: props.organisationId, username: props.username })
+  const result = props.public
+    ? await publicApi.passwordCheck(password.value, props.username)
+    : await api.passwordCheck(password.value, { organisationId: props.organisationId, username: props.username })
   if (n !== latest) return // a newer check is on its way
   rules.value = result
   valid.value = password.value !== '' && result.every((r) => r.met)

@@ -15,6 +15,12 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/callback', component: () => import('./pages/Callback.vue'), meta: { public: true, title: 'Signing in' } },
+    // Self-service sign-up: anyone, no sign-in.
+    {
+      path: '/create-organisation',
+      component: () => import('./pages/CreateOrganisation.vue'),
+      meta: { public: true, title: 'Create an organisation' },
+    },
     {
       path: '/',
       component: () => import('./pages/AdminLayout.vue'),
@@ -25,14 +31,30 @@ export const router = createRouter({
           component: () => import('./pages/Organisations.vue'),
           beforeEnter: async () => {
             const me = await loadMe()
-            return me.platformAdmin ? '/organisations' : `/organisations/${me.organisation.id}/accounts`
+            return me.platformAdmin ? '/organisations' : `/organisations/${me.organisation.id}`
           },
         },
         { path: 'organisations', component: () => import('./pages/Organisations.vue'), meta: { title: 'Organisations' } },
+        { path: 'organisations/new', redirect: '/create-organisation' },
         {
-          path: 'organisations/new',
-          component: () => import('./pages/NewOrganisation.vue'),
-          meta: { title: 'New organisation' },
+          path: 'organisations/:orgId',
+          component: () => import('./pages/OrganisationOverview.vue'),
+          meta: { title: 'Organisation' },
+        },
+        {
+          path: 'organisations/:orgId/accounts/:userId',
+          component: () => import('./pages/AccountDetail.vue'),
+          meta: { title: 'Account' },
+        },
+        {
+          path: 'organisations/:orgId/apps',
+          component: () => import('./pages/OrganisationApps.vue'),
+          meta: { title: 'Apps' },
+        },
+        {
+          path: 'organisations/:orgId/settings',
+          component: () => import('./pages/OrganisationSettings.vue'),
+          meta: { title: 'Settings' },
         },
         {
           path: 'organisations/:orgId/accounts',

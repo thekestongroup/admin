@@ -1,67 +1,130 @@
 <script setup lang="ts">
-import { Building2, KeyRound, Users } from '@lucide/vue'
-import { AppShell, Card, Spinner, type SidebarSection } from '@thekestongroup/ui'
-import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { ApiError, api, loadMe, type Me, type Organisation } from '../lib/api'
+import { AppWindow, Building2, House, KeyRound, Settings, Users } from '@lucide/vue'
+import {
+  AppShell,
+  Card,
+  NotificationPane,
+  Spinner,
+  createNotifications,
+  type Notifications,
+  type SidebarSection,
+} from '@thekestongroup/ui'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation } from '../lib/api'
 import { signOut } from '../lib/auth'
 
 /**
- * Every Keston Admin page: the Keston header, and a sidebar with
- * Organisations (platform admins) and the organisation being managed.
+ * Every Keston Admin page: the Keston header (with the notifications bell),
+ * and a sidebar with Organisations (Keston support) and the organisation
+ * being looked at.
  */
 const route = useRoute()
+const router = useRouter()
 const me = ref<Me>()
 const error = ref<string>()
 
+// ── Notifications (support requests, lockout procedure…), from Keston ID ────
+
+const notifications = shallowRef<Notifications>(createNotifications())
+let lastIds = ''
+
+function toInput(n: AdminNotification) {
+  return {
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    description: n.body,
+    createdAt: new Date(n.createdAt),
+    read: !!n.readAt,
+    action: n.link ? { label: 'Open', onSelect: () => router.push(n.link) } : undefined,
+  }
+}
+
+async function loadNotifications() {
+  const list = await api.notifications().catch(() => undefined)
+  if (!list) return
+  const ids = list.map((n) => n.id + (n.readAt ? 'r' : '')).join()
+  if (ids === lastIds) return
+  lastIds = ids
+  notifications.value = createNotifications(list.map(toInput))
+}
+
+// Opening the bell marks them read; Clear all clears them in Keston ID too.
+watch(
+  () => notifications.value.paneOpen,
+  (open) => {
+    if (open && notifications.value.unreadCount.value > 0) api.readNotifications().catch(() => {})
+  },
+)
+watch(
+  () => notifications.value.items.length,
+  (n, before) => {
+    if (n === 0 && before > 0) api.clearNotifications().then(() => (lastIds = '')).catch(() => {})
+  },
+)
+
+let timer: ReturnType<typeof setInterval> | undefined
 onMounted(async () => {
   try {
     me.value = await loadMe()
+    await loadNotifications()
+    timer = setInterval(loadNotifications, 60_000)
   } catch (e) {
     if (!(e instanceof ApiError && e.code === 'signed_out')) error.value = e instanceof Error ? e.message : String(e)
   }
 })
+onUnmounted(() => clearInterval(timer))
 
-// The organisation in the URL, for its name in the sidebar.
-const orgId = computed(() => route.params.orgId as string | undefined)
+// ── Sidebar ─────────────────────────────────────────────────────────────────
+
+// The organisation in the URL (or a global admin's own), for the sidebar.
+const orgId = computed(
+  () => (route.params.orgId as string | undefined) ?? (me.value && !me.value.platformAdmin ? me.value.organisation.id : undefined),
+)
 const org = ref<Organisation>()
 watch(
   orgId,
   async (id) => {
-    org.value = id ? (me.value?.organisation.id === id ? me.value.organisation : await api.organisation(id).catch(() => undefined)) : undefined
+    org.value = id ? await api.organisation(id).catch(() => undefined) : undefined
   },
   { immediate: true },
 )
 
 const nav = computed<SidebarSection[]>(() => {
   const sections: SidebarSection[] = []
-  const active = (to: string) => route.path === to
+  const active = (to: string, exact = true) => (exact ? route.path === to : route.path.startsWith(to))
   if (me.value?.platformAdmin) {
     sections.push({
-      items: [{ label: 'Organisations', icon: Building2, to: '/organisations', active: route.path.startsWith('/organisations') && !orgId.value }],
+      items: [{ label: 'Organisations', icon: Building2, to: '/organisations', active: route.path === '/organisations' }],
     })
   }
-  const id = orgId.value ?? (me.value && !me.value.platformAdmin ? me.value.organisation.id : undefined)
+  const id = orgId.value
   if (id) {
-    const accounts = `/organisations/${id}/accounts`
-    const policy = `/organisations/${id}/password-policy`
-    sections.push({
-      label: org.value?.name ?? me.value?.organisation.name ?? 'Organisation',
-      items: [
-        { label: 'Accounts', icon: Users, to: accounts, active: active(accounts) },
-        { label: 'Password policy', icon: KeyRound, to: policy, active: active(policy) },
-      ],
-    })
+    const base = `/organisations/${id}`
+    const items: SidebarSection['items'] = [{ label: 'Overview', icon: House, to: base, active: active(base) }]
+    // Accounts and settings: its global admins, or Keston support with access.
+    if (org.value?.canManage) {
+      items.push(
+        { label: 'Accounts', icon: Users, to: `${base}/accounts`, active: active(`${base}/accounts`, false) },
+        { label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) },
+        { label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) },
+        { label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) },
+      )
+    }
+    sections.push({ label: org.value?.name ?? 'Organisation', items })
   }
   return sections
 })
 
 const user = computed(() =>
-  me.value ? { name: me.value.user.name, email: me.value.user.email, organisation: me.value.organisation.name } : undefined,
+  me.value
+    ? { name: me.value.user.name, email: me.value.user.email, organisation: me.value.organisation.name, avatar: me.value.user.avatar }
+    : undefined,
 )
 
 function accountSettings() {
-  // Your own account (password, two-step) is in Keston ID.
+  // Your own account (password, two-step, profile) is in Keston ID.
   window.location.assign(`${window.location.protocol}//${window.location.hostname.replace(/^admin\./, 'id.')}/account`)
 }
 </script>
@@ -86,6 +149,9 @@ function accountSettings() {
     @account-settings="accountSettings"
     @log-out="signOut()"
   >
+    <template #header-trailing>
+      <NotificationPane :notifications="notifications" />
+    </template>
     <RouterView :key="route.fullPath" />
   </AppShell>
 </template>

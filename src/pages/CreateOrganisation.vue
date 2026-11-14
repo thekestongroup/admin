@@ -2,17 +2,17 @@
 import { ArrowLeft, ArrowRight, CircleCheck } from '@lucide/vue'
 import { Button, type ButtonStatus, Card, Input, Link, Progress, SummaryList, useNotifications } from '@thekestongroup/ui'
 import { computed, nextTick, reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, type Organisation } from '../lib/api'
+import { ApiError, publicApi, type Organisation } from '../lib/api'
+import { signIn } from '../lib/auth'
 
 /**
- * Creating an organisation, as a wizard in a card centred on the page:
- * its name, its domain (unique across Keston), and its first global admin
- * (username@domain, and a password meeting Keston's baseline rules).
- * Platform admins only (Keston ID checks).
+ * Self-service sign-up at /create-organisation, no sign-in needed: a wizard
+ * in a card centred on the page, asking for the organisation's name, its
+ * domain (unique across Keston), and its first global admin (username@domain,
+ * and a password meeting Keston's baseline rules). Then they sign in to
+ * Keston Admin to set it up.
  */
-const router = useRouter()
 const { notify } = useNotifications()
 
 const steps = ['Organisation', 'Domain', 'Global admin', 'Password']
@@ -46,7 +46,7 @@ async function validate(): Promise<boolean> {
         return false
       }
       // Valid, and not already another organisation's (Keston ID checks).
-      const res = await api.domain(domain.value)
+      const res = await publicApi.domain(domain.value)
       if (!res.valid || !res.available) errors.domain = res.message
       return !errors.domain
     }
@@ -93,7 +93,7 @@ const fieldStep: Record<string, number> = { name: 0, domain: 1, adminName: 2, ad
 
 async function create() {
   try {
-    const res = await api.createOrganisation({
+    const res = await publicApi.createOrganisation({
       name: form.name.trim(),
       domain: domain.value,
       adminName: form.adminName.trim(),
@@ -102,7 +102,7 @@ async function create() {
     })
     created.value = res.organisation
     status.value = 'success'
-    notify({ type: 'success', title: `${res.organisation.name} is set up`, description: `${res.admin.email} can sign in now.` })
+    notify({ type: 'success', title: `${res.organisation.name} is set up`, description: `Sign in as ${res.admin.email} to finish setting it up.` })
     await nextTick()
     document.querySelector<HTMLElement>('#wizard-done h1')?.focus()
   } catch (e) {
@@ -125,7 +125,11 @@ const summary = computed(() => [
 
 <template>
   <!-- A card in the middle of the page, both ways. -->
-  <div class="flex min-h-[calc(100dvh-3rem)] items-center justify-center p-4 sm:p-6">
+  <div class="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background p-4 sm:p-6">
+    <div class="flex items-center gap-2 text-primary">
+      <span class="flex size-8 items-center justify-center rounded bg-primary text-xs font-bold text-white" aria-hidden="true">K</span>
+      <span class="text-lg font-bold">Keston</span>
+    </div>
     <Card v-if="!created" class="w-full max-w-lg">
       <form class="flex flex-col gap-6" novalidate @submit.prevent="next">
         <div class="flex flex-col gap-3">
@@ -139,7 +143,10 @@ const summary = computed(() => [
           <template v-if="step === 0">
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">What's the organisation called?</h1>
-              <p class="text-sm text-black/65">As people there would recognise it, e.g. Greenfield Primary School.</p>
+              <p class="text-sm text-black/65">
+                Set up your school or organisation on Keston. As people there would recognise it, e.g. Greenfield
+                Primary School.
+              </p>
             </div>
             <Input v-model="form.name" label="Organisation name" :error-text="errors.name" />
           </template>
@@ -166,7 +173,8 @@ const summary = computed(() => [
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">Who's the first global admin?</h1>
               <p class="text-sm text-black/65">
-                They can manage {{ form.name.trim() }}'s accounts and password policy, and add more admins.
+                Probably you. They manage {{ form.name.trim() }}'s accounts and password policy, and can add more
+                admins.
               </p>
             </div>
             <Input v-model="form.adminName" label="Their name" autocomplete="off" :error-text="errors.adminName" />
@@ -186,10 +194,10 @@ const summary = computed(() => [
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">Set their password</h1>
               <p class="text-sm text-black/65">
-                For {{ username }}@{{ domain }}. Give it to them securely; they can change it in their Keston account.
+                For {{ username }}@{{ domain }}. It can be changed later in their Keston account.
               </p>
             </div>
-            <PasswordField v-model="form.password" v-model:valid="passwordValid" :username="username" :error-text="errors.password" />
+            <PasswordField v-model="form.password" v-model:valid="passwordValid" :username="username" public :error-text="errors.password" />
           </template>
         </div>
 
@@ -198,7 +206,7 @@ const summary = computed(() => [
             <template #leading><ArrowLeft /></template>
             Previous
           </Button>
-          <Link v-else :as="RouterLink" to="/organisations" class="text-sm">Cancel</Link>
+          <Link v-else as="button" class="text-sm" @click="signIn('/')">Already on Keston? Sign in</Link>
           <Button
             type="submit"
             variant="primary"
@@ -219,12 +227,13 @@ const summary = computed(() => [
         <div class="flex flex-col items-center gap-2 text-center">
           <CircleCheck class="size-10 text-green" aria-hidden="true" />
           <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ created.name }} is set up</h1>
-          <p class="text-sm text-black/65">Its global admin can sign in to Keston straight away.</p>
+          <p class="text-sm text-black/65">
+            Sign in as {{ username }}@{{ created.domain }} to add your people and set your password policy.
+          </p>
         </div>
         <SummaryList :items="summary" />
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button @click="router.go(0)">Create another</Button>
-          <Button variant="primary" @click="router.push(`/organisations/${created.id}/accounts`)">Go to its accounts</Button>
+          <Button variant="primary" @click="signIn(`/organisations/${created.id}`)">Sign in to Keston Admin</Button>
         </div>
       </div>
     </Card>

@@ -30,9 +30,12 @@ const columns: TableColumn<Organisation>[] = [
 
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Organisations" description="Every school and organisation on Keston.">
+    <PageHeader
+      title="Organisations"
+      description="Every school and organisation on Keston. Their accounts need support access, approved by one of their global admins."
+    >
       <template #actions>
-        <Button variant="primary" :as="RouterLink" to="/organisations/new">
+        <Button variant="primary" :as="RouterLink" to="/create-organisation">
           <template #leading><Plus /></template>
           New organisation
         </Button>
@@ -45,7 +48,7 @@ const columns: TableColumn<Organisation>[] = [
     <Card v-else padding="none">
       <Table :columns="columns" :rows="orgs" row-key="id" :loading="loading" caption="Organisations">
         <template #cell-name="{ row }">
-          <Link :as="RouterLink" :to="`/organisations/${row.id}/accounts`" class="font-bold">{{ row.name }}</Link>
+          <Link :as="RouterLink" :to="`/organisations/${row.id}`" class="font-bold">{{ row.name }}</Link>
         </template>
         <template #cell-createdAt="{ row }">{{ formatDate(row.createdAt) }}</template>
         <template #empty>

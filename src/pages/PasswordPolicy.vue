@@ -141,20 +141,25 @@ const counts = [
           </fieldset>
 
           <div class="flex flex-col gap-3">
-            <div class="flex items-end gap-2">
+            <!-- The button lines up with the field's box: it starts below the
+                 label row (20px label + 6px gap), and an error under the field
+                 doesn't move it. -->
+            <div class="flex items-start gap-2">
               <Input
                 v-model="newWord"
                 label="Also ban these passwords"
-                helper="e.g. your organisation’s name or town. Matching ignores capitals and numbers on the end."
                 :error-text="wordError"
                 class="flex-1"
                 @keydown.enter.prevent="addWord"
               />
-              <Button class="mb-6" @click="addWord">
+              <Button class="mt-[1.625rem] shrink-0" @click="addWord">
                 <template #leading><Plus /></template>
                 Add
               </Button>
             </div>
+            <p class="-mt-1 text-sm text-black/65">
+              e.g. your organisation’s name or town. Matching ignores capitals, and numbers or symbols on the end.
+            </p>
             <ul v-if="policy.blocked.length" class="flex flex-wrap gap-2" aria-label="Banned passwords">
               <li v-for="word in policy.blocked" :key="word">
                 <Chip removable :remove-label="`Remove ${word}`" @remove="removeWord(word)">{{ word }}</Chip>
@@ -164,7 +169,9 @@ const counts = [
           </div>
         </form>
         <template #footer>
-          <Button type="submit" form="policy-form" variant="primary" :status="status" loading-text="Saving" success-text="Saved">
+          <!-- v-model: the button sets itself back to idle a couple of
+               seconds after "Saved", so the policy can be changed again. -->
+          <Button type="submit" form="policy-form" variant="primary" v-model:status="status" loading-text="Saving" success-text="Saved">
             Save policy
           </Button>
         </template>

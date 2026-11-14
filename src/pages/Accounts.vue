@@ -7,6 +7,7 @@ import {
   Card,
   EmptyState,
   Input,
+  Link,
   PageHeader,
   RadioGroup,
   Slideover,
@@ -16,7 +17,7 @@ import {
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
 import { ApiError, api, loadMe, type Account, type Organisation } from '../lib/api'
 
@@ -168,7 +169,7 @@ async function toggle(a: Account) {
     <Card v-else padding="none">
       <Table :columns="columns" :rows="accounts" row-key="id" :loading="loading" caption="Accounts">
         <template #cell-name="{ row }">
-          <span class="font-bold">{{ row.name }}</span>
+          <Link :as="RouterLink" :to="`/organisations/${orgId}/accounts/${row.id}`" class="font-bold">{{ row.name }}</Link>
           <span v-if="row.id === myId" class="text-black/65"> (you)</span>
         </template>
         <template #cell-role="{ row }">
