@@ -1,0 +1,44 @@
+import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
+
+/**
+ * Signing in with Keston ID (OpenID Connect, code flow with PKCE). Keston
+ * Admin is the "admin" app in Keston ID; it skips the consent prompt, as one
+ * of The Keston Group's own apps.
+ *
+ * Keston ID's address comes from this one's: admin.keston.co → id.keston.co,
+ * admin.keston.localhost → id.keston.localhost.
+ */
+function issuer() {
+  const { protocol, hostname } = window.location
+  return `${protocol}//${hostname.replace(/^admin\./, 'id.')}`
+}
+
+export const userManager = new UserManager({
+  authority: issuer(),
+  client_id: 'admin',
+  redirect_uri: `${window.location.origin}/callback`,
+  post_logout_redirect_uri: `${window.location.origin}/`,
+  response_type: 'code',
+  scope: 'openid profile email',
+  loadUserInfo: false,
+  monitorSession: false,
+  // The access token lasts 15 minutes. When it runs out, signing in again
+  // is a quick redirect: Keston ID still has the browser's session.
+  automaticSilentRenew: false,
+  userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+})
+
+/** The signed-in user, if their token is still good. */
+export async function currentUser(): Promise<User | null> {
+  const user = await userManager.getUser()
+  return user && !user.expired ? user : null
+}
+
+/** Off to Keston ID to sign in, coming back to where we were. */
+export function signIn(returnTo = window.location.pathname + window.location.search) {
+  return userManager.signinRedirect({ state: { returnTo } })
+}
+
+export function signOut() {
+  return userManager.signoutRedirect()
+}

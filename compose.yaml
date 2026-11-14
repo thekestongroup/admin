@@ -1,0 +1,25 @@
+# Keston Admin. Runs alongside Keston ID (the id repo's compose), on its
+# "keston" network: its Caddy serves http://admin.keston.localhost (and
+# https://admin.keston.co live) from this container, and the admin API from
+# Keston ID. Start the id stack first, then:
+#
+#   docker compose up -d --build
+
+name: keston-admin
+
+services:
+  admin:
+    build: .
+    image: ghcr.io/thekestongroup/admin:latest
+    restart: unless-stopped
+    networks:
+      keston:
+        aliases: [admin]
+    deploy:
+      resources:
+        limits: { memory: 32M }
+
+networks:
+  keston:
+    name: keston
+    external: true

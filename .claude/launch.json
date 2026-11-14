@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "keston-admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--strictPort"],
+      "port": 5181,
+      "url": "http://admin.keston.localhost:5181"
+    }
+  ]
+}
