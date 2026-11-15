@@ -13,7 +13,7 @@ import {
   formatDateTime,
   useNotifications,
 } from '@thekestongroup/ui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { api, type AccessPass, type SignInState, type User } from '../lib/api'
 
 /**
@@ -45,7 +45,7 @@ async function reload() {
   }
 }
 onMounted(reload)
-defineExpose({ reload })
+
 
 // ── Require a password change ───────────────────────────────────────────────
 
@@ -100,6 +100,14 @@ function startIssue() {
   issueStatus.value = 'idle'
   issuing.value = true
 }
+
+// For the page's toolbar.
+defineExpose({
+  reload,
+  setPasswordChange,
+  startIssue,
+  passwordChangeRequired: computed(() => !!state.value?.passwordChangeRequired),
+})
 
 async function issue() {
   issueStatus.value = 'loading'

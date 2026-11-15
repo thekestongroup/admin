@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, ImageUp, Pencil, Plus, Trash2, TriangleAlert, UserRound } from '@lucide/vue'
+import { AppWindow, ImageUp, KeyRound, Pencil, Plus, RectangleEllipsis, ShieldOff, Ticket, Trash2, TriangleAlert, UserRound } from '@lucide/vue'
 import {
   Avatar,
   Badge,
@@ -15,12 +15,13 @@ import {
   Select,
   Slideover,
   Spinner,
+  type PageHeaderAction,
   Tabs,
   SummaryList,
   formatDate,
   useNotifications,
 } from '@thekestongroup/ui'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DeleteUserCard from '../components/DeleteUserCard.vue'
 import AdminRolesCard from '../components/AdminRolesCard.vue'
@@ -259,6 +260,31 @@ async function reset() {
 // ── Turn off MFA (lost authenticator) ─────────────────────────────────────────
 
 const signInCard = ref<InstanceType<typeof SignInCard>>()
+
+// The toolbar: everyday actions, opening the same panels as the cards below
+// (which are on the Account tab, so it's shown first).
+async function onAccountTab(run: () => void) {
+  tab.value = 'account'
+  await nextTick()
+  run()
+}
+const toolbar = computed<PageHeaderAction[]>(() => {
+  const u = user.value
+  if (!u || u.support) return []
+  const out: PageHeaderAction[] = []
+  if (can('users.reset_password')) out.push({ label: 'Reset password', icon: KeyRound, onSelect: () => onAccountTab(startReset) })
+  if (can('users.mfa') && (u.mfa || u.passkeys > 0))
+    out.push({ label: 'Reset MFA', icon: ShieldOff, onSelect: () => onAccountTab(() => (confirmMfaOff.value = true)) })
+  if (can('users.reset_password'))
+    out.push(
+      signInCard.value?.passwordChangeRequired
+        ? { label: 'Don’t require password change', icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(false)) }
+        : { label: 'Require password change', icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(true)) },
+    )
+  if (can('users.access_pass') && u.status === 'active')
+    out.push({ label: 'Issue access pass', icon: Ticket, onSelect: () => onAccountTab(() => signInCard.value?.startIssue()) })
+  return out
+})
 const confirmMfaOff = ref(false)
 const mfaStatus = ref<ButtonStatus>('idle')
 async function turnOffMfa() {
@@ -315,7 +341,7 @@ async function toggle() {
     <div v-else-if="!user" class="flex justify-center py-12"><Spinner label="Loading" /></div>
     <template v-else>
       <Breadcrumb :items="trail" :link-component="RouterLink" />
-      <PageHeader :title="user.name" :description="user.email">
+      <PageHeader :title="user.name" :description="user.email" :toolbar="toolbar">
         <template #badge>
           <Badge v-if="user.status === 'disabled'" color="basic">Disabled</Badge>
           <Badge v-else-if="user.locked" color="yellow">Locked</Badge>
