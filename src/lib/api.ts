@@ -451,6 +451,11 @@ export const api = {
   /** Without a password, each gets their own (in the results, once). */
   bulkResetPassword: (orgId: string, userIds: string[], opts: { password?: string; requirePasswordChange: boolean }) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/reset-password`, { userIds, ...opts }),
+  /** Add a list of members, each with their own password (in the results, once). */
+  bulkCreate: (
+    orgId: string,
+    body: { users: { name: string; username: string }[]; licences: string[]; requirePasswordChange: boolean },
+  ) => request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/create`, body),
   /** Add everyone to some groups and take them out of others. */
   bulkGroups: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/groups`, { userIds, add, remove }),

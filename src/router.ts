@@ -53,6 +53,11 @@ export const router = createRouter({
           meta: { title: 'Organisation' },
         },
         {
+          path: 'organisations/:orgId/users/add',
+          component: () => import('./pages/AddUsers.vue'),
+          meta: { title: 'Add multiple users' },
+        },
+        {
           path: 'organisations/:orgId/users/deleted',
           component: () => import('./pages/DeletedUsers.vue'),
           meta: { title: 'Deleted users' },

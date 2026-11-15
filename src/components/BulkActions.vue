@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArchiveRestore, Ban, KeyRound, Plus, Trash2, UsersRound, X } from '@lucide/vue'
+import { ArchiveRestore, Ban, KeyRound, Trash2, UserPlus, Users, UsersRound, X } from '@lucide/vue'
 import {
   Button,
   type ButtonStatus,
@@ -19,7 +19,7 @@ import PasswordField from './PasswordField.vue'
 
 /**
  * The Users page's action row, under its title. With nobody ticked: add a
- * user, deleted users. With users ticked: how many, and what can be done to
+ * user or several, deleted users. With users ticked: how many, and what can be done to
  * them all at once (reset passwords, change sign-in status, manage group
  * memberships, delete). Each asks first, then shows what was done and who
  * was skipped (Keston ID checks each user, as for one).
@@ -47,7 +47,12 @@ const count = computed(() => `${props.selected.length} ${props.selected.length =
 const actions = computed<Action[]>(() => {
   if (!props.selected.length) {
     return [
-      ...(props.can('users.create') ? [{ label: 'Add user', icon: Plus, onSelect: () => emit('add') }] : []),
+      ...(props.can('users.create')
+        ? [
+            { label: 'Add user', icon: UserPlus, onSelect: () => emit('add') },
+            { label: 'Add multiple users', icon: Users, to: `/organisations/${props.orgId}/users/add` },
+          ]
+        : []),
       { label: 'Deleted users', icon: ArchiveRestore, to: `/organisations/${props.orgId}/users/deleted` },
     ]
   }
