@@ -7,6 +7,8 @@ import {
   EmptyState,
   Input,
   PageHeader,
+  Select,
+  type SelectProps,
   Slideover,
   Spinner,
   Switch,
@@ -17,6 +19,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MfaSettings from '../components/MfaSettings.vue'
+import { usernameFormats, type UsernameFormat } from '../lib/usernames'
 import { ApiError, api, loadMe, type Me, type Organisation, type ProfileEditing } from '../lib/api'
 
 /**
@@ -44,6 +47,7 @@ onMounted(async () => {
   try {
     const [settings, o, m] = await Promise.all([api.settings(orgId), api.organisation(orgId), loadMe()])
     Object.assign(editing, settings.profileEditing)
+    usernameFormat.value = settings.usernameFormat
     org.value = o
     me.value = m
     loaded.value = true
@@ -57,6 +61,29 @@ const fields: { key: keyof ProfileEditing; label: string; description: string }[
   { key: 'email', label: 'Email', description: 'The part before the @ (the domain stays yours). They sign in with it.' },
   { key: 'picture', label: 'Profile picture', description: 'Shown next to their name in Keston apps.' },
 ]
+
+// ── Username format ─────────────────────────────────────────────────────────
+
+const usernameFormat = ref<UsernameFormat>('first.last')
+const formatState = ref<{ status?: SelectProps['status']; text?: string }>({})
+const formatOptions = computed(() =>
+  usernameFormats.map((f) => ({ label: f.label, value: f.value, description: `e.g. ${f.example}@${org.value?.domain ?? 'example.com'}` })),
+)
+async function saveFormat(value: unknown) {
+  const before = usernameFormat.value
+  usernameFormat.value = value as UsernameFormat
+  formatState.value = { status: 'loading', text: 'Saving…' }
+  try {
+    usernameFormat.value = (await api.saveUsernameFormat(orgId, usernameFormat.value)).usernameFormat
+    formatState.value = { status: 'success', text: 'Saved' }
+    setTimeout(() => {
+      if (formatState.value.status === 'success') formatState.value = {}
+    }, 2000)
+  } catch {
+    usernameFormat.value = before
+    formatState.value = { status: 'error', text: 'Couldn’t save. Try again.' }
+  }
+}
 
 // ── Delete the organisation (in 14 days) ────────────────────────────────────
 
@@ -134,6 +161,22 @@ async function save(key: keyof ProfileEditing, on: boolean) {
           @update:model-value="save(f.key, $event)"
         />
       </div>
+    </Card>
+
+    <Card
+      v-if="loaded"
+      title="New users"
+      description="When you add users, their username is filled in from their name this way. You can still change it."
+    >
+      <Select
+        :model-value="usernameFormat"
+        label="Username format"
+        :options="formatOptions"
+        :status="formatState.status"
+        :status-text="formatState.text"
+        class="max-w-sm"
+        @update:model-value="saveFormat"
+      />
     </Card>
 
     <Card

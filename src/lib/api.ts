@@ -1,4 +1,5 @@
 import { currentUser, signIn } from './auth'
+import type { UsernameFormat } from './usernames'
 
 /**
  * Keston ID's admin API, at /api on this origin (Caddy passes it to Keston
@@ -40,6 +41,8 @@ export interface Organisation {
   domains?: string[]
   passwordPolicy: PasswordPolicy
   profileEditing: ProfileEditing
+  /** How new users' usernames are suggested from their names. */
+  usernameFormat: UsernameFormat
   userCount: number
   createdAt: string
   /** Whether you have any permission here (Keston support: through a support account). */
@@ -389,9 +392,12 @@ export const api = {
     request<Group>('PUT', `${org(orgId)}/groups/${groupId}/permissions`, { permissions }),
   removeMember: (orgId: string, groupId: string, userId: string) =>
     request<void>('DELETE', `${org(orgId)}/groups/${groupId}/members/${userId}`),
-  settings: (orgId: string) => request<{ profileEditing: ProfileEditing }>('GET', `${org(orgId)}/settings`),
+  settings: (orgId: string) =>
+    request<{ profileEditing: ProfileEditing; usernameFormat: UsernameFormat }>('GET', `${org(orgId)}/settings`),
   saveSettings: (orgId: string, profileEditing: ProfileEditing) =>
-    request<{ profileEditing: ProfileEditing }>('PUT', `${org(orgId)}/settings`, { profileEditing }),
+    request<{ profileEditing: ProfileEditing; usernameFormat: UsernameFormat }>('PUT', `${org(orgId)}/settings`, { profileEditing }),
+  saveUsernameFormat: (orgId: string, usernameFormat: UsernameFormat) =>
+    request<{ profileEditing: ProfileEditing; usernameFormat: UsernameFormat }>('PUT', `${org(orgId)}/settings`, { usernameFormat }),
 
   support: (orgId: string) => request<Support>('GET', `${org(orgId)}/support`),
   requestSupport: (orgId: string, reason: string) => request<void>('POST', `${org(orgId)}/support/requests`, { reason }),

@@ -21,6 +21,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
 import PasswordField from '../components/PasswordField.vue'
 import UserDetailsTable from '../components/UserDetailsTable.vue'
+import { suggestUsername } from '../lib/usernames'
 
 /**
  * Adding a list of users at once, in steps: Users (a row each: first name,
@@ -85,16 +86,10 @@ const sharedPassword = ref('')
 const sharedValid = ref(false)
 const passwordError = ref<string>()
 
-/** first.last, in the characters a username allows. */
+/** From their name, in the organisation's username format (Settings). */
 function suggest(r: Row) {
   if (r.usernameEdited) return
-  const part = (s: string) =>
-    s
-      .normalize('NFKD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '')
-  r.username = [part(r.first), part(r.last)].filter(Boolean).join('.')
+  r.username = suggestUsername(org.value?.usernameFormat, r.first, r.last)
 }
 
 function typedUsername(r: Row, v: string) {

@@ -15,6 +15,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import PasswordField from './PasswordField.vue'
+import { suggestUsername } from '../lib/usernames'
 import { ApiError, api, type Organisation, type Product, type User } from '../lib/api'
 
 /**
@@ -39,8 +40,11 @@ const step = ref(0)
 const last = computed(() => step.value === steps.value.length - 1)
 
 const blank = () => ({
-  name: '',
+  first: '',
+  last: '',
   username: '',
+  /** Typed by hand: stop suggesting one from the name. */
+  usernameEdited: false,
   role: 'member' as User['role'],
   autoPassword: true,
   password: '',
@@ -52,6 +56,16 @@ const errors = reactive<Record<string, string | undefined>>({})
 const passwordValid = ref(false)
 const status = ref<ButtonStatus>('idle')
 const username = computed(() => form.username.trim().toLowerCase())
+const fullName = computed(() => `${form.first.trim()} ${form.last.trim()}`.trim())
+
+/** From their name, in the organisation's username format (Settings). */
+function suggest() {
+  if (!form.usernameEdited) form.username = suggestUsername(props.org?.usernameFormat, form.first, form.last)
+}
+function typedUsername(v: string) {
+  form.username = v
+  form.usernameEdited = v !== ''
+}
 const roles = [
   { label: 'Member', value: 'member', description: 'Signs in to Keston apps.' },
   { label: 'Global admin', value: 'global_admin', description: 'Also manages this organisation’s users and password policy here.' },
@@ -94,12 +108,12 @@ async function focusHeading() {
 
 function checkUserInfo() {
   for (const k of Object.keys(errors)) errors[k] = undefined
-  if (!form.name.trim()) errors.name = 'Enter their name'
+  if (!form.first.trim()) errors.first = 'Enter their first name'
   if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(username.value))
     errors.username = 'Use lowercase letters, numbers, dots, dashes or underscores, like j.smith'
   if (!form.autoPassword && !passwordValid.value)
     errors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
-  return !errors.name && !errors.username && !errors.password
+  return !errors.first && !errors.username && !errors.password
 }
 
 function next() {
@@ -126,7 +140,7 @@ async function add() {
   try {
     const licences = props.canAssignLicences ? form.licences : []
     const created = await api.createUser(props.orgId, {
-      name: form.name.trim(),
+      name: fullName.value,
       username: username.value,
       role: form.role,
       generatePassword: form.autoPassword,
@@ -147,7 +161,7 @@ async function add() {
   } catch (e) {
     status.value = 'idle'
     if (e instanceof ApiError && e.field) {
-      errors[e.field] = e.message
+      errors[e.field === 'name' ? 'first' : e.field] = e.message
       // Name, username or password: back to User info to fix it.
       if (e.field !== 'licences') {
         step.value = 0
@@ -224,14 +238,18 @@ async function copyPassword(password: string) {
         <!-- User info -->
         <div v-if="step === 0" class="flex flex-col gap-4">
           <h2 ref="heading" tabindex="-1" class="sr-only outline-none">User info</h2>
-          <Input v-model="form.name" label="Name" autocomplete="off" :error-text="errors.name" />
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Input v-model="form.first" label="First name" autocomplete="off" :error-text="errors.first" @update:model-value="suggest" />
+            <Input v-model="form.last" label="Last name" autocomplete="off" @update:model-value="suggest" />
+          </div>
           <Input
-            v-model="form.username"
+            :model-value="form.username"
             label="Username"
             autocapitalize="off"
             spellcheck="false"
             autocomplete="off"
             :error-text="errors.username"
+            @update:model-value="typedUsername(String($event ?? ''))"
           >
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
@@ -256,7 +274,7 @@ async function copyPassword(password: string) {
         <div v-else class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
             <h2 ref="heading" tabindex="-1" class="font-bold outline-none">Licences</h2>
-            <p class="text-sm text-black/65">The Keston products {{ form.name.trim() || 'they' }} can use. Without a licence, they can’t sign in to it.</p>
+            <p class="text-sm text-black/65">The Keston products {{ fullName || 'they' }} can use. Without a licence, they can’t sign in to it.</p>
           </div>
           <EmptyState v-if="productsError" size="sm" title="Couldn’t load the products" :description="productsError" class="p-0" />
           <div v-else-if="!products" class="flex justify-center py-6"><Spinner label="Loading" /></div>
