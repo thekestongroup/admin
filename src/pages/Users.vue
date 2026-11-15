@@ -355,7 +355,7 @@ async function toggle(a: User) {
             <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
             <Checkbox
               v-model="form.requirePasswordChange"
-              label="Require this user to change their password when they first sign in"
+              label="Require this user to change their password on sign in"
               description="Recommended, so only they know their password."
             />
           </template>
