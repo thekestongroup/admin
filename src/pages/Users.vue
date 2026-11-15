@@ -168,7 +168,7 @@ async function toggle(a: User) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-4 sm:p-6">
+  <div class="flex flex-col gap-3 p-4 sm:p-6">
     <PageHeader title="Users">
       <BulkActions
         v-if="!loadError"
