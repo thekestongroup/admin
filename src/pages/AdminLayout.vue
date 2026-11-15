@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, Building2, House, KeyRound, LifeBuoy, ScrollText, Settings, Users, UsersRound } from '@lucide/vue'
+import { AppWindow, Building2, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -120,6 +120,8 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('apps.manage')) items.push({ label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
     if (can('policy.manage'))
       items.push({ label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
+    if (can('policy.manage'))
+      items.push({ label: 'Security', icon: ShieldCheck, to: `${base}/security`, active: active(`${base}/security`) })
     if (can('settings.manage')) items.push({ label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     if (can('reports.view')) items.push({ label: 'Logs', icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
     sections.push({ label: org.value?.name ?? 'Organisation', items })

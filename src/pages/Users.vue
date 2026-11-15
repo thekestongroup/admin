@@ -5,6 +5,7 @@ import {
   Button,
   type ButtonStatus,
   Card,
+  Checkbox,
   EmptyState,
   Input,
   PageHeader,
@@ -64,7 +65,7 @@ const columns: TableColumn<User>[] = [
 // ── Add a user ──────────────────────────────────────────────────────────
 
 const adding = ref(false)
-const form = reactive({ name: '', username: '', password: '', role: 'member' as User['role'] })
+const form = reactive({ name: '', username: '', password: '', role: 'member' as User['role'], requirePasswordChange: true })
 const formErrors = reactive<Record<string, string | undefined>>({})
 const formValid = ref(false)
 const addStatus = ref<ButtonStatus>('idle')
@@ -75,7 +76,7 @@ const roles = [
 const username = computed(() => form.username.trim().toLowerCase())
 
 function startAdding() {
-  Object.assign(form, { name: '', username: '', password: '', role: 'member' })
+  Object.assign(form, { name: '', username: '', password: '', role: 'member', requirePasswordChange: true })
   for (const k of Object.keys(formErrors)) formErrors[k] = undefined
   addStatus.value = 'idle'
   adding.value = true
@@ -90,7 +91,7 @@ async function add() {
   if (formErrors.name || formErrors.username || formErrors.password) return
   addStatus.value = 'loading'
   try {
-    const created = await api.createUser(orgId, { name: form.name.trim(), username: username.value, password: form.password, role: form.role })
+    const created = await api.createUser(orgId, { name: form.name.trim(), username: username.value, password: form.password, role: form.role, requirePasswordChange: form.requirePasswordChange })
     await load()
     adding.value = false
     notify({ type: 'success', title: 'User added', description: `${created.email} can sign in now.` })
@@ -106,12 +107,14 @@ async function add() {
 const resetting = ref<User>()
 const resetOpen = computed({ get: () => !!resetting.value, set: (v) => { if (!v) resetting.value = undefined } })
 const newPassword = ref('')
+const resetRequireChange = ref(true)
 const resetValid = ref(false)
 const resetError = ref<string>()
 const resetStatus = ref<ButtonStatus>('idle')
 
 function startReset(a: User) {
   newPassword.value = ''
+  resetRequireChange.value = true
   resetError.value = undefined
   resetStatus.value = 'idle'
   resetting.value = a
@@ -123,7 +126,7 @@ async function reset() {
   if (resetError.value) return
   resetStatus.value = 'loading'
   try {
-    await api.resetPassword(orgId, a.id, newPassword.value)
+    await api.resetPassword(orgId, a.id, newPassword.value, resetRequireChange.value)
     await load()
     resetting.value = undefined
     notify({ type: 'success', title: 'Password reset', description: `${a.name} has been signed out everywhere, and can sign in with the new password.` })
@@ -233,6 +236,7 @@ async function toggle(a: User) {
           </Input>
           <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" />
           <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
+          <Checkbox v-model="form.requirePasswordChange" label="Ask them to choose a new password when they first sign in" description="Recommended, so only they know their password." />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
@@ -259,6 +263,7 @@ async function toggle(a: User) {
             :username="resetting?.username"
             :error-text="resetError"
           />
+          <Checkbox v-model="resetRequireChange" label="Ask them to choose a new password when they next sign in" description="Recommended, so only they know their password." />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
