@@ -1,27 +1,16 @@
 <script setup lang="ts">
-import { InputNumber, Link, Select, type SelectProps } from '@thekestongroup/ui'
-import { computed, onMounted, reactive, ref, useId } from 'vue'
-import { RouterLink } from 'vue-router'
+import { InputNumber, Select, type SelectProps } from '@thekestongroup/ui'
+import { computed, reactive, ref, useId, watch } from 'vue'
 import { api, type MfaMode, type MfaPolicy } from '../lib/api'
 
 /**
- * Multi-factor authentication, on the Settings page: Off, Require MFA for
- * everyone (with a grace period to set it up), or Custom rules (per group,
- * on the Security page). Each change saves straight away and applies at
- * each person's next sign-in.
+ * Multi-factor authentication, on Security → Manage MFA: Off, Require MFA
+ * for everyone (with a grace period to set it up), or Custom rules (the
+ * rules are below it on the page). Each change saves straight away and
+ * applies at each person's next sign-in.
  */
 const props = defineProps<{ orgId: string }>()
-
-const policy = ref<MfaPolicy>()
-const loadError = ref<string>()
-onMounted(async () => {
-  try {
-    policy.value = await api.mfaPolicy(props.orgId)
-    grace.value = policy.value.gracePeriodDays
-  } catch (e) {
-    loadError.value = e instanceof Error ? e.message : String(e)
-  }
-})
+const policy = defineModel<MfaPolicy>('policy', { required: true })
 
 const modes: { label: string; value: MfaMode; description: string }[] = [
   { label: 'Off', value: 'off', description: 'Not recommended. Users aren’t required to set up MFA.' },
@@ -40,8 +29,7 @@ const saving = reactive<{ mode: Saving; grace: Saving }>({ mode: {}, grace: {} }
 async function save(key: 'mode' | 'grace', change: Parameters<typeof api.setMfaPolicy>[1]) {
   saving[key] = { status: 'loading', text: 'Saving…' }
   try {
-    const saved = await api.setMfaPolicy(props.orgId, change)
-    policy.value = { ...saved }
+    policy.value = await api.setMfaPolicy(props.orgId, change)
     saving[key] = { status: 'success', text: 'Saved. Applies at each person’s next sign-in.' }
     setTimeout(() => {
       if (saving[key].status === 'success') saving[key] = {}
@@ -53,13 +41,14 @@ async function save(key: 'mode' | 'grace', change: Parameters<typeof api.setMfaP
 
 function setMode(value: unknown) {
   const mode = value as MfaMode
-  if (!policy.value || mode === policy.value.mode) return
-  policy.value.mode = mode
+  if (mode === policy.value.mode) return
+  policy.value = { ...policy.value, mode }
   save('mode', { mode })
 }
 
 // The grace period: whole days, 0–90. Kept while hidden, so it comes back.
-const grace = ref<number | undefined>(7)
+const grace = ref<number | undefined>(policy.value.gracePeriodDays)
+watch(() => policy.value.gracePeriodDays, (days) => (grace.value = days))
 const graceError = computed(() => {
   const v = grace.value
   if (v === undefined || v === null || Number.isNaN(v)) return 'Enter a number of days'
@@ -81,8 +70,7 @@ const graceDescriptionId = useId()
 </script>
 
 <template>
-  <p v-if="loadError" class="text-sm text-red" role="alert">Couldn’t load the MFA settings: {{ loadError }}</p>
-  <div v-else-if="policy" class="flex flex-col gap-6">
+  <div class="flex flex-col gap-6">
     <!-- Multi-factor authentication -->
     <div class="flex flex-col gap-3">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
@@ -101,10 +89,7 @@ const graceDescriptionId = useId()
           @update:model-value="setMode"
         />
       </div>
-      <p v-if="policy.mode === 'custom'" class="text-sm">
-        MFA is managed by custom rules.
-        <Link :as="RouterLink" :to="`/organisations/${orgId}/security`">Manage rules</Link>
-      </p>
+      <p v-if="policy.mode === 'custom'" class="text-sm">MFA is managed by custom rules, below.</p>
     </div>
 
     <!-- The grace period, for Require MFA for everyone -->

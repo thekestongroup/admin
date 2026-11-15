@@ -107,10 +107,11 @@ export const router = createRouter({
           component: () => import('./pages/Logs.vue'),
           meta: { title: 'Logs' },
         },
+        { path: 'organisations/:orgId/security', redirect: (to) => `/organisations/${to.params.orgId}/security/mfa` },
         {
-          path: 'organisations/:orgId/security',
-          component: () => import('./pages/Security.vue'),
-          meta: { title: 'Security' },
+          path: 'organisations/:orgId/security/mfa',
+          component: () => import('./pages/ManageMfa.vue'),
+          meta: { title: 'Manage MFA' },
         },
         {
           path: 'organisations/:orgId/password-policy',

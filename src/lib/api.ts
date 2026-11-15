@@ -217,9 +217,33 @@ export interface MfaPolicy {
   mode: MfaMode
   /** Required: days to set up MFA before it's enforced at their next sign-in (0: straight away). */
   gracePeriodDays: number
-  /** Custom rules: the default, for everyone not covered by a group's rule. */
+  /** Custom rules: "Everyone else", for anyone no rule matches. */
   required: boolean
-  groups: { id: string; name: string; memberCount: number; required: boolean | null }[]
+}
+
+/**
+ * An MFA custom rule. Tried in order; the first enabled one whose conditions
+ * all match decides whether MFA is required. A condition left empty matches
+ * anyone / anywhere.
+ */
+export interface MfaRule {
+  id: string
+  name: string
+  enabled: boolean
+  /** Require MFA (true), or don't (false). */
+  require: boolean
+  users: string[]
+  groups: string[]
+  apps: string[]
+  /** IP addresses or ranges, e.g. 203.0.113.7/32 or 10.0.0.0/8. */
+  ipRanges: string[]
+}
+
+/** What a rule can be about: the organisation's users, groups and apps. */
+export interface MfaRuleOptions {
+  users: { id: string; name: string; extra?: string }[]
+  groups: { id: string; name: string }[]
+  apps: { id: string; name: string; extra?: string }[]
 }
 
 /** A temporary access pass: signs someone in without their password or MFA. The code is only shown once. */
@@ -473,12 +497,19 @@ export const api = {
   revokeAccessPass: (orgId: string, userId: string, passId: string) =>
     request<void>('DELETE', `${org(orgId)}/users/${userId}/access-passes/${passId}`),
   mfaPolicy: (orgId: string) => request<MfaPolicy>('GET', `${org(orgId)}/mfa-policy`),
-  setMfaRequired: (orgId: string, required: boolean) => request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy`, { required }),
-  setMfaPolicy: (orgId: string, change: { mode?: MfaMode; gracePeriodDays?: number }) =>
+  /** Any of the mode, the grace period, and "Everyone else" (custom rules' default). */
+  setMfaPolicy: (orgId: string, change: { mode?: MfaMode; gracePeriodDays?: number; required?: boolean }) =>
     request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy`, change),
-  /** null: the group uses the default. */
-  setGroupMfaRequired: (orgId: string, groupId: string, required: boolean | null) =>
-    request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy/groups/${groupId}`, { required }),
+  mfaRules: (orgId: string) => request<MfaRule[]>('GET', `${org(orgId)}/mfa-rules`),
+  mfaRuleOptions: (orgId: string) => request<MfaRuleOptions>('GET', `${org(orgId)}/mfa-rules/options`),
+  /** A new rule (no id: it goes last), or a change to one. */
+  saveMfaRule: (orgId: string, rule: Omit<MfaRule, 'id'> & { id?: string }) =>
+    rule.id
+      ? request<MfaRule>('PUT', `${org(orgId)}/mfa-rules/${rule.id}`, rule)
+      : request<MfaRule>('POST', `${org(orgId)}/mfa-rules`, rule),
+  deleteMfaRule: (orgId: string, id: string) => request<void>('DELETE', `${org(orgId)}/mfa-rules/${id}`),
+  /** Every rule's id, in the order they're tried. */
+  orderMfaRules: (orgId: string, ids: string[]) => request<MfaRule[]>('PUT', `${org(orgId)}/mfa-rules/order`, { ids }),
   /** Turns off a user's MFA, e.g. when they've lost their authenticator. */
   disableMfa: (orgId: string, userId: string) => request<User>('POST', `${org(orgId)}/users/${userId}/mfa/disable`, {}),
   /** Removes all of a user's passkeys and security keys (their authenticator app stays). */

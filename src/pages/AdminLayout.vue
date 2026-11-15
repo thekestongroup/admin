@@ -121,7 +121,11 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('policy.manage'))
       items.push({ label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
     if (can('policy.manage'))
-      items.push({ label: 'Security', icon: ShieldCheck, to: `${base}/security`, active: active(`${base}/security`) })
+      items.push({
+        label: 'Security',
+        icon: ShieldCheck,
+        children: [{ label: 'Manage MFA', icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security`, false) }],
+      })
     if (can('settings.manage')) items.push({ label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     if (can('reports.view')) items.push({ label: 'Logs', icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
     sections.push({ label: org.value?.name ?? 'Organisation', items })
