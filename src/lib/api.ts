@@ -158,12 +158,40 @@ export type PermissionId =
   | 'users.edit'
   | 'users.reset_password'
   | 'users.mfa'
+  | 'users.access_pass'
   | 'users.status'
   | 'groups.manage'
   | 'permissions.assign'
   | 'apps.manage'
   | 'policy.manage'
   | 'settings.manage'
+
+/** Whether MFA is required: the organisation's default, and per group (null: use the default). */
+export interface MfaPolicy {
+  required: boolean
+  groups: { id: string; name: string; memberCount: number; required: boolean | null }[]
+}
+
+/** A temporary access pass: signs someone in without their password or MFA. The code is only shown once. */
+export interface AccessPass {
+  id: string
+  oneTime: boolean
+  /** Who issued it (if they're still here). */
+  createdBy?: string | null
+  createdAt: string
+  expiresAt: string
+  lastUsedAt?: string | null
+  revokedAt?: string | null
+  /** Can still be used to sign in. */
+  active: boolean
+}
+
+/** What a user must do at their next sign-in, and their access passes from the last week. */
+export interface SignInState {
+  passwordChangeRequired: boolean
+  mfaRequired: boolean
+  accessPasses: AccessPass[]
+}
 
 export interface Permission {
   id: PermissionId
@@ -328,10 +356,30 @@ export const api = {
   notifications: () => request<AdminNotification[]>('GET', '/notifications'),
   readNotifications: () => request<void>('POST', '/notifications/read', {}),
   clearNotifications: () => request<void>('DELETE', '/notifications'),
-  createUser: (orgId: string, body: { name: string; username: string; password: string; role: User['role'] }) =>
-    request<User>('POST', `${org(orgId)}/users`, body),
-  resetPassword: (orgId: string, userId: string, password: string) =>
-    request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password }),
+  /** requirePasswordChange: they choose their own password when they first sign in. */
+  createUser: (
+    orgId: string,
+    body: { name: string; username: string; password: string; role: User['role']; requirePasswordChange: boolean },
+  ) => request<User>('POST', `${org(orgId)}/users`, body),
+  resetPassword: (orgId: string, userId: string, password: string, requirePasswordChange: boolean) =>
+    request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password, requirePasswordChange }),
+
+  signInState: (orgId: string, userId: string) => request<SignInState>('GET', `${org(orgId)}/users/${userId}/sign-in`),
+  requirePasswordChange: (orgId: string, userId: string, required = true) =>
+    request<void>('POST', `${org(orgId)}/users/${userId}/require-password-change`, { required }),
+  /** A new access pass for 1–8 hours; the code is in this response only. */
+  createAccessPass: (
+    orgId: string,
+    userId: string,
+    body: { hours: number; oneTime: boolean; requirePasswordChange: boolean },
+  ) => request<{ code: string; pass: AccessPass }>('POST', `${org(orgId)}/users/${userId}/access-passes`, body),
+  revokeAccessPass: (orgId: string, userId: string, passId: string) =>
+    request<void>('DELETE', `${org(orgId)}/users/${userId}/access-passes/${passId}`),
+  mfaPolicy: (orgId: string) => request<MfaPolicy>('GET', `${org(orgId)}/mfa-policy`),
+  setMfaRequired: (orgId: string, required: boolean) => request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy`, { required }),
+  /** null: the group uses the default. */
+  setGroupMfaRequired: (orgId: string, groupId: string, required: boolean | null) =>
+    request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy/groups/${groupId}`, { required }),
   /** Turns off a user's MFA, e.g. when they've lost their authenticator. */
   disableMfa: (orgId: string, userId: string) => request<User>('POST', `${org(orgId)}/users/${userId}/mfa/disable`, {}),
   setStatus: (orgId: string, userId: string, status: User['status']) =>

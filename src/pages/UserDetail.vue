@@ -7,6 +7,7 @@ import {
   Button,
   type ButtonStatus,
   Card,
+  Checkbox,
   EmptyState,
   Input,
   Link,
@@ -22,6 +23,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
+import SignInCard from '../components/SignInCard.vue'
 import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
 /**
@@ -208,12 +210,14 @@ async function removePicture() {
 
 const resetting = ref(false)
 const newPassword = ref('')
+const resetRequireChange = ref(true)
 const resetValid = ref(false)
 const resetError = ref<string>()
 const resetStatus = ref<ButtonStatus>('idle')
 
 function startReset() {
   newPassword.value = ''
+  resetRequireChange.value = true
   resetError.value = undefined
   resetStatus.value = 'idle'
   resetting.value = true
@@ -224,7 +228,8 @@ async function reset() {
   if (resetError.value) return
   resetStatus.value = 'loading'
   try {
-    await api.resetPassword(orgId, userId, newPassword.value)
+    await api.resetPassword(orgId, userId, newPassword.value, resetRequireChange.value)
+    signInCard.value?.reload()
     user.value = await api.user(orgId, userId)
     resetting.value = false
     notify({ type: 'success', title: 'Password reset', description: `${user.value.name} has been signed out everywhere.` })
@@ -236,6 +241,7 @@ async function reset() {
 
 // ── Turn off MFA (lost authenticator) ─────────────────────────────────────────
 
+const signInCard = ref<InstanceType<typeof SignInCard>>()
 const confirmMfaOff = ref(false)
 const mfaStatus = ref<ButtonStatus>('idle')
 async function turnOffMfa() {
@@ -342,6 +348,15 @@ async function toggle() {
           <div v-if="user.mfa && can('users.mfa')"><Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button></div>
         </div>
       </Card>
+
+      <SignInCard
+        v-if="!user.support"
+        ref="signInCard"
+        :org-id="orgId"
+        :user="user"
+        :can-require-password="can('users.reset_password')"
+        :can-issue-passes="can('users.access_pass')"
+      />
 
       <Card
         v-if="!user.support"
@@ -459,6 +474,7 @@ async function toggle() {
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="reset">
           <PasswordField v-model="newPassword" v-model:valid="resetValid" label="New password" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
+          <Checkbox v-model="resetRequireChange" label="Ask them to choose a new password when they next sign in" description="Recommended, so only they know their password." />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>

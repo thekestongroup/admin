@@ -83,6 +83,11 @@ export const router = createRouter({
           meta: { title: 'Users' },
         },
         {
+          path: 'organisations/:orgId/security',
+          component: () => import('./pages/Security.vue'),
+          meta: { title: 'Security' },
+        },
+        {
           path: 'organisations/:orgId/password-policy',
           component: () => import('./pages/PasswordPolicy.vue'),
           meta: { title: 'Password policy' },
