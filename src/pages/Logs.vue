@@ -199,14 +199,15 @@ const tabs = [
             label="User"
             searchable
             :options="userOptions"
-            @update:model-value="apply({ user: String($event) })"
+            @update:model-value="apply({ user: String($event ?? ALL) })"
           />
           <Select
             v-if="view === 'actions'"
             v-model="filters.action"
             label="Action"
+            searchable
             :groups="actionOptions"
-            @update:model-value="apply({ action: String($event) })"
+            @update:model-value="apply({ action: String($event ?? ALL) })"
           />
           <template v-else>
             <Select v-model="filters.result" label="Result" :options="resultOptions" @update:model-value="apply({ result: String($event) })" />
