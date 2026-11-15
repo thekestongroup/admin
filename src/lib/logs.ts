@@ -24,7 +24,7 @@ export interface AuditEntry {
   createdAt: string
 }
 
-export type SignInMethod = 'password' | 'mfa' | 'backup_code' | 'support' | 'app'
+export type SignInMethod = 'password' | 'mfa' | 'backup_code' | 'passkey' | 'access_pass' | 'support' | 'app'
 
 export interface SignInEntry {
   id: number
@@ -88,6 +88,12 @@ export const actionGroups: { label: string; actions: Record<string, string> }[] 
       'user.disabled': 'User disabled',
       'user.enabled': 'User enabled',
       'user.mfa_disabled': 'MFA turned off',
+      'user.passkeys_removed': 'Passkeys removed',
+      'user.password_change_required': 'Password change at next sign-in',
+      'user.access_pass_issued': 'Access pass issued',
+      'user.access_pass_revoked': 'Access pass revoked',
+      'user.deleted': 'User deleted',
+      'user.restored': 'User restored',
     },
   },
   {
@@ -108,8 +114,18 @@ export const actionGroups: { label: string; actions: Record<string, string> }[] 
       'app.access_changed': 'App access changed',
       'settings.changed': 'Settings changed',
       'password_policy.changed': 'Password policy changed',
+      'mfa_policy.changed': 'MFA requirement changed',
       'deletion.scheduled': 'Deletion scheduled',
       'deletion.cancelled': 'Deletion cancelled',
+    },
+  },
+  {
+    label: 'Your apps',
+    actions: {
+      'own_app.created': 'App added',
+      'own_app.updated': 'App changed',
+      'own_app.deleted': 'App deleted',
+      'own_app.secret_changed': 'App secret changed',
     },
   },
   {
@@ -135,6 +151,8 @@ export const methodLabels: Record<SignInMethod, string> = {
   password: 'Password',
   mfa: 'MFA code',
   backup_code: 'Backup code',
+  passkey: 'Passkey',
+  access_pass: 'Access pass',
   support: 'Support account',
   app: 'App',
 }
@@ -147,6 +165,7 @@ export const reasonLabels: Record<string, string> = {
   expired: 'Support access ended',
   support_account: 'Support account (no password)',
   mfa_failed: 'Wrong code',
+  wrong_access_pass: 'Wrong or expired access pass',
   app_disabled: 'App turned off for them',
 }
 export const reasonLabel = (r: string) => reasonLabels[r] ?? r
