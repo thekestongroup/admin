@@ -26,7 +26,7 @@ onMounted(async () => {
 const modes: { label: string; value: MfaMode; description: string }[] = [
   { label: 'Off', value: 'off', description: 'Not recommended. Users aren’t required to set up MFA.' },
   {
-    label: 'Require MFA for everyone (Recommended)',
+    label: 'Require MFA for everyone',
     value: 'required',
     description: 'Recommended for security. All users must verify with a second factor when they sign in.',
   },
