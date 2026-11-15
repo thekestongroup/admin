@@ -94,6 +94,7 @@ export const actionGroups: { label: string; actions: Record<string, string> }[] 
       'user.access_pass_revoked': 'Access pass revoked',
       'user.deleted': 'User deleted',
       'user.restored': 'User restored',
+      'user.licences_changed': 'Licences changed',
     },
   },
   {
@@ -167,6 +168,7 @@ export const reasonLabels: Record<string, string> = {
   mfa_failed: 'Wrong code',
   wrong_access_pass: 'Wrong or expired access pass',
   app_disabled: 'App turned off for them',
+  no_licence: 'No licence for the app',
 }
 export const reasonLabel = (r: string) => reasonLabels[r] ?? r
 

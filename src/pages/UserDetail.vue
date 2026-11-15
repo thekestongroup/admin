@@ -23,6 +23,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import DeleteUserCard from '../components/DeleteUserCard.vue'
+import LicencesCard from '../components/LicencesCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import RecentActivity from '../components/RecentActivity.vue'
 import SignInCard from '../components/SignInCard.vue'
@@ -432,6 +433,14 @@ async function toggle() {
         </div>
       </Card>
 
+      <LicencesCard
+        v-if="!user.support"
+        v-model="user.licences"
+        :org-id="orgId"
+        :user-id="userId"
+        :name="user.name"
+        :can-edit="can('users.licences')"
+      />
       <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
       <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
     </template>

@@ -147,6 +147,17 @@ export interface User {
   expiresAt?: string
   /** You can change them (in lists and one user): your permissions cover theirs. */
   canChange?: boolean
+  /** The products they have a licence for (lists and one user). */
+  licences?: string[]
+}
+
+/** One of Keston's products (e.g. Keston Work): someone needs a licence to use it. */
+export interface Product {
+  id: string
+  name: string
+  publisher: string
+  /** How many of the organisation's users have a licence for it. */
+  assigned: number
 }
 
 export interface Me {
@@ -165,6 +176,7 @@ export type PermissionId =
   | 'users.reset_password'
   | 'users.mfa'
   | 'users.access_pass'
+  | 'users.licences'
   | 'users.status'
   | 'users.delete'
   | 'groups.manage'
@@ -212,6 +224,7 @@ export interface UserDetail extends User {
   groups: Group[]
   permissions: PermissionId[]
   canChange: boolean
+  licences: string[]
 }
 
 /** A user in Deleted users: kept 30 days, then removed for good. */
@@ -398,8 +411,13 @@ export const api = {
       generatePassword: boolean
       password?: string
       requirePasswordChange: boolean
+      /** Products to give them a licence for (needs users.licences). */
+      licences?: string[]
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
+  products: (orgId: string) => request<Product[]>('GET', `${org(orgId)}/products`),
+  setLicences: (orgId: string, userId: string, products: string[]) =>
+    request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
   resetPassword: (orgId: string, userId: string, password: string, requirePasswordChange: boolean) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password, requirePasswordChange }),
 
