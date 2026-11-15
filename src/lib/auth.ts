@@ -47,6 +47,15 @@ export function switchUser() {
   return userManager.signinRedirect({ prompt: 'select_account', state: { returnTo: '/' } })
 }
 
+/**
+ * After Keston ID opened a support account (it's now the active account
+ * there): sign in again as it, without asking which account.
+ */
+export async function signInAsActiveAccount(returnTo: string) {
+  await userManager.removeUser()
+  return userManager.signinRedirect({ prompt: 'none', state: { returnTo } })
+}
+
 export function signOut() {
   return userManager.signoutRedirect()
 }

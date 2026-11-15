@@ -39,8 +39,13 @@ export interface Organisation {
   profileEditing: ProfileEditing
   userCount: number
   createdAt: string
-  /** Whether you can see and manage its users (Keston support: only with approved access). */
+  /** Whether you can see and manage its users (Keston support: through a support account). */
   canManage?: boolean
+  /** The Keston Group's own organisation (can't be deleted). */
+  isPlatform: boolean
+  /** Deletion scheduled: it goes on deleteAfter unless a global admin signs in. */
+  deletionRequestedAt?: string
+  deleteAfter?: string
 }
 
 export interface AppSummary {
@@ -78,6 +83,8 @@ export interface LockoutRequest {
 }
 
 export interface Support {
+  /** Your support account in this organisation (Keston staff), if access is allowed. */
+  supportAccount?: { email: string; expiresAt: string } | null
   access: { active: boolean; until?: string }
   requests: SupportRequest[]
   lockouts: LockoutRequest[]
@@ -108,6 +115,9 @@ export interface User {
   createdAt: string
   passwordChangedAt: string
   avatar?: string
+  /** A temporary Keston support account, and when it ends. */
+  support: boolean
+  expiresAt?: string
 }
 
 export interface Me {
@@ -239,6 +249,11 @@ export const api = {
   decideSupport: (orgId: string, requestId: string, decision: 'approve' | 'deny', days?: number) =>
     request<void>('POST', `${org(orgId)}/support/requests/${requestId}/${decision}`, days ? { days } : {}),
   revokeSupport: (orgId: string) => request<void>('POST', `${org(orgId)}/support/revoke`, {}),
+  /** A Keston ID link that opens your support account in this organisation. */
+  openSupportAccount: (orgId: string) => request<{ url: string }>('POST', `${org(orgId)}/support/open`, {}),
+  scheduleDeletion: (orgId: string, confirm: string) =>
+    request<{ deleteAfter: string }>('POST', `${org(orgId)}/deletion`, { confirm }),
+  cancelDeletion: (orgId: string) => request<void>('DELETE', `${org(orgId)}/deletion`),
   startLockout: (orgId: string, reason: string) => request<LockoutRequest>('POST', `${org(orgId)}/lockout`, { reason }),
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),

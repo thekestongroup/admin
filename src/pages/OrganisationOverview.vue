@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LifeBuoy, ShieldAlert } from '@lucide/vue'
+import { CalendarX, LifeBuoy, LogIn, ShieldAlert } from '@lucide/vue'
 import {
   Badge,
   Button,
@@ -20,15 +20,14 @@ import { useRoute } from 'vue-router'
 import { ApiError, api, loadMe, type Me, type Organisation, type Support } from '../lib/api'
 
 /**
- * An organisation: its details, Keston support access, and the
- * organisation lockout procedure.
+ * An organisation: its details, Keston support access, and (for Keston
+ * staff) the organisation lockout procedure.
  *
- * - Keston support (platform admins) sees this page for every organisation,
- *   but its users only while a global admin has approved support access.
- *   They can ask for access, or start the lockout procedure if nobody there
- *   can sign in.
- * - Its global admins approve or deny requests, end access, and deny a
- *   lockout request (it goes through after 3 days otherwise).
+ * - Keston support (platform admins, in The Keston Group) sees this page for
+ *   every organisation. To work with its users, they open a temporary support
+ *   account in it, which the organisation allows from here.
+ * - Its global admins allow or decline requests and end access whenever
+ *   they like, and see and cancel a scheduled deletion.
  */
 const route = useRoute()
 const orgId = route.params.orgId as string
@@ -54,11 +53,16 @@ onMounted(async () => {
   }
 })
 
-const isOwnAdmin = computed(() => me.value?.user.role === 'global_admin' && me.value.organisation.id === orgId)
-const isSupport = computed(() => !!me.value?.platformAdmin && !isOwnAdmin.value)
+// One of its own global admins (not a support account) decides.
+const decides = computed(
+  () => me.value?.user.role === 'global_admin' && me.value.organisation.id === orgId && !me.value.user.support,
+)
+// Keston staff looking at another organisation.
+const isStaff = computed(() => !!me.value?.platformAdmin && me.value.organisation.id !== orgId)
 const pendingRequests = computed(() => support.value?.requests.filter((r) => r.status === 'pending') ?? [])
 const pendingLockout = computed(() => support.value?.lockouts.find((l) => l.status === 'pending'))
 const history = computed(() => (support.value?.requests ?? []).filter((r) => r.status !== 'pending').slice(0, 5))
+const statusWords: Record<string, string> = { approved: 'allowed', denied: 'declined', revoked: 'ended' }
 
 const details = computed(() =>
   org.value
@@ -102,13 +106,25 @@ async function send() {
       type: 'success',
       title: lockout ? 'Lockout procedure started' : 'Support access requested',
       description: lockout
-        ? 'Every global admin has been told. Unless one denies it, you’ll have access in 3 days.'
-        : 'Its global admins have been asked to approve it.',
+        ? 'Every global admin has been told. Unless one declines it, you’ll get a support account in 3 days.'
+        : 'Its global admins have been asked.',
     })
   } catch (e) {
     askStatus.value = 'idle'
     if (e instanceof ApiError && e.field === 'reason') reasonError.value = e.message
     else notify({ type: 'error', title: 'Couldn’t send it', description: message(e) })
+  }
+}
+
+// Opening the support account: Keston ID signs this browser in to it.
+const opening = ref(false)
+async function openSupportAccount() {
+  opening.value = true
+  try {
+    window.location.assign((await api.openSupportAccount(orgId)).url)
+  } catch (e) {
+    opening.value = false
+    notify({ type: 'error', title: 'Couldn’t open the support account', description: message(e) })
   }
 }
 
@@ -136,10 +152,33 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
     </Card>
     <div v-else-if="!org || !support" class="flex justify-center py-12"><Spinner label="Loading" /></div>
     <template v-else>
-      <PageHeader :title="org.name" :description="org.domain" />
+      <PageHeader :title="org.name" :description="org.domain">
+        <template v-if="org.isPlatform" #badge><Badge color="primary">Keston staff</Badge></template>
+      </PageHeader>
+
+      <!-- Scheduled for deletion. -->
+      <Card v-if="org.deleteAfter">
+        <div class="flex flex-col gap-3" role="status">
+          <div class="flex items-center gap-2">
+            <CalendarX class="size-5 text-black/65" aria-hidden="true" />
+            <h2 class="text-base font-bold">{{ org.name }} will be deleted on {{ formatDate(org.deleteAfter) }}</h2>
+          </div>
+          <p class="text-sm">
+            With all its users. A global admin signing in to Keston before then cancels it, or cancel it here.
+          </p>
+          <div v-if="decides">
+            <Button
+              :status="busy === 'undelete' ? 'loading' : 'idle'"
+              @click="act('undelete', () => api.cancelDeletion(orgId), 'Deletion cancelled')"
+            >
+              Cancel deletion
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <!-- A lockout request waiting: shown first, to its global admins. -->
-      <Card v-if="pendingLockout" class="border-red">
+      <Card v-if="pendingLockout">
         <div class="flex flex-col gap-3" role="alert">
           <div class="flex items-center gap-2">
             <ShieldAlert class="size-5 text-red" aria-hidden="true" />
@@ -150,20 +189,20 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
             “{{ pendingLockout.reason }}”.
           </p>
           <p class="text-sm">
-            Unless a global admin denies it by <span class="font-bold">{{ formatDateTime(pendingLockout.effectiveAt) }}</span>,
-            Keston support will be given access for 7 days, to restore it.
+            Unless a global admin declines it by <span class="font-bold">{{ formatDateTime(pendingLockout.effectiveAt) }}</span>,
+            Keston support gets a support account here for 7 days, to restore access.
           </p>
           <div class="flex gap-2">
             <Button
-              v-if="isOwnAdmin"
+              v-if="decides"
               variant="danger"
               :status="busy === 'lockout' ? 'loading' : 'idle'"
-              @click="act('lockout', () => api.decideLockout(orgId, pendingLockout!.id, 'deny'), 'Lockout request denied')"
+              @click="act('lockout', () => api.decideLockout(orgId, pendingLockout!.id, 'deny'), 'Lockout request declined')"
             >
-              Deny the request
+              Decline the request
             </Button>
             <Button
-              v-if="me?.platformAdmin"
+              v-if="isStaff"
               :status="busy === 'cancel' ? 'loading' : 'idle'"
               @click="act('cancel', () => api.decideLockout(orgId, pendingLockout!.id, 'cancel'), 'Lockout request cancelled')"
             >
@@ -177,10 +216,14 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <SummaryList :items="details" />
       </Card>
 
-      <Card title="Keston support access" description="Keston support can only see this organisation’s users while a global admin allows it.">
+      <Card
+        v-if="!org.isPlatform"
+        title="Keston support access"
+        description="Let Keston support sign in to help with your users. You choose when, and can end it whenever you like."
+      >
         <template #actions>
-          <Badge v-if="support.access.active" color="yellow">On until {{ formatDateTime(support.access.until!) }}</Badge>
-          <Badge v-else color="green">Off</Badge>
+          <Badge v-if="support.access.active" color="blue">Allowed until {{ formatDate(support.access.until!) }}</Badge>
+          <Badge v-else>Not allowed</Badge>
         </template>
         <div class="flex flex-col gap-4">
           <!-- Requests waiting for a decision. -->
@@ -190,55 +233,75 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
                 <span class="font-bold">{{ req.requester ?? 'Keston support' }}</span> asked on
                 {{ formatDateTime(req.createdAt) }}: “{{ req.reason }}”
               </p>
-              <div v-if="isOwnAdmin" class="flex gap-2">
+              <div v-if="decides" class="flex gap-2">
                 <Button
                   size="sm"
                   variant="primary"
                   :status="busy === req.id + 'a' ? 'loading' : 'idle'"
-                  @click="act(req.id + 'a', () => api.decideSupport(orgId, req.id, 'approve', 7), 'Support access approved for 7 days')"
+                  @click="act(req.id + 'a', () => api.decideSupport(orgId, req.id, 'approve', 7), 'Support access allowed for 7 days')"
                 >
-                  Approve for 7 days
+                  Allow for 7 days
                 </Button>
                 <Button
                   size="sm"
                   :status="busy === req.id + 'd' ? 'loading' : 'idle'"
-                  @click="act(req.id + 'd', () => api.decideSupport(orgId, req.id, 'deny'), 'Support access denied')"
+                  @click="act(req.id + 'd', () => api.decideSupport(orgId, req.id, 'deny'), 'Support access declined')"
                 >
-                  Deny
+                  Decline
                 </Button>
               </div>
               <p v-else class="text-xs text-black/65">Waiting for one of its global admins.</p>
             </li>
           </ul>
 
+          <p v-if="support.access.active && decides" class="text-sm text-black/65">
+            Keston support has a support account in your users while access lasts. It’s removed when access ends.
+          </p>
+
           <div class="flex flex-wrap gap-2">
             <Button
-              v-if="isOwnAdmin && support.access.active"
-              variant="danger"
+              v-if="decides && support.access.active"
               size="sm"
               :status="busy === 'revoke' ? 'loading' : 'idle'"
               @click="act('revoke', () => api.revokeSupport(orgId), 'Support access ended')"
             >
-              End support access now
+              End support access
             </Button>
-            <template v-if="isSupport && !support.access.active">
-              <Button size="sm" variant="primary" :disabled="pendingRequests.length > 0" @click="ask('support')">
-                <template #leading><LifeBuoy /></template>
-                Ask for support access
+            <template v-if="isStaff">
+              <Button
+                v-if="support.supportAccount"
+                size="sm"
+                variant="primary"
+                :status="opening ? 'loading' : 'idle'"
+                loading-text="Opening"
+                @click="openSupportAccount"
+              >
+                <template #leading><LogIn /></template>
+                Open support account
               </Button>
-              <Button size="sm" :disabled="!!pendingLockout" @click="ask('lockout')">
-                <template #leading><ShieldAlert /></template>
-                Start lockout procedure
-              </Button>
+              <template v-else>
+                <Button size="sm" variant="primary" :disabled="pendingRequests.length > 0" @click="ask('support')">
+                  <template #leading><LifeBuoy /></template>
+                  Ask for support access
+                </Button>
+                <Button size="sm" :disabled="!!pendingLockout" @click="ask('lockout')">
+                  <template #leading><ShieldAlert /></template>
+                  Start lockout procedure
+                </Button>
+              </template>
             </template>
           </div>
+          <p v-if="isStaff && support.supportAccount" class="text-xs text-black/65">
+            Signs you in to {{ org.name }} as {{ support.supportAccount.email }}, until
+            {{ formatDateTime(support.supportAccount.expiresAt) }}. Switch account to come back.
+          </p>
 
           <div v-if="history.length" class="flex flex-col gap-1">
             <p class="text-sm font-bold">Recently</p>
             <ul class="flex flex-col gap-1 text-xs text-black/65">
               <li v-for="req in history" :key="req.id">
                 {{ formatDate(req.createdAt) }}: {{ req.via === 'lockout' ? 'Lockout procedure' : 'Request' }}
-                {{ req.status }}<template v-if="req.requester"> ({{ req.requester }})</template>
+                {{ statusWords[req.status] ?? req.status }}<template v-if="req.requester"> ({{ req.requester }})</template>
               </li>
             </ul>
           </div>
@@ -251,8 +314,8 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
       :title="asking === 'lockout' ? 'Start the organisation lockout procedure' : 'Ask for support access'"
       :description="
         asking === 'lockout'
-          ? 'Only when nobody at the organisation can sign in. Every global admin is told, and it goes through in 3 days unless one denies it.'
-          : 'Its global admins are asked to approve it. They can end it at any time.'
+          ? 'Only when nobody at the organisation can sign in. Every global admin is told, and it goes through in 3 days unless one declines it.'
+          : 'Its global admins are asked. Once they allow it, you get a support account in the organisation.'
       "
       initial-focus="auto"
     >

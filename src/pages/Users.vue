@@ -10,9 +10,9 @@ import {
   PageHeader,
   RadioGroup,
   Slideover,
+  formatDateTime,
   Table,
   type TableColumn,
-  formatDate,
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -153,7 +153,7 @@ async function toggle(a: User) {
 
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Users" :description="org ? `Everyone at ${org.name}, signing in as name@${org.domain}.` : undefined">
+    <PageHeader title="Users">
       <template #actions>
         <Button variant="primary" @click="startAdding">
           <template #leading><Plus /></template>
@@ -177,6 +177,7 @@ async function toggle(a: User) {
       >
         <template #cell-name="{ row }">
           {{ row.name }}
+          <Badge v-if="row.support" size="sm" color="blue" class="ml-1">Keston support</Badge>
           <span v-if="row.id === myId" class="text-black/65"> (you)</span>
         </template>
         <template #cell-role="{ row }">
@@ -195,7 +196,8 @@ async function toggle(a: User) {
           <Badge v-else color="green" size="sm">Active</Badge>
         </template>
         <template #cell-actions="{ row }">
-          <div class="flex justify-end gap-2">
+          <span v-if="row.support" class="text-xs text-black/65">Until {{ formatDateTime(row.expiresAt!) }}</span>
+          <div v-else class="flex justify-end gap-2">
             <Button size="sm" @click="startReset(row)">
               Reset password<span class="sr-only"> for {{ row.name }}</span>
             </Button>
@@ -216,10 +218,6 @@ async function toggle(a: User) {
       </Table>
     </Card>
 
-    <p class="text-xs text-black/65">
-      Created {{ org ? formatDate(org.createdAt) : '' }}. Locked users unlock after 15 minutes, or when their
-      password is reset.
-    </p>
 
     <!-- Add a user -->
     <Slideover v-model:open="adding" title="Add a user" :description="org ? `They’ll sign in as username@${org.domain}.` : undefined" initial-focus="auto">

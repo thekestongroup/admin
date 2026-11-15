@@ -15,6 +15,11 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/callback', component: () => import('./pages/Callback.vue'), meta: { public: true, title: 'Signing in' } },
+    {
+      path: '/support-handoff',
+      component: () => import('./pages/SupportHandoff.vue'),
+      meta: { public: true, title: 'Opening support account' },
+    },
     // Self-service sign-up: anyone, no sign-in.
     {
       path: '/create-organisation',

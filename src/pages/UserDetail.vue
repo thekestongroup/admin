@@ -228,8 +228,16 @@ async function toggle() {
         </template>
       </PageHeader>
 
+      <Card v-if="user.support">
+        <p class="text-sm">
+          This is a temporary Keston support account, there while {{ org?.name }} allows Keston support access (until
+          {{ formatDate(user.expiresAt!) }}). It has no password, and it’s removed when access ends. End it on the
+          organisation’s Overview.
+        </p>
+      </Card>
+
       <Card title="Profile">
-        <template #actions>
+        <template v-if="!user.support" #actions>
           <Button size="sm" @click="startEdit">
             <template #leading><Pencil /></template>
             Edit
@@ -241,11 +249,11 @@ async function toggle() {
         </div>
       </Card>
 
-      <Card title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
+      <Card v-if="!user.support" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
         <div><Button @click="startReset">Reset password</Button></div>
       </Card>
 
-      <Card title="Multi-factor authentication (MFA)">
+      <Card v-if="!user.support" title="Multi-factor authentication (MFA)">
         <template #actions>
           <Badge v-if="user.mfa" color="green">On</Badge>
           <Badge v-else color="yellow">Off</Badge>
@@ -262,7 +270,7 @@ async function toggle() {
         </div>
       </Card>
 
-      <Card v-if="!isMe" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
+      <Card v-if="!isMe && !user.support" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
         <div>
           <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
             {{ user.status === 'active' ? 'Disable user' : 'Enable user' }}

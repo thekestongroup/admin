@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, Building2, House, KeyRound, Settings, Users } from '@lucide/vue'
+import { AppWindow, Building2, House, KeyRound, LifeBuoy, Settings, Users } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -7,6 +7,7 @@ import {
   NotificationPane,
   Spinner,
   createNotifications,
+  formatDateTime,
   type Notifications,
   type SidebarSection,
 } from '@thekestongroup/ui'
@@ -162,6 +163,16 @@ function accountSettings() {
     <template #header-trailing>
       <NotificationPane :notifications="notifications" />
     </template>
+    <!-- Using a Keston support account in another organisation. -->
+    <div v-if="me.user.support" class="flex flex-wrap items-center gap-3 border-b border-black/15 bg-surface-elevated px-4 py-3 text-sm sm:px-6" role="status">
+      <LifeBuoy class="size-4 shrink-0 text-blue" aria-hidden="true" />
+      <span class="flex-1">
+        You’re using a Keston support account in <span class="font-bold">{{ me.organisation.name }}</span><template
+          v-if="me.user.expiresAt"
+        >, until {{ formatDateTime(me.user.expiresAt) }}</template>.
+      </span>
+      <Button size="sm" @click="switchUser()">Switch account</Button>
+    </div>
     <RouterView :key="route.fullPath" />
   </AppShell>
 </template>
