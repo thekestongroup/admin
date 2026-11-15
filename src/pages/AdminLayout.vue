@@ -13,7 +13,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation } from '../lib/api'
+import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation, type PermissionId } from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
 
 /**
@@ -105,16 +105,15 @@ const nav = computed<SidebarSection[]>(() => {
   if (id) {
     const base = `/organisations/${id}`
     const items: SidebarSection['items'] = [{ label: 'Overview', icon: House, to: base, active: active(base) }]
-    // Users and settings: its global admins, or Keston support with access.
-    if (org.value?.canManage) {
-      items.push(
-        { label: 'Users', icon: Users, to: `${base}/users`, active: active(`${base}/users`, false) },
-        { label: 'Groups', icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) },
-        { label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) },
-        { label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) },
-        { label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) },
-      )
-    }
+    // The rest, by what you can do here (Keston support: through a support account).
+    const can = (p: PermissionId) => !!org.value?.permissions?.includes(p)
+    if (can('users.view')) items.push({ label: 'Users', icon: Users, to: `${base}/users`, active: active(`${base}/users`, false) })
+    if (can('users.view'))
+      items.push({ label: 'Groups', icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) })
+    if (can('apps.manage')) items.push({ label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
+    if (can('policy.manage'))
+      items.push({ label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
+    if (can('settings.manage')) items.push({ label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     sections.push({ label: org.value?.name ?? 'Organisation', items })
   }
   return sections

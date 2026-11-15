@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, TriangleAlert, UsersRound } from '@lucide/vue'
-import { Button, type ButtonStatus, Card, EmptyState, Input, PageHeader, Table, type TableColumn, useNotifications } from '@thekestongroup/ui'
+import { Badge, Button, type ButtonStatus, Card, EmptyState, Input, PageHeader, Table, type TableColumn, useNotifications } from '@thekestongroup/ui'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, api, type Group } from '../lib/api'
@@ -12,12 +12,15 @@ const orgId = route.params.orgId as string
 const { notify } = useNotifications()
 
 const groups = ref<Group[]>([])
+const canCreate = ref(false)
 const loading = ref(true)
 const loadError = ref<string>()
 
 onMounted(async () => {
   try {
-    groups.value = await api.groups(orgId)
+    const [g, o] = await Promise.all([api.groups(orgId), api.organisation(orgId)])
+    groups.value = g
+    canCreate.value = !!o.permissions?.includes('groups.manage')
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -27,6 +30,7 @@ onMounted(async () => {
 
 const columns: TableColumn<Group>[] = [
   { key: 'name', label: 'Group', rowHeader: true, sortable: true },
+  { key: 'permissions', label: 'Permissions in Keston Admin' },
   { key: 'memberCount', label: 'Users', align: 'end', sortable: true },
 ]
 
@@ -52,9 +56,9 @@ async function create() {
 
 <template>
   <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Groups" description="Sets of users, for giving them different app access." />
+    <PageHeader title="Groups" description="Sets of users, for giving them different app access and permissions in Keston Admin." />
 
-    <Card title="New group">
+    <Card v-if="canCreate" title="New group">
       <form class="flex items-start gap-2" novalidate @submit.prevent="create">
         <Input v-model="name" label="Name" placeholder="e.g. Teachers" :error-text="nameError" class="flex-1" />
         <Button type="submit" variant="primary" class="mt-6.5 shrink-0" :status="status" loading-text="Creating">
@@ -77,6 +81,12 @@ async function create() {
         :row-link="(row: Group) => `/organisations/${orgId}/groups/${row.id}`"
         :link-component="RouterLink"
       >
+        <template #cell-permissions="{ row }">
+          <Badge v-if="(row as Group).permissions.length" color="primary" size="sm">
+            {{ (row as Group).permissions.length }} {{ (row as Group).permissions.length === 1 ? 'permission' : 'permissions' }}
+          </Badge>
+          <span v-else class="text-black/65">None</span>
+        </template>
         <template #empty>
           <EmptyState
             size="sm"

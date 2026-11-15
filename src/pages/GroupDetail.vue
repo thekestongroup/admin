@@ -6,6 +6,7 @@ import {
   Button,
   type ButtonStatus,
   Card,
+  Checkbox,
   EmptyState,
   Input,
   PageHeader,
@@ -16,9 +17,9 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { ApiError, api, type Group, type User } from '../lib/api'
+import { ApiError, api, type Group, type Permission, type PermissionId, type User } from '../lib/api'
 
-/** One group: its users (add and remove), rename, delete. */
+/** One group: its users (add and remove), its permissions in Keston Admin, rename, delete. */
 const route = useRoute()
 const router = useRouter()
 const orgId = route.params.orgId as string
@@ -30,21 +31,56 @@ const group = ref<Group>()
 const members = ref<User[]>([])
 const everyone = ref<User[]>([])
 const error = ref<string>()
+const catalog = ref<Permission[]>([])
+/** What you can do here. */
+const mine = ref<PermissionId[]>([])
+const has = (p: PermissionId) => mine.value.includes(p)
 
 async function load() {
   const res = await api.group(orgId, groupId)
   group.value = res.group
   members.value = res.members
+  chosen.value = [...res.group.permissions]
 }
 
 onMounted(async () => {
   try {
-    await load()
-    everyone.value = (await api.users(orgId)).filter((u) => !u.support)
+    const [, users, perms, o] = await Promise.all([load(), api.users(orgId), api.permissions(), api.organisation(orgId)])
+    everyone.value = users.filter((u) => !u.support)
+    catalog.value = perms
+    mine.value = o.permissions ?? []
   } catch (e) {
     error.value = message(e)
   }
 })
+
+/** You have every permission this group gives (so you can change it). */
+const coversGroup = computed(() => !!group.value && group.value.permissions.every(has))
+/** Who's in it: Manage groups (or Give permissions); for a group that gives
+ *  permissions, Give permissions and every one of them. */
+const canChangeMembers = computed(() =>
+  group.value?.permissions.length ? has('permissions.assign') && coversGroup.value : has('groups.manage') || has('permissions.assign'),
+)
+const canAssign = computed(() => has('permissions.assign') && coversGroup.value)
+
+// Permissions.
+const chosen = ref<PermissionId[]>([])
+const permStatus = ref<ButtonStatus>('idle')
+function toggle(p: PermissionId, on: boolean) {
+  chosen.value = on ? [...chosen.value, p] : chosen.value.filter((x) => x !== p)
+}
+const changed = computed(() => [...chosen.value].sort().join() !== [...(group.value?.permissions ?? [])].sort().join())
+async function savePermissions() {
+  permStatus.value = 'loading'
+  try {
+    group.value = await api.setGroupPermissions(orgId, groupId, chosen.value)
+    chosen.value = [...group.value.permissions]
+    permStatus.value = 'success'
+  } catch (e) {
+    permStatus.value = 'idle'
+    notify({ type: 'error', title: 'Couldn’t save the permissions', description: message(e) })
+  }
+}
 
 const trail = computed(() => [
   { label: 'Groups', to: `/organisations/${orgId}/groups` },
@@ -135,12 +171,12 @@ async function deleteGroup() {
     <template v-else>
       <Breadcrumb :items="trail" :link-component="RouterLink" />
       <PageHeader :title="group.name">
-        <template #actions>
+        <template v-if="has('groups.manage')" #actions>
           <Button @click="startRename">
             <template #leading><Pencil /></template>
             Rename
           </Button>
-          <Button variant="danger" @click="deleting = true">
+          <Button v-if="canChangeMembers" variant="danger" @click="deleting = true">
             <template #leading><Trash2 /></template>
             Delete
           </Button>
@@ -149,7 +185,7 @@ async function deleteGroup() {
 
       <Card title="Users" :description="`App access set for ${group.name} applies to these users.`">
         <div class="flex flex-col gap-4">
-          <div class="flex items-start gap-2">
+          <div v-if="canChangeMembers" class="flex items-start gap-2">
             <Select v-model="choice" label="Add a user" :options="options" placeholder="Choose a user" class="flex-1" />
             <Button class="mt-6.5 shrink-0" :disabled="!choice" :status="adding ? 'loading' : 'idle'" loading-text="Adding" @click="add">
               <template #leading><Plus /></template>
@@ -170,12 +206,47 @@ async function deleteGroup() {
                 <span class="truncate text-sm font-bold">{{ m.name }}</span>
                 <span class="truncate text-xs text-black/65">{{ m.email }}</span>
               </span>
-              <Button size="sm" variant="ghost" :status="removing === m.id ? 'loading' : 'idle'" @click="remove(m)">
+              <Button v-if="canChangeMembers" size="sm" variant="ghost" :status="removing === m.id ? 'loading' : 'idle'" @click="remove(m)">
                 Remove<span class="sr-only"> {{ m.name }}</span>
               </Button>
             </li>
           </ul>
         </div>
+      </Card>
+
+      <Card
+        title="Permissions"
+        :description="`What ${group.name}’s users can do in Keston Admin, for users with the same permissions or fewer.`"
+      >
+        <div class="flex flex-col gap-4">
+          <p v-if="!has('permissions.assign')" class="text-sm text-black/65">
+            You need the Give permissions permission to change these.
+          </p>
+          <p v-else-if="!coversGroup" class="text-sm text-black/65">
+            This group gives permissions you don’t have, so only someone with all of them can change it.
+          </p>
+          <Checkbox
+            v-for="p in catalog"
+            :key="p.id"
+            :model-value="chosen.includes(p.id)"
+            :label="p.label"
+            :description="p.description"
+            :disabled="!canAssign || !has(p.id)"
+            @update:model-value="toggle(p.id, $event === true)"
+          />
+        </div>
+        <template v-if="canAssign" #footer>
+          <Button
+            variant="primary"
+            v-model:status="permStatus"
+            :disabled="!changed && permStatus === 'idle'"
+            loading-text="Saving"
+            success-text="Saved"
+            @click="savePermissions"
+          >
+            Save permissions
+          </Button>
+        </template>
       </Card>
     </template>
 

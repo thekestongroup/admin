@@ -9,6 +9,7 @@ import {
   Card,
   EmptyState,
   Input,
+  Link,
   PageHeader,
   RadioGroup,
   Slideover,
@@ -20,11 +21,13 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, loadMe, type User, type Organisation } from '../lib/api'
+import { ApiError, api, loadMe, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
 /**
  * One user: their profile (admins can always change it, whatever the
- * organisation lets people change themselves), password and status.
+ * organisation lets people change themselves), password, status, and their
+ * groups and permissions. What you can do depends on your permissions, and
+ * only for users with the same permissions as you or fewer.
  */
 const route = useRoute()
 const orgId = route.params.orgId as string
@@ -32,17 +35,25 @@ const userId = route.params.userId as string
 const { notify } = useNotifications()
 
 const org = ref<Organisation>()
-const user = ref<User>()
+const user = ref<UserDetail>()
 const myId = ref<string>()
+const iAmGlobalAdmin = ref(false)
+const catalog = ref<Permission[]>([])
+/** You can do this to this user: your permission, and they're not above you. */
+const can = (p: PermissionId) => !!org.value?.permissions?.includes(p) && !!user.value?.canChange
+/** Keep their groups and permissions when an update returns just the user. */
+const merge = (u: User) => (user.value = { ...user.value!, ...u })
 const error = ref<string>()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 onMounted(async () => {
   try {
-    const [o, a, me] = await Promise.all([api.organisation(orgId), api.user(orgId, userId), loadMe()])
+    const [o, a, me, perms] = await Promise.all([api.organisation(orgId), api.user(orgId, userId), loadMe(), api.permissions()])
     org.value = o
     user.value = a
     myId.value = me.user.id
+    iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
+    catalog.value = perms
   } catch (e) {
     error.value = message(e)
   }
@@ -101,7 +112,7 @@ async function save() {
   }
   saveStatus.value = 'loading'
   try {
-    user.value = await api.updateUser(orgId, userId, changes)
+    merge(await api.updateUser(orgId, userId, changes))
     editing.value = false
     notify({ type: 'success', title: 'User updated' })
   } catch (e) {
@@ -117,7 +128,7 @@ async function upload(event: Event) {
   pictureBusy.value = true
   pictureError.value = undefined
   try {
-    user.value = await api.setUserPicture(orgId, userId, file)
+    merge(await api.setUserPicture(orgId, userId, file))
   } catch (e) {
     pictureError.value = message(e)
   } finally {
@@ -175,12 +186,12 @@ const mfaStatus = ref<ButtonStatus>('idle')
 async function turnOffMfa() {
   mfaStatus.value = 'loading'
   try {
-    user.value = await api.disableMfa(orgId, userId)
+    merge(await api.disableMfa(orgId, userId))
     confirmMfaOff.value = false
     notify({
       type: 'success',
       title: 'MFA turned off',
-      description: `${user.value.name} can sign in with their password now, and set MFA up again in their Keston account.`,
+      description: `${user.value!.name} can sign in with their password now, and set MFA up again in their Keston account.`,
     })
   } catch (e) {
     notify({ type: 'error', title: 'Couldn’t turn off MFA', description: message(e) })
@@ -236,8 +247,15 @@ async function toggle() {
         </p>
       </Card>
 
+      <Card v-else-if="!user.canChange">
+        <p class="text-sm">
+          {{ user.name }} has permissions you don’t, so you can see them but not change them. Ask one of your global
+          admins if something needs changing.
+        </p>
+      </Card>
+
       <Card title="Profile">
-        <template v-if="!user.support" #actions>
+        <template v-if="can('users.edit')" #actions>
           <Button size="sm" @click="startEdit">
             <template #leading><Pencil /></template>
             Edit
@@ -249,7 +267,7 @@ async function toggle() {
         </div>
       </Card>
 
-      <Card v-if="!user.support" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
+      <Card v-if="can('users.reset_password')" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
         <div><Button @click="startReset">Reset password</Button></div>
       </Card>
 
@@ -266,11 +284,36 @@ async function toggle() {
           <p v-else class="text-sm text-black/65">
             They sign in with their password only. They can turn MFA on in their Keston account.
           </p>
-          <div v-if="user.mfa"><Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button></div>
+          <div v-if="user.mfa && can('users.mfa')"><Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button></div>
         </div>
       </Card>
 
-      <Card v-if="!isMe && !user.support" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
+      <Card
+        v-if="!user.support"
+        title="Permissions"
+        description="What they can do in Keston Admin. Permissions come from groups."
+      >
+        <div class="flex flex-col gap-4">
+          <p v-if="user.role === 'global_admin'" class="text-sm">As a global admin, they can do everything.</p>
+          <ul v-else-if="user.permissions.length" class="flex flex-wrap gap-2" aria-label="Permissions">
+            <li v-for="p in catalog.filter((c) => user!.permissions.includes(c.id))" :key="p.id">
+              <Badge size="sm" color="primary">{{ p.label }}</Badge>
+            </li>
+          </ul>
+          <p v-else class="text-sm text-black/65">None. They can’t use Keston Admin.</p>
+          <div class="flex flex-col gap-2">
+            <p class="text-sm font-bold">Groups</p>
+            <ul v-if="user.groups.length" class="flex flex-wrap gap-2">
+              <li v-for="g in user.groups" :key="g.id">
+                <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="text-sm">{{ g.name }}</Link>
+              </li>
+            </ul>
+            <p v-else class="text-sm text-black/65">Not in any groups.</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card v-if="!isMe && can('users.status')" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
         <div>
           <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
             {{ user.status === 'active' ? 'Disable user' : 'Enable user' }}
@@ -304,7 +347,7 @@ async function toggle() {
           <Input v-model="form.username" label="Email" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
-          <RadioGroup v-model="form.role" label="Role" :options="roles" :error-text="formErrors.role" />
+          <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" :error-text="formErrors.role" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>

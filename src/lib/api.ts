@@ -39,8 +39,10 @@ export interface Organisation {
   profileEditing: ProfileEditing
   userCount: number
   createdAt: string
-  /** Whether you can see and manage its users (Keston support: through a support account). */
+  /** Whether you have any permission here (Keston support: through a support account). */
   canManage?: boolean
+  /** What you can do here (from getOrganisation). */
+  permissions?: PermissionId[]
   /** The Keston Group's own organisation (can't be deleted). */
   isPlatform: boolean
   /** Deletion scheduled: it goes on deleteAfter unless a global admin signs in. */
@@ -65,6 +67,8 @@ export interface Group {
   name: string
   memberCount: number
   createdAt: string
+  /** What its users can do in Keston Admin. */
+  permissions: PermissionId[]
 }
 
 export interface AppAccess {
@@ -135,12 +139,43 @@ export interface User {
   /** A temporary Keston support account, and when it ends. */
   support: boolean
   expiresAt?: string
+  /** You can change them (in lists and one user): your permissions cover theirs. */
+  canChange?: boolean
 }
 
 export interface Me {
   user: User
   platformAdmin: boolean
   organisation: Organisation
+  /** What you can do in your own organisation. */
+  permissions: PermissionId[]
+}
+
+/** Keston Admin permissions, given to groups. Global admins have them all. */
+export type PermissionId =
+  | 'users.view'
+  | 'users.create'
+  | 'users.edit'
+  | 'users.reset_password'
+  | 'users.mfa'
+  | 'users.status'
+  | 'groups.manage'
+  | 'permissions.assign'
+  | 'apps.manage'
+  | 'policy.manage'
+  | 'settings.manage'
+
+export interface Permission {
+  id: PermissionId
+  label: string
+  description: string
+}
+
+/** One user, with their groups and permissions, and whether you can change them. */
+export interface UserDetail extends User {
+  groups: Group[]
+  permissions: PermissionId[]
+  canChange: boolean
 }
 
 export class ApiError extends Error {
@@ -246,7 +281,8 @@ export const api = {
 
 
   users: (orgId: string) => request<User[]>('GET', `${org(orgId)}/users`),
-  user: (orgId: string, userId: string) => request<User>('GET', `${org(orgId)}/users/${userId}`),
+  user: (orgId: string, userId: string) => request<UserDetail>('GET', `${org(orgId)}/users/${userId}`),
+  permissions: () => request<Permission[]>('GET', '/permissions'),
   updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role'] }) =>
     request<User>('PATCH', `${org(orgId)}/users/${userId}`, changes),
   setUserPicture: (orgId: string, userId: string, file: File) =>
@@ -267,6 +303,8 @@ export const api = {
   deleteGroup: (orgId: string, groupId: string) => request<void>('DELETE', `${org(orgId)}/groups/${groupId}`),
   addMember: (orgId: string, groupId: string, userId: string) =>
     request<void>('PUT', `${org(orgId)}/groups/${groupId}/members/${userId}`, {}),
+  setGroupPermissions: (orgId: string, groupId: string, permissions: PermissionId[]) =>
+    request<Group>('PUT', `${org(orgId)}/groups/${groupId}/permissions`, { permissions }),
   removeMember: (orgId: string, groupId: string, userId: string) =>
     request<void>('DELETE', `${org(orgId)}/groups/${groupId}/members/${userId}`),
   settings: (orgId: string) => request<{ profileEditing: ProfileEditing }>('GET', `${org(orgId)}/settings`),

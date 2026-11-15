@@ -18,7 +18,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, loadMe, type User, type Organisation } from '../lib/api'
+import { ApiError, api, loadMe, type Organisation, type PermissionId, type User } from '../lib/api'
 
 /** An organisation's users: add, reset a password, disable or enable. */
 const route = useRoute()
@@ -29,7 +29,10 @@ const { notify } = useNotifications()
 const org = ref<Organisation>()
 const users = ref<User[]>([])
 const myId = ref<string>()
+const iAmGlobalAdmin = ref(false)
 const loading = ref(true)
+const has = (p: PermissionId) => !!org.value?.permissions?.includes(p)
+
 const loadError = ref<string>()
 
 async function load() {
@@ -41,6 +44,7 @@ onMounted(async () => {
     const [o, me] = await Promise.all([api.organisation(orgId), loadMe()])
     org.value = o
     myId.value = me.user.id
+    iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
     await load()
   } catch (e) {
     loadError.value = message(e)
@@ -154,7 +158,7 @@ async function toggle(a: User) {
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
     <PageHeader title="Users">
-      <template #actions>
+      <template v-if="has('users.create')" #actions>
         <Button variant="primary" @click="startAdding">
           <template #leading><Plus /></template>
           Add user
@@ -197,12 +201,12 @@ async function toggle(a: User) {
         </template>
         <template #cell-actions="{ row }">
           <span v-if="row.support" class="text-xs text-black/65">Until {{ formatDateTime(row.expiresAt!) }}</span>
-          <div v-else class="flex justify-end gap-2">
-            <Button size="sm" @click="startReset(row)">
+          <div v-else-if="row.canChange" class="flex justify-end gap-2">
+            <Button v-if="has('users.reset_password')" size="sm" @click="startReset(row)">
               Reset password<span class="sr-only"> for {{ row.name }}</span>
             </Button>
             <Button
-              v-if="row.id !== myId"
+              v-if="row.id !== myId && has('users.status')"
               size="sm"
               :variant="row.status === 'active' ? 'ghost' : 'basic'"
               :status="changing === row.id ? 'loading' : 'idle'"
@@ -227,7 +231,7 @@ async function toggle(a: User) {
           <Input v-model="form.username" label="Username" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
-          <RadioGroup v-model="form.role" label="Role" :options="roles" />
+          <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" />
           <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
