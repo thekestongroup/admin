@@ -69,7 +69,14 @@ watch(
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(async () => {
   try {
-    me.value = await loadMe()
+    const loaded = await loadMe()
+    // /v1/me answers for everyone; Keston Admin is for people with a
+    // permission in their organisation, and Keston staff.
+    if (!loaded.platformAdmin && !loaded.permissions.length) {
+      error.value = 'Keston Admin is for your organisation’s admins. Ask one of them if you need something changed.'
+      return
+    }
+    me.value = loaded
     await loadNotifications()
     timer = setInterval(loadNotifications, 60_000)
   } catch (e) {
