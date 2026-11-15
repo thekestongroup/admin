@@ -142,6 +142,7 @@ function accountSettings() {
   <AppShell
     v-else
     title="Keston Admin"
+    title-to="/"
     :sections="nav"
     :user="user"
     :link-component="RouterLink"

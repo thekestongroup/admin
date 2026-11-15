@@ -7,7 +7,6 @@ import {
   Card,
   EmptyState,
   Input,
-  Link,
   PageHeader,
   RadioGroup,
   Slideover,
@@ -167,9 +166,17 @@ async function toggle(a: Account) {
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the accounts" :description="loadError" />
     </Card>
     <Card v-else padding="none">
-      <Table :columns="columns" :rows="accounts" row-key="id" :loading="loading" caption="Accounts">
+      <Table
+        :columns="columns"
+        :rows="accounts"
+        row-key="id"
+        :loading="loading"
+        caption="Accounts"
+        :row-link="(row: Account) => `/organisations/${orgId}/accounts/${row.id}`"
+        :link-component="RouterLink"
+      >
         <template #cell-name="{ row }">
-          <Link :as="RouterLink" :to="`/organisations/${orgId}/accounts/${row.id}`" class="font-bold">{{ row.name }}</Link>
+          {{ row.name }}
           <span v-if="row.id === myId" class="text-black/65"> (you)</span>
         </template>
         <template #cell-role="{ row }">

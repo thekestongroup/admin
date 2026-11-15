@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Building2, Plus, TriangleAlert } from '@lucide/vue'
-import { Button, Card, EmptyState, Link, PageHeader, Table, type TableColumn, formatDate } from '@thekestongroup/ui'
+import { Button, Card, EmptyState, PageHeader, Table, type TableColumn, formatDate } from '@thekestongroup/ui'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, type Organisation } from '../lib/api'
@@ -46,10 +46,15 @@ const columns: TableColumn<Organisation>[] = [
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the organisations" :description="loadError" />
     </Card>
     <Card v-else padding="none">
-      <Table :columns="columns" :rows="orgs" row-key="id" :loading="loading" caption="Organisations">
-        <template #cell-name="{ row }">
-          <Link :as="RouterLink" :to="`/organisations/${row.id}`" class="font-bold">{{ row.name }}</Link>
-        </template>
+      <Table
+        :columns="columns"
+        :rows="orgs"
+        row-key="id"
+        :loading="loading"
+        caption="Organisations"
+        :row-link="(row: Organisation) => `/organisations/${row.id}`"
+        :link-component="RouterLink"
+      >
         <template #cell-createdAt="{ row }">{{ formatDate(row.createdAt) }}</template>
         <template #empty>
           <EmptyState
