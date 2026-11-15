@@ -68,7 +68,7 @@ const details = computed(() =>
   org.value
     ? [
         { label: 'Name', value: org.value.name },
-        { label: 'Domain', value: org.value.domain, description: `Users sign in as name@${org.value.domain}` },
+        { label: 'Domain', value: org.value.domain },
         { label: 'Users', value: org.value.userCount },
         { label: 'Created', value: formatDate(org.value.createdAt) },
       ]
