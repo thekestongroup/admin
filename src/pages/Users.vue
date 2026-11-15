@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Lock, Plus, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
+import { Lock, Plus, ShieldCheck, Trash2, TriangleAlert, Users } from '@lucide/vue'
 import {
   Badge,
   Button,
   type ButtonStatus,
   Card,
+  Checkbox,
   EmptyState,
   Input,
   PageHeader,
@@ -17,10 +18,14 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import BulkActions from '../components/BulkActions.vue'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, loadMe, type Organisation, type PermissionId, type User } from '../lib/api'
+import { ApiError, api, loadMe, type Group, type Organisation, type PermissionId, type User } from '../lib/api'
 
-/** An organisation's users: add, reset a password, disable or enable. */
+/**
+ * An organisation's users: add, reset a password, disable or enable; tick
+ * several for bulk actions. Deleted users are on their own page.
+ */
 const route = useRoute()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const orgId = route.params.orgId as string
@@ -37,6 +42,8 @@ const loadError = ref<string>()
 
 async function load() {
   users.value = await api.users(orgId)
+  const ids = new Set(users.value.filter(selectable).map((u) => u.id))
+  selected.value = new Set([...selected.value].filter((id) => ids.has(id)))
 }
 
 onMounted(async () => {
@@ -46,6 +53,7 @@ onMounted(async () => {
     myId.value = me.user.id
     iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
     await load()
+    if (has('groups.manage') || has('permissions.assign')) groups.value = await api.groups(orgId)
   } catch (e) {
     loadError.value = message(e)
   } finally {
@@ -53,13 +61,44 @@ onMounted(async () => {
   }
 })
 
-const columns: TableColumn<User>[] = [
+// ── Selecting users, for bulk actions ───────────────────────────────────────
+
+const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'users.delete', 'groups.manage', 'permissions.assign']
+const canBulk = computed(() => bulkPerms.some(has))
+/** Only users you can change can be ticked. */
+const selectable = (u: User) => !!u.canChange && !u.support
+const selected = ref(new Set<string>())
+const groups = ref<Group[]>([])
+const selectedUsers = computed(() => users.value.filter((u) => selected.value.has(u.id)))
+const selectableCount = computed(() => users.value.filter(selectable).length)
+const allSelected = computed<boolean | 'indeterminate'>(() =>
+  !selected.value.size ? false : selected.value.size === selectableCount.value ? true : 'indeterminate',
+)
+
+function selectAll(on: boolean | 'indeterminate') {
+  selected.value = new Set(on === true ? users.value.filter(selectable).map((u) => u.id) : [])
+}
+
+function selectRow(u: User, on: boolean | 'indeterminate') {
+  const next = new Set(selected.value)
+  if (on === true) next.add(u.id)
+  else next.delete(u.id)
+  selected.value = next
+}
+
+async function bulkDone() {
+  selected.value = new Set()
+  await load()
+}
+
+const columns = computed<TableColumn<User>[]>(() => [
+  ...(canBulk.value ? [{ key: 'select', label: 'Select', hideLabel: true, class: 'w-0' }] : []),
   { key: 'name', label: 'Name', rowHeader: true, sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Role', sortable: true },
   { key: 'status', label: 'Status', sortable: true },
   { key: 'actions', label: 'Actions', hideLabel: true, align: 'end' },
-]
+])
 
 // ── Add a user ──────────────────────────────────────────────────────────
 
@@ -158,8 +197,12 @@ async function toggle(a: User) {
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
     <PageHeader title="Users">
-      <template v-if="has('users.create')" #actions>
-        <Button variant="primary" @click="startAdding">
+      <template #actions>
+        <Button :as="RouterLink" :to="`/organisations/${orgId}/users/deleted`">
+          <template #leading><Trash2 /></template>
+          Deleted users
+        </Button>
+        <Button v-if="has('users.create')" variant="primary" @click="startAdding">
           <template #leading><Plus /></template>
           Add user
         </Button>
@@ -169,7 +212,9 @@ async function toggle(a: User) {
     <Card v-if="loadError">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the users" :description="loadError" />
     </Card>
-    <Card v-else padding="none">
+    <BulkActions v-if="!loadError" :org-id="orgId" :selected="selectedUsers" :groups="groups" :can="has" @done="bulkDone" />
+
+    <Card v-if="!loadError" padding="none">
       <Table
         :columns="columns"
         :rows="users"
@@ -179,6 +224,24 @@ async function toggle(a: User) {
         :row-link="(row: User) => `/organisations/${orgId}/users/${row.id}`"
         :link-component="RouterLink"
       >
+        <template #header-select>
+          <Checkbox
+            v-if="selectableCount"
+            :model-value="allSelected"
+            label="Select every user you can change"
+            class="[&_label]:sr-only"
+            @update:model-value="selectAll"
+          />
+        </template>
+        <template #cell-select="{ row }">
+          <Checkbox
+            v-if="selectable(row)"
+            :model-value="selected.has(row.id)"
+            :label="`Select ${row.name}`"
+            class="[&_label]:sr-only"
+            @update:model-value="selectRow(row, $event)"
+          />
+        </template>
         <template #cell-name="{ row }">
           {{ row.name }}
           <Badge v-if="row.support" size="sm" color="blue" class="ml-1">Keston support</Badge>

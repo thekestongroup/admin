@@ -21,6 +21,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import DeleteUserCard from '../components/DeleteUserCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
@@ -402,6 +403,8 @@ async function toggle() {
           </Button>
         </div>
       </Card>
+
+      <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
     </template>
 
     <Slideover v-model:open="editing" title="Edit user" initial-focus="auto">

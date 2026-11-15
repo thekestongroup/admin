@@ -159,6 +159,7 @@ export type PermissionId =
   | 'users.reset_password'
   | 'users.mfa'
   | 'users.status'
+  | 'users.delete'
   | 'groups.manage'
   | 'permissions.assign'
   | 'apps.manage'
@@ -176,6 +177,29 @@ export interface UserDetail extends User {
   groups: Group[]
   permissions: PermissionId[]
   canChange: boolean
+}
+
+/** A user in Deleted users: kept 30 days, then removed for good. */
+export interface DeletedUser extends User {
+  deletedAt: string
+  /** When they're removed for good. */
+  purgeAfter: string
+  deletedByName?: string
+}
+
+/** Bulk actions on users, each its own endpoint. */
+export type BulkAction = 'reset-password' | 'disable' | 'enable' | 'add-to-group' | 'remove-from-group' | 'delete'
+
+/** What happened to one user in a bulk action. */
+export interface BulkResult {
+  id: string
+  name: string
+  email: string
+  result: 'done' | 'skipped'
+  /** Why they were skipped. */
+  reason?: string
+  /** Reset passwords only: their new password, shown once. */
+  password?: string
 }
 
 export class ApiError extends Error {
@@ -336,6 +360,14 @@ export const api = {
   disableMfa: (orgId: string, userId: string) => request<User>('POST', `${org(orgId)}/users/${userId}/mfa/disable`, {}),
   setStatus: (orgId: string, userId: string, status: User['status']) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/status`, { status }),
+  /** Kept 30 days in Deleted users, where they can be restored. */
+  deleteUser: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}`),
+  /** One bulk action; groupId for adding to or removing from a group. */
+  bulk: (orgId: string, action: BulkAction, userIds: string[], groupId?: string) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/${action}`, { userIds, groupId }),
+  deletedUsers: (orgId: string) => request<DeletedUser[]>('GET', `${org(orgId)}/deleted-users`),
+  restoreUsers: (orgId: string, userIds: string[]) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/deleted-users/restore`, { userIds }),
 
   policy: (orgId: string) =>
     request<{ policy: PasswordPolicy; rules: Rule[]; baselineMinLength: number }>('GET', `${org(orgId)}/password-policy`),
