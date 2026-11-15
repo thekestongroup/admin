@@ -22,6 +22,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import DeleteUserCard from '../components/DeleteUserCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import RecentActivity from '../components/RecentActivity.vue'
 import SignInCard from '../components/SignInCard.vue'
@@ -432,6 +433,7 @@ async function toggle() {
       </Card>
 
       <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
+      <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
     </template>
 
     <Slideover v-model:open="editing" title="Edit user" initial-focus="auto">
