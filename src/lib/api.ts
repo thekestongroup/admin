@@ -60,6 +60,10 @@ export interface AppInfo {
   verification: 'owned' | 'verified' | 'none'
   /** One of Keston's own apps: forced unless set otherwise. */
   builtin: boolean
+  /** Added by this organisation (its own SSO apps). */
+  own: boolean
+  protocol: 'oidc' | 'saml'
+  logoUrl: string
 }
 
 export interface Group {
@@ -345,6 +349,77 @@ export const api = {
       `${org(orgId)}/password-policy`,
       policy,
     ),
+}
+
+// ── The organisation's own apps (OpenID Connect and SAML) ────────────────
+
+export type OwnAppType = 'web' | 'native'
+
+export interface OwnApp {
+  id: string
+  name: string
+  protocol: 'oidc' | 'saml'
+  logoUrl: string
+  privacyUrl: string
+  termsUrl: string
+  oidc?: {
+    /** web: a server-side app with a secret · native: single-page or mobile, PKCE. */
+    type: OwnAppType
+    clientId: string
+    hasSecret: boolean
+    issuer: string
+    discoveryUrl: string
+    redirectUris: string[]
+    postLogoutRedirectUris: string[]
+    scopes: string[]
+  }
+  saml?: {
+    entityId: string
+    acsUrl: string
+    /** Where its metadata came from ('' when pasted or typed in). */
+    metadataUrl: string
+    /** What to give the app. */
+    idp: {
+      entityId: string
+      metadataUrl: string
+      ssoUrl: string
+      startUrl: string
+      certificate: string
+      nameIdFormat: string
+      attributes: string[]
+    }
+  }
+}
+
+export interface OwnAppChanges {
+  name?: string
+  logoUrl?: string
+  privacyUrl?: string
+  termsUrl?: string
+  type?: OwnAppType
+  redirectUris?: string[]
+  postLogoutRedirectUris?: string[]
+  scopes?: string[]
+  metadataUrl?: string
+  metadataXml?: string
+  entityId?: string
+  acsUrl?: string
+}
+
+/** A new or changed app; clientSecret only when one was just made (shown once). */
+type SavedOwnApp = { app: OwnApp; clientSecret?: string }
+
+export const ownApps = {
+  list: (orgId: string) => request<OwnApp[]>('GET', `${org(orgId)}/own-apps`),
+  get: (orgId: string, appId: string) => request<SavedOwnApp>('GET', `${org(orgId)}/own-apps/${encodeURIComponent(appId)}`),
+  create: (orgId: string, protocol: OwnApp['protocol'], body: OwnAppChanges) =>
+    request<SavedOwnApp>('POST', `${org(orgId)}/own-apps`, { protocol, ...body }),
+  update: (orgId: string, appId: string, body: OwnAppChanges) =>
+    request<SavedOwnApp>('PATCH', `${org(orgId)}/own-apps/${encodeURIComponent(appId)}`, body),
+  remove: (orgId: string, appId: string) => request<void>('DELETE', `${org(orgId)}/own-apps/${encodeURIComponent(appId)}`),
+  /** A new secret; the old one stops working. */
+  newSecret: (orgId: string, appId: string) =>
+    request<SavedOwnApp>('POST', `${org(orgId)}/own-apps/${encodeURIComponent(appId)}/secret`),
 }
 
 /** The signed-in admin, loaded once. */
