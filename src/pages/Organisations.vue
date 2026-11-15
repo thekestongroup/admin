@@ -23,7 +23,7 @@ onMounted(async () => {
 const columns: TableColumn<Organisation>[] = [
   { key: 'name', label: 'Organisation', rowHeader: true, sortable: true },
   { key: 'domain', label: 'Domain', sortable: true },
-  { key: 'userCount', label: 'Accounts', align: 'end', sortable: true },
+  { key: 'userCount', label: 'Users', align: 'end', sortable: true },
   { key: 'createdAt', label: 'Created', sortable: true, nowrap: true },
 ]
 </script>
@@ -32,7 +32,7 @@ const columns: TableColumn<Organisation>[] = [
   <div class="flex flex-col gap-6 p-4 sm:p-6">
     <PageHeader
       title="Organisations"
-      description="Every school and organisation on Keston. Their accounts need support access, approved by one of their global admins."
+      description="Every school and organisation on Keston. Their users need support access, approved by one of their global admins."
     >
       <template #actions>
         <Button variant="primary" :as="RouterLink" to="/create-organisation">
@@ -61,7 +61,7 @@ const columns: TableColumn<Organisation>[] = [
             size="sm"
             :icon="Building2"
             title="No organisations yet"
-            description="Create one to give a school or organisation its Keston accounts."
+            description="Create one to give a school or organisation its users on Keston."
             class="p-0"
           />
         </template>

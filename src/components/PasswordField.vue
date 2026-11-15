@@ -12,7 +12,7 @@ const props = withDefaults(
   defineProps<{
     label?: string
     organisationId?: string
-    /** The account's username: the password can't be the same. */
+    /** The user's username: the password can't be the same. */
     username?: string
     errorText?: string
     /** Self-service sign-up: check without signing in (baseline rules). */

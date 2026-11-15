@@ -155,7 +155,7 @@ const summary = computed(() => [
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">What's its domain?</h1>
               <p class="text-sm text-black/65">
-                Its accounts will be <span class="font-bold text-black">name@{{ domain || 'domain' }}</span>. Each
+                Its users will sign in as <span class="font-bold text-black">name@{{ domain || 'domain' }}</span>. Each
                 organisation needs its own.
               </p>
             </div>
@@ -173,7 +173,7 @@ const summary = computed(() => [
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">Who's the first global admin?</h1>
               <p class="text-sm text-black/65">
-                Probably you. They manage {{ form.name.trim() }}'s accounts and password policy, and can add more
+                Probably you. They manage {{ form.name.trim() }}'s users and password policy, and can add more
                 admins.
               </p>
             </div>

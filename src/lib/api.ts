@@ -39,7 +39,7 @@ export interface Organisation {
   profileEditing: ProfileEditing
   userCount: number
   createdAt: string
-  /** Whether you can see and manage its accounts (Keston support: only with approved access). */
+  /** Whether you can see and manage its users (Keston support: only with approved access). */
   canManage?: boolean
 }
 
@@ -94,7 +94,7 @@ export interface AdminNotification {
   createdAt: string
 }
 
-export interface Account {
+export interface User {
   id: string
   email: string
   username: string
@@ -110,7 +110,7 @@ export interface Account {
 }
 
 export interface Me {
-  user: Account
+  user: User
   platformAdmin: boolean
   organisation: Organisation
 }
@@ -200,7 +200,7 @@ export const publicApi = {
   passwordCheck: (password: string, username?: string) =>
     publicRequest<RuleResult[]>('POST', '/password-check', { password, username }),
   createOrganisation: (body: NewOrganisation) =>
-    publicRequest<{ organisation: Organisation; admin: Account }>('POST', '/organisations', body),
+    publicRequest<{ organisation: Organisation; admin: User }>('POST', '/organisations', body),
 }
 
 export const api = {
@@ -217,12 +217,12 @@ export const api = {
   organisation: (id: string) => request<Organisation>('GET', org(id)),
 
 
-  users: (orgId: string) => request<Account[]>('GET', `${org(orgId)}/users`),
-  user: (orgId: string, userId: string) => request<Account>('GET', `${org(orgId)}/users/${userId}`),
-  updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: Account['role'] }) =>
-    request<Account>('PATCH', `${org(orgId)}/users/${userId}`, changes),
+  users: (orgId: string) => request<User[]>('GET', `${org(orgId)}/users`),
+  user: (orgId: string, userId: string) => request<User>('GET', `${org(orgId)}/users/${userId}`),
+  updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role'] }) =>
+    request<User>('PATCH', `${org(orgId)}/users/${userId}`, changes),
   setUserPicture: (orgId: string, userId: string, file: File) =>
-    request<Account>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
+    request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
   apps: (orgId: string) => request<OrganisationApps>('GET', `${org(orgId)}/apps`),
@@ -245,11 +245,11 @@ export const api = {
   notifications: () => request<AdminNotification[]>('GET', '/notifications'),
   readNotifications: () => request<void>('POST', '/notifications/read', {}),
   clearNotifications: () => request<void>('DELETE', '/notifications'),
-  createUser: (orgId: string, body: { name: string; username: string; password: string; role: Account['role'] }) =>
-    request<Account>('POST', `${org(orgId)}/users`, body),
+  createUser: (orgId: string, body: { name: string; username: string; password: string; role: User['role'] }) =>
+    request<User>('POST', `${org(orgId)}/users`, body),
   resetPassword: (orgId: string, userId: string, password: string) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password }),
-  setStatus: (orgId: string, userId: string, status: Account['status']) =>
+  setStatus: (orgId: string, userId: string, status: User['status']) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/status`, { status }),
 
   policy: (orgId: string) =>

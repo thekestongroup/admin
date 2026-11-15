@@ -18,22 +18,22 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, loadMe, type Account, type Organisation } from '../lib/api'
+import { ApiError, api, loadMe, type User, type Organisation } from '../lib/api'
 
-/** An organisation's accounts: add, reset a password, disable or enable. */
+/** An organisation's users: add, reset a password, disable or enable. */
 const route = useRoute()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const orgId = route.params.orgId as string
 const { notify } = useNotifications()
 
 const org = ref<Organisation>()
-const accounts = ref<Account[]>([])
+const users = ref<User[]>([])
 const myId = ref<string>()
 const loading = ref(true)
 const loadError = ref<string>()
 
 async function load() {
-  accounts.value = await api.users(orgId)
+  users.value = await api.users(orgId)
 }
 
 onMounted(async () => {
@@ -49,7 +49,7 @@ onMounted(async () => {
   }
 })
 
-const columns: TableColumn<Account>[] = [
+const columns: TableColumn<User>[] = [
   { key: 'name', label: 'Name', rowHeader: true, sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'role', label: 'Role', sortable: true },
@@ -57,16 +57,16 @@ const columns: TableColumn<Account>[] = [
   { key: 'actions', label: 'Actions', hideLabel: true, align: 'end' },
 ]
 
-// ── Add an account ──────────────────────────────────────────────────────────
+// ── Add a user ──────────────────────────────────────────────────────────
 
 const adding = ref(false)
-const form = reactive({ name: '', username: '', password: '', role: 'member' as Account['role'] })
+const form = reactive({ name: '', username: '', password: '', role: 'member' as User['role'] })
 const formErrors = reactive<Record<string, string | undefined>>({})
 const formValid = ref(false)
 const addStatus = ref<ButtonStatus>('idle')
 const roles = [
   { label: 'Member', value: 'member', description: 'Signs in to Keston apps.' },
-  { label: 'Global admin', value: 'global_admin', description: 'Also manages this organisation’s accounts and password policy here.' },
+  { label: 'Global admin', value: 'global_admin', description: 'Also manages this organisation’s users and password policy here.' },
 ]
 const username = computed(() => form.username.trim().toLowerCase())
 
@@ -89,24 +89,24 @@ async function add() {
     const created = await api.createUser(orgId, { name: form.name.trim(), username: username.value, password: form.password, role: form.role })
     await load()
     adding.value = false
-    notify({ type: 'success', title: 'Account added', description: `${created.email} can sign in now.` })
+    notify({ type: 'success', title: 'User added', description: `${created.email} can sign in now.` })
   } catch (e) {
     addStatus.value = 'idle'
     if (e instanceof ApiError && e.field) formErrors[e.field] = e.message
-    else notify({ type: 'error', title: 'Couldn’t add the account', description: message(e) })
+    else notify({ type: 'error', title: 'Couldn’t add the user', description: message(e) })
   }
 }
 
 // ── Reset a password ────────────────────────────────────────────────────────
 
-const resetting = ref<Account>()
+const resetting = ref<User>()
 const resetOpen = computed({ get: () => !!resetting.value, set: (v) => { if (!v) resetting.value = undefined } })
 const newPassword = ref('')
 const resetValid = ref(false)
 const resetError = ref<string>()
 const resetStatus = ref<ButtonStatus>('idle')
 
-function startReset(a: Account) {
+function startReset(a: User) {
   newPassword.value = ''
   resetError.value = undefined
   resetStatus.value = 'idle'
@@ -132,7 +132,7 @@ async function reset() {
 // ── Disable / enable ────────────────────────────────────────────────────────
 
 const changing = ref<string>()
-async function toggle(a: Account) {
+async function toggle(a: User) {
   const status = a.status === 'active' ? 'disabled' : 'active'
   changing.value = a.id
   try {
@@ -140,11 +140,11 @@ async function toggle(a: Account) {
     await load()
     notify({
       type: 'success',
-      title: status === 'disabled' ? 'Account disabled' : 'Account enabled',
+      title: status === 'disabled' ? 'User disabled' : 'User enabled',
       description: status === 'disabled' ? `${a.name} has been signed out and can’t sign in.` : `${a.name} can sign in again.`,
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change the account', description: message(e) })
+    notify({ type: 'error', title: 'Couldn’t change the user', description: message(e) })
   } finally {
     changing.value = undefined
   }
@@ -153,26 +153,26 @@ async function toggle(a: Account) {
 
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Accounts" :description="org ? `Everyone at ${org.name}, signing in as name@${org.domain}.` : undefined">
+    <PageHeader title="Users" :description="org ? `Everyone at ${org.name}, signing in as name@${org.domain}.` : undefined">
       <template #actions>
         <Button variant="primary" @click="startAdding">
           <template #leading><Plus /></template>
-          Add account
+          Add user
         </Button>
       </template>
     </PageHeader>
 
     <Card v-if="loadError">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the accounts" :description="loadError" />
+      <EmptyState :icon="TriangleAlert" title="Couldn’t load the users" :description="loadError" />
     </Card>
     <Card v-else padding="none">
       <Table
         :columns="columns"
-        :rows="accounts"
+        :rows="users"
         row-key="id"
         :loading="loading"
-        caption="Accounts"
-        :row-link="(row: Account) => `/organisations/${orgId}/accounts/${row.id}`"
+        caption="Users"
+        :row-link="(row: User) => `/organisations/${orgId}/users/${row.id}`"
         :link-component="RouterLink"
       >
         <template #cell-name="{ row }">
@@ -211,18 +211,18 @@ async function toggle(a: Account) {
           </div>
         </template>
         <template #empty>
-          <EmptyState size="sm" :icon="Users" title="No accounts yet" description="Add the people who sign in to Keston here." class="p-0" />
+          <EmptyState size="sm" :icon="Users" title="No users yet" description="Add the people who sign in to Keston here." class="p-0" />
         </template>
       </Table>
     </Card>
 
     <p class="text-xs text-black/65">
-      Created {{ org ? formatDate(org.createdAt) : '' }}. Locked accounts unlock after 15 minutes, or when their
+      Created {{ org ? formatDate(org.createdAt) : '' }}. Locked users unlock after 15 minutes, or when their
       password is reset.
     </p>
 
-    <!-- Add an account -->
-    <Slideover v-model:open="adding" title="Add an account" :description="org ? `They’ll sign in as username@${org.domain}.` : undefined" initial-focus="auto">
+    <!-- Add a user -->
+    <Slideover v-model:open="adding" title="Add a user" :description="org ? `They’ll sign in as username@${org.domain}.` : undefined" initial-focus="auto">
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="add">
           <Input v-model="form.name" label="Name" autocomplete="off" :error-text="formErrors.name" />
@@ -236,7 +236,7 @@ async function toggle(a: Account) {
       </template>
       <template #footer="{ close }">
         <Button :disabled="addStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="addStatus" loading-text="Adding" @click="add">Add account</Button>
+        <Button variant="primary" :status="addStatus" loading-text="Adding" @click="add">Add user</Button>
       </template>
     </Slideover>
 
@@ -244,7 +244,7 @@ async function toggle(a: Account) {
     <Slideover
       v-model:open="resetOpen"
       :title="resetting ? `Reset ${resetting.name}’s password` : 'Reset password'"
-      description="They’ll be signed out everywhere, and their account unlocked. Give them the new password securely."
+      description="They’ll be signed out everywhere, and unlocked if they were locked out. Give them the new password securely."
       initial-focus="auto"
     >
       <template #body>

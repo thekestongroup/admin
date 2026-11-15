@@ -24,7 +24,7 @@ import { ApiError, api, loadMe, type Me, type Organisation, type Support } from 
  * organisation lockout procedure.
  *
  * - Keston support (platform admins) sees this page for every organisation,
- *   but its accounts only while a global admin has approved support access.
+ *   but its users only while a global admin has approved support access.
  *   They can ask for access, or start the lockout procedure if nobody there
  *   can sign in.
  * - Its global admins approve or deny requests, end access, and deny a
@@ -64,8 +64,8 @@ const details = computed(() =>
   org.value
     ? [
         { label: 'Name', value: org.value.name },
-        { label: 'Domain', value: org.value.domain, description: `Accounts are name@${org.value.domain}` },
-        { label: 'Accounts', value: org.value.userCount },
+        { label: 'Domain', value: org.value.domain, description: `Users sign in as name@${org.value.domain}` },
+        { label: 'Users', value: org.value.userCount },
         { label: 'Created', value: formatDate(org.value.createdAt) },
       ]
     : [],
@@ -177,7 +177,7 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <SummaryList :items="details" />
       </Card>
 
-      <Card title="Keston support access" description="Keston support can only see this organisation’s accounts while a global admin allows it.">
+      <Card title="Keston support access" description="Keston support can only see this organisation’s users while a global admin allows it.">
         <template #actions>
           <Badge v-if="support.access.active" color="yellow">On until {{ formatDateTime(support.access.until!) }}</Badge>
           <Badge v-else color="green">Off</Badge>

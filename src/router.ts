@@ -36,15 +36,21 @@ export const router = createRouter({
         },
         { path: 'organisations', component: () => import('./pages/Organisations.vue'), meta: { title: 'Organisations' } },
         { path: 'organisations/new', redirect: '/create-organisation' },
+        // Old links: these pages were called Accounts.
+        { path: 'organisations/:orgId/accounts', redirect: (to) => `/organisations/${to.params.orgId}/users` },
+        {
+          path: 'organisations/:orgId/accounts/:userId',
+          redirect: (to) => `/organisations/${to.params.orgId}/users/${to.params.userId}`,
+        },
         {
           path: 'organisations/:orgId',
           component: () => import('./pages/OrganisationOverview.vue'),
           meta: { title: 'Organisation' },
         },
         {
-          path: 'organisations/:orgId/accounts/:userId',
-          component: () => import('./pages/AccountDetail.vue'),
-          meta: { title: 'Account' },
+          path: 'organisations/:orgId/users/:userId',
+          component: () => import('./pages/UserDetail.vue'),
+          meta: { title: 'User' },
         },
         {
           path: 'organisations/:orgId/apps',
@@ -57,9 +63,9 @@ export const router = createRouter({
           meta: { title: 'Settings' },
         },
         {
-          path: 'organisations/:orgId/accounts',
-          component: () => import('./pages/Accounts.vue'),
-          meta: { title: 'Accounts' },
+          path: 'organisations/:orgId/users',
+          component: () => import('./pages/Users.vue'),
+          meta: { title: 'Users' },
         },
         {
           path: 'organisations/:orgId/password-policy',

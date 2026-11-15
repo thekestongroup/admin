@@ -103,10 +103,10 @@ const nav = computed<SidebarSection[]>(() => {
   if (id) {
     const base = `/organisations/${id}`
     const items: SidebarSection['items'] = [{ label: 'Overview', icon: House, to: base, active: active(base) }]
-    // Accounts and settings: its global admins, or Keston support with access.
+    // Users and settings: its global admins, or Keston support with access.
     if (org.value?.canManage) {
       items.push(
-        { label: 'Accounts', icon: Users, to: `${base}/accounts`, active: active(`${base}/accounts`, false) },
+        { label: 'Users', icon: Users, to: `${base}/users`, active: active(`${base}/users`, false) },
         { label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) },
         { label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) },
         { label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) },
