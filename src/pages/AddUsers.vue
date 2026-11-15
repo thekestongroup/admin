@@ -14,7 +14,7 @@ import {
   type TableColumn,
   useNotifications,
 } from '@thekestongroup/ui'
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
 import { downloadCsv } from '../lib/csv'
