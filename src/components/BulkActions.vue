@@ -21,7 +21,8 @@ import PasswordField from './PasswordField.vue'
  * user or several, deleted users. With users ticked: how many, and what can be done to
  * them all at once (reset passwords, change sign-in status, manage group
  * memberships, delete). Each asks first, then shows what was done and who
- * was skipped (Keston ID checks each user, as for one).
+ * was skipped (Keston ID checks each user, as for one). The Users page's
+ * row menus use the same panels for one user (open()).
  */
 const props = defineProps<{
   orgId: string
@@ -42,6 +43,12 @@ const titles: Record<Kind, string> = {
 }
 
 const count = computed(() => `${props.selected.length} ${props.selected.length === 1 ? 'user' : 'users'} selected`)
+
+/** Who the open panel acts on: one user from a row's menu, or everyone ticked. */
+const only = ref<User>()
+const targets = computed(() => (only.value ? [only.value] : props.selected))
+const forWhom = computed(() => (only.value ? only.value.name : count.value))
+const one = computed(() => targets.value.length === 1)
 
 const actions = computed<Action[]>(() => {
   if (!props.selected.length) {
@@ -92,13 +99,14 @@ const groupOptions = computed(() =>
   props.groups.map((g) => ({ label: g.name, value: g.id, description: g.memberCount === 1 ? '1 user' : `${g.memberCount} users` })),
 )
 
-function ask(k: Kind) {
+function ask(k: Kind, user?: User) {
+  only.value = user
   errors.value = {}
   status.value = 'idle'
   autoPassword.value = true
   password.value = ''
   requireChange.value = true
-  signIn.value = 'block'
+  signIn.value = user?.status === 'disabled' ? 'allow' : 'block'
   addTo.value = []
   removeFrom.value = []
   kind.value = k
@@ -125,6 +133,11 @@ const results = ref<BulkResult[]>([])
 const summaryTitle = ref('')
 const summaryOpen = ref(false)
 
+defineExpose({
+  /** One user's panel, from their row's menu. */
+  open: (k: Kind, user: User) => ask(k, user),
+})
+
 function check(): boolean {
   errors.value = {}
   if (kind.value === 'reset-password' && !autoPassword.value && !passwordValid.value)
@@ -140,7 +153,7 @@ function check(): boolean {
 async function run() {
   const k = kind.value!
   if (!check()) return
-  const ids = props.selected.map((u) => u.id)
+  const ids = targets.value.map((u) => u.id)
   status.value = 'loading'
   try {
     let res: { results: BulkResult[] }
@@ -171,7 +184,7 @@ async function run() {
     <p v-if="selected.length" class="mx-3 text-sm font-bold" aria-live="polite">{{ count }}</p>
   </ActionBar>
 
-  <Slideover v-model:open="open" :title="kind ? titles[kind] : ''" :description="count" initial-focus="auto">
+  <Slideover v-model:open="open" :title="kind ? titles[kind] : ''" :description="forWhom" initial-focus="auto">
     <template #body>
       <!-- Reset password -->
       <div v-if="kind === 'reset-password'" class="flex flex-col gap-4">
@@ -179,10 +192,11 @@ async function run() {
         <Checkbox
           v-model="autoPassword"
           label="Automatically create a password"
-          description="Each user gets their own, which meets your password policy."
+          :description="one ? 'It meets your password policy, and is shown once.' : 'Each user gets their own, which meets your password policy.'"
         />
         <template v-if="!autoPassword">
           <Notification
+            v-if="!one"
             type="warning"
             title="Everyone gets the same password"
             description="This will apply the same password for all the selected users. For security, we suggest requiring these users to change their password when they first sign in."
@@ -192,7 +206,7 @@ async function run() {
         </template>
         <Checkbox
           v-model="requireChange"
-          label="Require these users to change their passwords on next sign in"
+          :label="one ? 'Require this user to change their password on next sign in' : 'Require these users to change their passwords on next sign in'"
           description="Recommended, so only they know their password."
         />
       </div>
@@ -213,7 +227,7 @@ async function run() {
         <Select
           v-model="addTo"
           label="Add to groups"
-          helper="Everyone selected joins these groups."
+          :helper="one ? 'They join these groups.' : 'Everyone selected joins these groups.'"
           :options="groupOptions"
           :error-text="errors.add"
           multiple
@@ -222,7 +236,7 @@ async function run() {
         <Select
           v-model="removeFrom"
           label="Remove from groups"
-          helper="Everyone selected leaves these groups, if they’re in them."
+          :helper="one ? 'They leave these groups, if they’re in them.' : 'Everyone selected leaves these groups, if they’re in them.'"
           :options="groupOptions"
           :error-text="errors.remove"
           multiple
