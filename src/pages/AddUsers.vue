@@ -9,6 +9,7 @@ import {
   Input,
   Notification,
   PageHeader,
+  Popover,
   Progress,
   Select,
   Spinner,
@@ -70,14 +71,12 @@ const usersError = ref<string>()
 
 // The organisation's domains (one for now; each row picks one).
 const domains = computed(() => (org.value ? (org.value.domains ?? [org.value.domain]) : []))
-const domainOptions = computed(() => domains.value.map((d) => ({ label: `@${d}`, value: d })))
-const changingAll = ref(false)
+const domainOptions = computed(() => domains.value.map((d) => ({ label: d, value: d })))
 const allDomain = ref<string>()
 function changeAllDomains() {
   if (!allDomain.value) return
   for (const r of rows.value) r.domain = allDomain.value
-  changingAll.value = false
-  notify({ type: 'success', title: `Every user is now @${allDomain.value}` })
+  notify({ type: 'success', title: `Every user is now on ${allDomain.value}` })
 }
 
 // One password for everyone, instead of each their own.
@@ -307,46 +306,64 @@ const skippedColumns: TableColumn<BulkResult>[] = [
             </p>
           </div>
 
-          <div v-if="domains.length" class="flex flex-col gap-3">
-            <div>
-              <Button size="sm" @click="changingAll = !changingAll; allDomain = undefined">Change all domains</Button>
-            </div>
-            <div v-if="changingAll" class="flex flex-col gap-2 rounded border border-black/15 p-4 sm:flex-row sm:items-start">
-              <Select v-model="allDomain" label="Domain for every user" :options="domainOptions" placeholder="Choose a domain" class="flex-1" />
-              <div class="flex gap-2 sm:mt-6.5">
-                <Button @click="changingAll = false">Cancel</Button>
-                <Button variant="primary" :disabled="!allDomain" @click="changeAllDomains">Change all</Button>
+          <!-- A table of fields: the headings once, each field labelled for
+               screen readers ("First name, user 2"). Scrolls sideways on
+               narrow screens. -->
+          <div class="overflow-x-auto">
+            <div
+              class="grid min-w-max grid-cols-[repeat(3,minmax(--spacing(36),1fr))_auto_minmax(--spacing(44),1fr)_auto] items-start gap-x-2 gap-y-3"
+            >
+              <p class="text-sm" aria-hidden="true">First name</p>
+              <p class="text-sm" aria-hidden="true">Last name</p>
+              <p class="text-sm" aria-hidden="true">Username</p>
+              <span />
+              <div class="flex items-center gap-2">
+                <p class="text-sm" aria-hidden="true">Domain</p>
+                <Popover v-if="domains.length">
+                  <Button size="sm" variant="ghost">Change all domains</Button>
+                  <template #content="{ close }">
+                    <div class="flex w-72 flex-col gap-3 p-4">
+                      <Select v-model="allDomain" label="Domain for every user" :options="domainOptions" placeholder="Choose a domain" />
+                      <div class="flex justify-end gap-2">
+                        <Button @click="close">Cancel</Button>
+                        <Button variant="primary" :disabled="!allDomain" @click="changeAllDomains(); close()">Change all</Button>
+                      </div>
+                    </div>
+                  </template>
+                </Popover>
+              </div>
+              <span />
+
+              <div v-for="(r, i) in rows" :key="r.key" role="group" :aria-label="`User ${i + 1}`" class="contents">
+                <Input
+                  :data-field="`first-${r.key}`"
+                  v-model="r.first"
+                  :label="`First name, user ${i + 1}`"
+                  hide-label
+                  autocomplete="off"
+                  :error-text="r.errors.first"
+                  @update:model-value="suggest(r)"
+                />
+                <Input v-model="r.last" :label="`Last name, user ${i + 1}`" hide-label autocomplete="off" @update:model-value="suggest(r)" />
+                <Input
+                  :data-field="`username-${r.key}`"
+                  :model-value="r.username"
+                  :label="`Username, user ${i + 1}`"
+                  hide-label
+                  autocapitalize="off"
+                  spellcheck="false"
+                  autocomplete="off"
+                  :error-text="r.errors.username"
+                  @update:model-value="typedUsername(r, String($event ?? ''))"
+                />
+                <span class="flex h-9.5 items-center text-sm text-black/65" aria-hidden="true">@</span>
+                <Select v-model="r.domain" :label="`Domain, user ${i + 1}`" hide-label :options="domainOptions" />
+                <Button variant="ghost" square :aria-label="`Remove user ${i + 1}`" @click="removeRow(r)">
+                  <X />
+                </Button>
               </div>
             </div>
           </div>
-
-          <fieldset v-for="(r, i) in rows" :key="r.key" class="flex items-start gap-2 border-t border-black/10 pt-4 first-of-type:border-t-0 first-of-type:pt-0">
-            <legend class="sr-only">User {{ i + 1 }}</legend>
-            <div class="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Input :data-field="`first-${r.key}`" v-model="r.first" label="First name" autocomplete="off" :error-text="r.errors.first" @update:model-value="suggest(r)" />
-              <Input v-model="r.last" label="Last name" autocomplete="off" @update:model-value="suggest(r)" />
-              <Input
-                :data-field="`username-${r.key}`"
-                :model-value="r.username"
-                label="Username"
-                autocapitalize="off"
-                spellcheck="false"
-                autocomplete="off"
-                :error-text="r.errors.username"
-                @update:model-value="typedUsername(r, String($event ?? ''))"
-              />
-              <Select v-model="r.domain" label="Domain" :options="domainOptions" />
-            </div>
-            <Button
-              variant="ghost"
-              square
-              class="mt-6.5 shrink-0"
-              :aria-label="`Remove user ${i + 1}`"
-              @click="removeRow(r)"
-            >
-              <X />
-            </Button>
-          </fieldset>
 
           <div class="flex flex-wrap items-center gap-3">
             <Button :disabled="rows.length >= MAX" @click="addRow">
