@@ -39,6 +39,14 @@ export function signIn(returnTo = window.location.pathname + window.location.sea
   return userManager.signinRedirect({ state: { returnTo } })
 }
 
+/**
+ * Switch user: Keston ID's account chooser (every account signed in to this
+ * browser, and "Use a different account"), then back here as the one picked.
+ */
+export function switchUser() {
+  return userManager.signinRedirect({ prompt: 'select_account', state: { returnTo: '/' } })
+}
+
 export function signOut() {
   return userManager.signoutRedirect()
 }

@@ -2,6 +2,7 @@
 import { AppWindow, Building2, House, KeyRound, Settings, Users } from '@lucide/vue'
 import {
   AppShell,
+  Button,
   Card,
   NotificationPane,
   Spinner,
@@ -12,7 +13,7 @@ import {
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation } from '../lib/api'
-import { signOut } from '../lib/auth'
+import { signOut, switchUser } from '../lib/auth'
 
 /**
  * Every Keston Admin page: the Keston header (with the notifications bell),
@@ -132,9 +133,16 @@ function accountSettings() {
 <template>
   <div v-if="error" class="flex min-h-dvh items-center justify-center bg-background p-4">
     <Card class="w-full max-w-100">
-      <div class="flex flex-col gap-2">
-        <h1 class="text-xl font-bold">You can't use Keston Admin</h1>
-        <p class="text-sm" role="alert">{{ error }}</p>
+      <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-2">
+          <h1 class="text-xl font-bold">You can't use Keston Admin</h1>
+          <p class="text-sm" role="alert">{{ error }}</p>
+        </div>
+        <!-- Signed in as someone who isn't an admin: try another account. -->
+        <div class="flex flex-wrap gap-2">
+          <Button variant="primary" @click="switchUser()">Switch user</Button>
+          <Button @click="signOut()">Sign out</Button>
+        </div>
       </div>
     </Card>
   </div>
@@ -146,8 +154,9 @@ function accountSettings() {
     :sections="nav"
     :user="user"
     :link-component="RouterLink"
-    :user-actions="['account-settings', 'log-out']"
+    :user-actions="['account-settings', 'switch-account', 'log-out']"
     @account-settings="accountSettings"
+    @switch-account="switchUser()"
     @log-out="signOut()"
   >
     <template #header-trailing>
