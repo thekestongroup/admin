@@ -12,7 +12,6 @@ import {
 } from '@thekestongroup/ui'
 import { computed, ref } from 'vue'
 import { ApiError, api, type BulkResult, type Group, type PermissionId, type User } from '../lib/api'
-import { downloadCsv } from '../lib/csv'
 import ActionBar, { type Action } from './ActionBar.vue'
 import BulkSummary from './BulkSummary.vue'
 import PasswordField from './PasswordField.vue'
@@ -78,11 +77,6 @@ const autoPassword = ref(true)
 const password = ref('')
 const passwordValid = ref(false)
 const requireChange = ref(true)
-const giveOut = ref<'show' | 'csv'>('show')
-const giveOutOptions = [
-  { label: 'Show them to me', value: 'show', description: 'Once, after they’re reset, with a CSV to download if you want it.' },
-  { label: 'Download them as a CSV', value: 'csv', description: 'Straight away, without showing them.' },
-]
 
 // Change sign-in status
 const signIn = ref<'block' | 'allow'>('block')
@@ -104,7 +98,6 @@ function ask(k: Kind) {
   autoPassword.value = true
   password.value = ''
   requireChange.value = true
-  giveOut.value = 'show'
   signIn.value = 'block'
   addTo.value = []
   removeFrom.value = []
@@ -131,7 +124,6 @@ const confirm = computed(() => {
 const results = ref<BulkResult[]>([])
 const summaryTitle = ref('')
 const summaryOpen = ref(false)
-const downloaded = ref(false)
 
 function check(): boolean {
   errors.value = {}
@@ -160,8 +152,6 @@ async function run() {
     else if (k === 'sign-in') res = await api.bulk(props.orgId, signIn.value === 'block' ? 'disable' : 'enable', ids)
     else if (k === 'groups') res = await api.bulkGroups(props.orgId, ids, addTo.value, removeFrom.value)
     else res = await api.bulk(props.orgId, 'delete', ids)
-    downloaded.value = k === 'reset-password' && autoPassword.value && giveOut.value === 'csv'
-    if (downloaded.value) downloadCsv(res.results)
     results.value = res.results
     summaryTitle.value = k === 'sign-in' ? (signIn.value === 'block' ? 'Block sign-in' : 'Allow sign-in') : titles[k]
     status.value = 'idle'
@@ -178,7 +168,7 @@ async function run() {
 
 <template>
   <ActionBar :actions="actions" :label="selected.length ? `Actions for ${count}` : 'User actions'">
-    <p v-if="selected.length" class="mr-2 ml-4 text-sm font-bold" aria-live="polite">{{ count }}</p>
+    <p v-if="selected.length" class="mx-3 text-sm font-bold" aria-live="polite">{{ count }}</p>
   </ActionBar>
 
   <Slideover v-model:open="open" :title="kind ? titles[kind] : ''" :description="count" initial-focus="auto">
@@ -205,7 +195,6 @@ async function run() {
           label="Require these users to change their passwords on next sign in"
           description="Recommended, so only they know their password."
         />
-        <RadioGroup v-if="autoPassword" v-model="giveOut" label="New passwords" :options="giveOutOptions" />
       </div>
 
       <!-- Change sign-in status -->
@@ -255,5 +244,5 @@ async function run() {
     </template>
   </Slideover>
 
-  <BulkSummary v-model:open="summaryOpen" :title="summaryTitle" :results="results" :downloaded="downloaded" />
+  <BulkSummary v-model:open="summaryOpen" :title="summaryTitle" :results="results" />
 </template>

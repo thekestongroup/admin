@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, CircleCheck, Download, Plus, TriangleAlert, X } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, CircleCheck, Plus, TriangleAlert, X } from '@lucide/vue'
 import {
   Button,
   type ButtonStatus,
@@ -20,7 +20,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
 import PasswordField from '../components/PasswordField.vue'
-import { downloadCsv } from '../lib/csv'
+import UserDetailsTable from '../components/UserDetailsTable.vue'
 
 /**
  * Adding a list of users at once, in steps: Users (a row each: first name,
@@ -234,11 +234,7 @@ const productNames = computed(() =>
   licences.value.map((id) => products.value?.find((p) => p.id === id)?.name ?? id).join(', '),
 )
 const shared = computed(() => !!results.value?.length && !results.value.some((r) => r.password))
-const addedColumns = computed<TableColumn<BulkResult>[]>(() => [
-  { key: 'name', label: 'Name', rowHeader: true },
-  { key: 'email', label: 'Email' },
-  ...(shared.value ? [] : [{ key: 'password', label: 'Temporary password' }]),
-])
+
 const skippedColumns: TableColumn<BulkResult>[] = [
   { key: 'name', label: 'Name', rowHeader: true },
   { key: 'email', label: 'Email' },
@@ -271,8 +267,8 @@ const skippedColumns: TableColumn<BulkResult>[] = [
           <p class="max-w-prose text-sm text-black/65">
             <template v-if="added.length && shared">They sign in with their email and the password you set.</template>
             <template v-else-if="added.length">
-              Give each person their email and temporary password securely. The passwords are shown only once: once you
-              leave this page, they’re gone.
+              Give each person their email and temporary password securely: print or download them now. The passwords
+              are shown only once: once you leave this page, they’re gone.
               <template v-if="requireChange">They’ll choose their own when they first sign in.</template>
             </template>
             <template v-if="skipped.length"> {{ plural(skipped.length) }} couldn’t be added, listed below.</template>
@@ -280,17 +276,12 @@ const skippedColumns: TableColumn<BulkResult>[] = [
         </div>
       </Card>
 
-      <Card v-if="added.length" title="Added" :description="canAssign ? `Licences: ${productNames || 'none'}` : undefined" padding="none">
-        <template #actions>
-          <Button v-if="!shared" size="sm" @click="downloadCsv(added)">
-            <template #leading><Download /></template>
-            Download as CSV
-          </Button>
-        </template>
-        <Table :columns="addedColumns" :rows="added" :row-key="(_r: BulkResult, i: number) => i" size="sm" caption="Users added">
-          <template #cell-password="{ row }"><span class="font-mono select-all">{{ row.password }}</span></template>
-        </Table>
-      </Card>
+      <UserDetailsTable
+        v-if="added.length"
+        :results="added"
+        title="Users added"
+        :description="canAssign ? `Licences: ${productNames || 'none'}` : undefined"
+      />
 
       <Card v-if="skipped.length" title="Not added" padding="none">
         <Table :columns="skippedColumns" :rows="skipped" :row-key="(_r: BulkResult, i: number) => i" size="sm" caption="Users not added" />

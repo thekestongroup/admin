@@ -4,7 +4,8 @@ import type { Component } from 'vue'
 import { RouterLink } from 'vue-router'
 
 /**
- * A row of everyday actions under a page's title: ghost buttons with an
+ * A row of everyday actions under a page's title, in a white bar like a
+ * Card: ghost buttons with an
  * icon. Matches PageHeader's toolbar in
  * @thekestongroup/ui (not released yet); swap to that once it is.
  */
@@ -21,7 +22,7 @@ defineSlots<{ default?(): unknown }>()
 </script>
 
 <template>
-  <div role="group" :aria-label="label" class="-ml-4 flex min-h-9.5 flex-wrap items-center gap-1">
+  <div role="group" :aria-label="label" class="flex flex-wrap items-center gap-1 rounded-lg border border-black/15 bg-white p-1">
     <slot />
     <Button
       v-for="a in actions"
