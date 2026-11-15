@@ -6,9 +6,8 @@ import {
   Card,
   EmptyState,
   Input,
+  type InputProps,
   PageHeader,
-  Select,
-  type SelectProps,
   Slideover,
   Spinner,
   Switch,
@@ -19,7 +18,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MfaSettings from '../components/MfaSettings.vue'
-import { usernameFormats, type UsernameFormat } from '../lib/usernames'
+import { checkFormula, suggestUsername } from '../lib/usernames'
 import { ApiError, api, loadMe, type Me, type Organisation, type ProfileEditing } from '../lib/api'
 
 /**
@@ -47,7 +46,7 @@ onMounted(async () => {
   try {
     const [settings, o, m] = await Promise.all([api.settings(orgId), api.organisation(orgId), loadMe()])
     Object.assign(editing, settings.profileEditing)
-    usernameFormat.value = settings.usernameFormat
+    usernameFormat.value = savedFormat.value = settings.usernameFormat
     org.value = o
     me.value = m
     loaded.value = true
@@ -64,24 +63,35 @@ const fields: { key: keyof ProfileEditing; label: string; description: string }[
 
 // ── Username format ─────────────────────────────────────────────────────────
 
-const usernameFormat = ref<UsernameFormat>('first.last')
-const formatState = ref<{ status?: SelectProps['status']; text?: string }>({})
-const formatOptions = computed(() =>
-  usernameFormats.map((f) => ({ label: f.label, value: f.value, description: `e.g. ${f.example}@${org.value?.domain ?? 'example.com'}` })),
+const usernameFormat = ref('{first}.{last}')
+const savedFormat = ref('{first}.{last}')
+const formatError = computed(() => checkFormula(usernameFormat.value))
+const formatState = ref<{ status?: InputProps['status']; text?: string }>({})
+const examples = [
+  ['Jo', 'Bloggs'],
+  ['Zoë', 'O’Brien'],
+]
+const preview = computed(() =>
+  formatError.value ? '' : examples.map(([f, l]) => `${f} ${l} → ${suggestUsername(usernameFormat.value, f!, l!)}@${org.value?.domain ?? 'example.com'}`).join(', '),
 )
-async function saveFormat(value: unknown) {
-  const before = usernameFormat.value
-  usernameFormat.value = value as UsernameFormat
+let formatTimer: ReturnType<typeof setTimeout> | undefined
+function editFormat(value: string) {
+  usernameFormat.value = value
+  formatState.value = {}
+  clearTimeout(formatTimer)
+  if (formatError.value || value.trim() === savedFormat.value) return
+  formatTimer = setTimeout(saveFormat, 800)
+}
+async function saveFormat() {
   formatState.value = { status: 'loading', text: 'Saving…' }
   try {
-    usernameFormat.value = (await api.saveUsernameFormat(orgId, usernameFormat.value)).usernameFormat
+    savedFormat.value = (await api.saveUsernameFormat(orgId, usernameFormat.value.trim())).usernameFormat
     formatState.value = { status: 'success', text: 'Saved' }
     setTimeout(() => {
       if (formatState.value.status === 'success') formatState.value = {}
     }, 2000)
-  } catch {
-    usernameFormat.value = before
-    formatState.value = { status: 'error', text: 'Couldn’t save. Try again.' }
+  } catch (e) {
+    formatState.value = { status: 'error', text: e instanceof Error ? e.message : 'Couldn’t save. Try again.' }
   }
 }
 
@@ -168,15 +178,21 @@ async function save(key: keyof ProfileEditing, on: boolean) {
       title="New users"
       description="When you add users, their username is filled in from their name this way. You can still change it."
     >
-      <Select
-        :model-value="usernameFormat"
-        label="Username format"
-        :options="formatOptions"
-        :status="formatState.status"
-        :status-text="formatState.text"
-        class="max-w-sm"
-        @update:model-value="saveFormat"
-      />
+      <div class="flex flex-col gap-2">
+        <Input
+          :model-value="usernameFormat"
+          label="Username format"
+          helper="{first} and {last} are their names. {first:1} is the first character of their first name; {last:-2} the last 2 of their last name. Dots, dashes and underscores stay as they are."
+          autocapitalize="off"
+          spellcheck="false"
+          autocomplete="off"
+          :error-text="formatError"
+          :status="formatState.status"
+          :status-text="formatState.text || (preview ? `e.g. ${preview}` : undefined)"
+          class="max-w-xl"
+          @update:model-value="editFormat(String($event ?? ''))"
+        />
+      </div>
     </Card>
 
     <Card

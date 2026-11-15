@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { Checkbox, RadioGroup } from '@thekestongroup/ui'
+import { RadioGroup, Select } from '@thekestongroup/ui'
 import { computed } from 'vue'
 import type { AdminRole, PermissionId } from '../lib/api'
 
 /**
  * Whether someone uses the admin centre, and with which admin roles: User
- * (no access), or Admin roles, ticking Global admin and/or built-in roles.
- * Someone can give a role only if they have every permission it gives
- * (global admins can give any, and only they can give Global admin).
+ * (no access), or Admin roles, chosen from a searchable list (Global admin,
+ * User admin…). Someone can give a role only if they have every permission
+ * it gives (global admins can give any, and only they can give Global
+ * admin).
  */
 export interface Roles {
   admin: boolean
@@ -34,35 +35,34 @@ const access = computed({
   set: (v) => (model.value = { ...model.value, admin: v === 'admin' }),
 })
 
+const GLOBAL = 'global_admin'
 const canGive = (r: AdminRole) => props.iAmGlobalAdmin || r.permissions.every((p) => props.myPermissions.includes(p))
-function toggle(id: string, on: boolean) {
-  const roles = on ? [...model.value.roles, id] : model.value.roles.filter((r) => r !== id)
-  model.value = { ...model.value, roles }
-}
+const options = computed(() => [
+  { label: 'Global admin', value: GLOBAL, description: 'Can do everything, including making other global admins.', disabled: !props.iAmGlobalAdmin },
+  ...props.catalogue.map((r) => ({ label: r.label, value: r.id, description: r.description, disabled: !canGive(r) })),
+])
+const chosen = computed({
+  get: () => (model.value.global ? [GLOBAL, ...model.value.roles] : model.value.roles),
+  set: (v: unknown) => {
+    const ids = (v as string[] | undefined) ?? []
+    model.value = { ...model.value, global: ids.includes(GLOBAL), roles: ids.filter((id) => id !== GLOBAL) }
+  },
+})
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <RadioGroup v-model="access" label="Admin centre access" :options="accessOptions" />
-    <fieldset v-if="model.admin" class="flex flex-col gap-3">
-      <legend class="mb-1 text-sm font-bold">Roles</legend>
-      <Checkbox
-        :model-value="model.global"
-        label="Global admin"
-        description="Can do everything, including making other global admins."
-        :disabled="!iAmGlobalAdmin"
-        @update:model-value="model = { ...model, global: !!$event }"
-      />
-      <Checkbox
-        v-for="r in catalogue"
-        :key="r.id"
-        :model-value="model.global || model.roles.includes(r.id)"
-        :label="r.label"
-        :description="r.description"
-        :disabled="model.global || !canGive(r)"
-        @update:model-value="toggle(r.id, !!$event)"
-      />
-      <p v-if="errorText" class="text-sm text-red" role="alert">{{ errorText }}</p>
-    </fieldset>
+    <Select
+      v-if="model.admin"
+      v-model="chosen"
+      label="Roles"
+      helper="Global admin can do everything; the others, just their part."
+      placeholder="Search roles…"
+      :options="options"
+      :error-text="errorText"
+      multiple
+      searchable
+    />
   </div>
 </template>

@@ -1,19 +1,17 @@
 /**
- * Suggesting a new user's username from their name, the way their
- * organisation chose (Settings → Username format).
+ * Suggesting a new user's username from their name with their
+ * organisation's formula (Settings → Username format). The same rules as
+ * Keston ID (store/usernames.go):
+ *   {first} {last}   their first or last name
+ *   {first:2}        its first 2 characters
+ *   {last:-3}        its last 3 characters
+ * with letters, numbers, dots, dashes and underscores as they are.
  */
-export type UsernameFormat = 'first.last' | 'firstlast' | 'f.last' | 'flast' | 'first.l' | 'last.first'
+export const DEFAULT_FORMULA = '{first}.{last}'
 
-export const usernameFormats: { value: UsernameFormat; label: string; example: string }[] = [
-  { value: 'first.last', label: 'First name, dot, last name', example: 'jo.bloggs' },
-  { value: 'firstlast', label: 'First name and last name', example: 'jobloggs' },
-  { value: 'f.last', label: 'First initial, dot, last name', example: 'j.bloggs' },
-  { value: 'flast', label: 'First initial and last name', example: 'jbloggs' },
-  { value: 'first.l', label: 'First name, dot, last initial', example: 'jo.b' },
-  { value: 'last.first', label: 'Last name, dot, first name', example: 'bloggs.jo' },
-]
+const token = /\{(first|last)(?::(-?[1-9][0-9]?))?\}/g
 
-/** A name part in the characters a username allows: accents dropped, lowercase letters and numbers. */
+/** A name in the characters a username allows: accents dropped, lowercase letters and numbers. */
 const part = (s: string) =>
   s
     .normalize('NFKD')
@@ -21,23 +19,26 @@ const part = (s: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '')
 
-/** e.g. ("f.last", "Zoë", "O'Brien") → "z.obrien". Empty parts are left out. */
-export function suggestUsername(format: UsernameFormat | undefined, first: string, last: string): string {
-  const f = part(first)
-  const l = part(last)
-  const join = (...xs: string[]) => xs.filter(Boolean).join('.')
-  switch (format) {
-    case 'firstlast':
-      return f + l
-    case 'f.last':
-      return join(f.slice(0, 1), l)
-    case 'flast':
-      return f.slice(0, 1) + l
-    case 'first.l':
-      return join(f, l.slice(0, 1))
-    case 'last.first':
-      return join(l, f)
-    default:
-      return join(f, l)
-  }
+/** e.g. ("{first:1}.{last}", "Zoë", "O'Brien") → "z.obrien". */
+export function suggestUsername(formula: string | undefined, first: string, last: string): string {
+  const parts: Record<string, string> = { first: part(first), last: part(last) }
+  const out = (formula || DEFAULT_FORMULA).replace(token, (_m, which: string, n?: string) => {
+    const v = parts[which] ?? ''
+    if (!n) return v
+    const k = Number(n)
+    if (k > 0 && k < v.length) return v.slice(0, k)
+    if (k < 0 && -k < v.length) return v.slice(k)
+    return v
+  })
+  return out.replace(/[._-]{2,}/g, (s) => s[0]!).replace(/^[._-]+|[._-]+$/g, '')
+}
+
+/** What's wrong with a formula, or undefined if it's usable (as Keston ID checks it). */
+export function checkFormula(f: string): string | undefined {
+  if (!f.trim() || f.length > 100) return 'Enter a formula, e.g. {first}.{last}'
+  if (!new RegExp(token.source).test(f)) return 'Use {first} or {last} at least once'
+  const rest = f.replace(token, '')
+  if (/[{}]/.test(rest)) return 'Use {first}, {last}, {first:2} (first 2 characters) or {last:-2} (last 2)'
+  if (!/^[a-z0-9._-]*$/.test(rest)) return 'Between them, use only lowercase letters, numbers, dots, dashes or underscores'
+  return undefined
 }
