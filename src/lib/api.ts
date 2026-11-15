@@ -166,6 +166,14 @@ export interface AdminRole {
   permissions: PermissionId[]
 }
 
+/** An app someone has (or is kept from): from their licences and app access. */
+export interface UserApp {
+  id: string
+  name: string
+  publisher: string
+  access: 'forced' | 'enabled' | 'disabled' | 'no_licence'
+}
+
 /** One of Keston's products (e.g. Keston Work): someone needs a licence to use it. */
 export interface Product {
   id: string
@@ -443,6 +451,7 @@ export const api = {
       roles?: string[]
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
+  userApps: (orgId: string, userId: string) => request<UserApp[]>('GET', `${org(orgId)}/users/${userId}/apps`),
   roles: (orgId: string) => request<AdminRole[]>('GET', `${org(orgId)}/roles`),
   setRoles: (orgId: string, userId: string, roles: string[]) =>
     request<{ roles: string[] }>('PUT', `${org(orgId)}/users/${userId}/roles`, { roles }),

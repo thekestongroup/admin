@@ -150,19 +150,20 @@ async function toggle(a: User) {
 
 <template>
   <div class="flex flex-col gap-3 p-4 sm:p-6">
-    <PageHeader title="Users">
-      <BulkActions
-        v-if="!loadError"
-        ref="bulk"
-        :org-id="orgId"
-        :selected="selectedUsers"
-        :groups="groups"
-        :can="has"
-        @add="adding = true"
-        @clear="selected = new Set()"
-        @done="bulkDone"
-      />
+    <PageHeader title="Users" :toolbar="bulk?.actions ?? []" :link-component="RouterLink">
+      <template v-if="bulk?.count" #badge><Badge size="sm" aria-live="polite">{{ bulk.count }}</Badge></template>
     </PageHeader>
+    <BulkActions
+      v-if="!loadError"
+      ref="bulk"
+      :org-id="orgId"
+      :selected="selectedUsers"
+      :groups="groups"
+      :can="has"
+      @add="adding = true"
+      @clear="selected = new Set()"
+      @done="bulkDone"
+    />
 
     <Card v-if="loadError">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the users" :description="loadError" />

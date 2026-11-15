@@ -5,6 +5,7 @@ import {
   type ButtonStatus,
   Checkbox,
   Notification,
+  type PageHeaderAction,
   RadioGroup,
   Select,
   Slideover,
@@ -12,12 +13,12 @@ import {
 } from '@thekestongroup/ui'
 import { computed, ref } from 'vue'
 import { ApiError, api, type BulkResult, type Group, type PermissionId, type User } from '../lib/api'
-import ActionBar, { type Action } from './ActionBar.vue'
 import BulkSummary from './BulkSummary.vue'
 import PasswordField from './PasswordField.vue'
 
 /**
- * The Users page's action row, under its title. With nobody ticked: add a
+ * The Users page's toolbar actions (PageHeader shows them) and the panels
+ * behind them. With nobody ticked: add a
  * user or several, deleted users. With users ticked: how many, and what can be done to
  * them all at once (reset passwords, change sign-in status, manage group
  * memberships, delete). Each asks first, then shows what was done and who
@@ -50,7 +51,7 @@ const targets = computed(() => (only.value ? [only.value] : props.selected))
 const forWhom = computed(() => (only.value ? only.value.name : count.value))
 const one = computed(() => targets.value.length === 1)
 
-const actions = computed<Action[]>(() => {
+const actions = computed<PageHeaderAction[]>(() => {
   if (!props.selected.length) {
     return [
       ...(props.can('users.create')
@@ -62,7 +63,7 @@ const actions = computed<Action[]>(() => {
       { label: 'Deleted users', icon: ArchiveRestore, to: `/organisations/${props.orgId}/users/deleted` },
     ]
   }
-  const out: Action[] = []
+  const out: PageHeaderAction[] = []
   if (props.can('users.reset_password')) out.push({ label: titles['reset-password'], icon: KeyRound, onSelect: () => ask('reset-password') })
   if (props.can('users.status')) out.push({ label: titles['sign-in'], icon: Ban, onSelect: () => ask('sign-in') })
   if (props.can('groups.manage') || props.can('permissions.assign'))
@@ -134,6 +135,10 @@ const summaryTitle = ref('')
 const summaryOpen = ref(false)
 
 defineExpose({
+  /** The Users page's toolbar: add users with nobody ticked, else what can be done to them. */
+  actions,
+  /** "2 users selected", or "" with nobody ticked. */
+  count: computed(() => (props.selected.length ? count.value : '')),
   /** One user's panel, from their row's menu. */
   open: (k: Kind, user: User) => ask(k, user),
 })
@@ -180,9 +185,6 @@ async function run() {
 </script>
 
 <template>
-  <ActionBar :actions="actions" :label="selected.length ? `Actions for ${count}` : 'User actions'">
-    <p v-if="selected.length" class="mx-3 text-sm font-bold" aria-live="polite">{{ count }}</p>
-  </ActionBar>
 
   <Slideover v-model:open="open" :title="kind ? titles[kind] : ''" :description="forWhom" initial-focus="auto">
     <template #body>

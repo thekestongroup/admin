@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageUp, Pencil, Plus, Trash2, TriangleAlert } from '@lucide/vue'
+import { AppWindow, ImageUp, Pencil, Plus, Trash2, TriangleAlert, UserRound } from '@lucide/vue'
 import {
   Avatar,
   Badge,
@@ -15,15 +15,17 @@ import {
   Select,
   Slideover,
   Spinner,
+  Tabs,
   SummaryList,
   formatDate,
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DeleteUserCard from '../components/DeleteUserCard.vue'
 import AdminRolesCard from '../components/AdminRolesCard.vue'
 import LicencesCard from '../components/LicencesCard.vue'
+import UserAppsCard from '../components/UserAppsCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import RecentActivity from '../components/RecentActivity.vue'
 import SignInCard from '../components/SignInCard.vue'
@@ -37,6 +39,7 @@ import { ApiError, api, loadMe, type Group, type Organisation, type Permission, 
  * only for users with the same permissions as you or fewer.
  */
 const route = useRoute()
+const router = useRouter()
 const orgId = route.params.orgId as string
 const userId = route.params.userId as string
 const { notify } = useNotifications()
@@ -74,6 +77,16 @@ onMounted(async () => {
 })
 
 const isMe = computed(() => user.value?.id === myId.value)
+
+// The open tab, kept in the URL (?tab=licences) so it survives a reload.
+const tabs = [
+  { value: 'account', label: 'Account', icon: UserRound },
+  { value: 'licences', label: 'Licences & Apps', icon: AppWindow },
+]
+const tab = computed({
+  get: () => (route.query.tab === 'licences' ? 'licences' : 'account'),
+  set: (v: string | undefined) => router.replace({ query: { ...route.query, tab: v === 'licences' ? 'licences' : undefined } }),
+})
 
 /** After their roles change: their permissions, as Keston ID now has them. */
 async function reload() {
@@ -325,133 +338,144 @@ async function toggle() {
         </p>
       </Card>
 
-      <Card title="Profile">
-        <template v-if="can('users.edit')" #actions>
-          <Button size="sm" @click="startEdit">
-            <template #leading><Pencil /></template>
-            Edit
-          </Button>
-        </template>
-        <div class="flex flex-col gap-4 @sm:flex-row @sm:items-start @sm:gap-6">
-          <Avatar :user="{ name: user.name, avatar: user.avatar }" size="xl" decorative />
-          <SummaryList :items="details" class="min-w-0 flex-1" />
-        </div>
-      </Card>
+      <Tabs v-model="tab" :tabs="tabs" label="User details">
+        <template #account>
+          <div class="flex flex-col gap-6">
+              <Card title="Profile">
+                <template v-if="can('users.edit')" #actions>
+                  <Button size="sm" @click="startEdit">
+                    <template #leading><Pencil /></template>
+                    Edit
+                  </Button>
+                </template>
+                <div class="flex flex-col gap-4 @sm:flex-row @sm:items-start @sm:gap-6">
+                  <Avatar :user="{ name: user.name, avatar: user.avatar }" size="xl" decorative />
+                  <SummaryList :items="details" class="min-w-0 flex-1" />
+                </div>
+              </Card>
 
-      <Card v-if="can('users.reset_password')" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
-        <div><Button @click="startReset">Reset password</Button></div>
-      </Card>
+              <Card v-if="can('users.reset_password')" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
+                <div><Button @click="startReset">Reset password</Button></div>
+              </Card>
 
-      <Card v-if="!user.support" title="Multi-factor authentication (MFA)">
-        <template #actions>
-          <Badge v-if="user.mfa" color="green">On</Badge>
-          <Badge v-else color="yellow">Off</Badge>
-        </template>
-        <div class="flex flex-col gap-3">
-          <p v-if="user.mfa" class="text-sm text-black/65">
-            They sign in with their password and then
-            <template v-if="user.passkeys">a passkey or security key ({{ passkeyCount }})</template>
-            <template v-else>a code from their authenticator app</template>, unless they sign in with a passkey alone.
-            If they’ve lost what they use, turn MFA off so they can sign in with their password, then set it up again.
-          </p>
-          <p v-else class="text-sm text-black/65">
-            They sign in with their password only. They can turn MFA on in their Keston account.
-          </p>
-          <div v-if="user.mfa && can('users.mfa')" class="flex flex-wrap gap-2">
-            <Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button>
-            <Button v-if="user.passkeys" @click="removingPasskeys = true">Remove passkeys</Button>
-          </div>
-        </div>
-      </Card>
+              <Card v-if="!user.support" title="Multi-factor authentication (MFA)">
+                <template #actions>
+                  <Badge v-if="user.mfa" color="green">On</Badge>
+                  <Badge v-else color="yellow">Off</Badge>
+                </template>
+                <div class="flex flex-col gap-3">
+                  <p v-if="user.mfa" class="text-sm text-black/65">
+                    They sign in with their password and then
+                    <template v-if="user.passkeys">a passkey or security key ({{ passkeyCount }})</template>
+                    <template v-else>a code from their authenticator app</template>, unless they sign in with a passkey alone.
+                    If they’ve lost what they use, turn MFA off so they can sign in with their password, then set it up again.
+                  </p>
+                  <p v-else class="text-sm text-black/65">
+                    They sign in with their password only. They can turn MFA on in their Keston account.
+                  </p>
+                  <div v-if="user.mfa && can('users.mfa')" class="flex flex-wrap gap-2">
+                    <Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button>
+                    <Button v-if="user.passkeys" @click="removingPasskeys = true">Remove passkeys</Button>
+                  </div>
+                </div>
+              </Card>
 
-      <SignInCard
-        v-if="!user.support"
-        ref="signInCard"
-        :org-id="orgId"
-        :user="user"
-        :can-require-password="can('users.reset_password')"
-        :can-issue-passes="can('users.access_pass')"
-      />
+              <SignInCard
+                v-if="!user.support"
+                ref="signInCard"
+                :org-id="orgId"
+                :user="user"
+                :can-require-password="can('users.reset_password')"
+                :can-issue-passes="can('users.access_pass')"
+              />
 
-      <AdminRolesCard
-        v-if="!user.support && !isMe && user.canChange && (iAmGlobalAdmin || can('permissions.assign'))"
-        :org-id="orgId"
-        :user="user"
-        :i-am-global-admin="iAmGlobalAdmin"
-        :my-permissions="org?.permissions ?? []"
-        @changed="reload"
-      />
+              <AdminRolesCard
+                v-if="!user.support && !isMe && user.canChange && (iAmGlobalAdmin || can('permissions.assign'))"
+                :org-id="orgId"
+                :user="user"
+                :i-am-global-admin="iAmGlobalAdmin"
+                :my-permissions="org?.permissions ?? []"
+                @changed="reload"
+              />
 
-      <Card
-        v-if="!user.support"
-        title="Groups and permissions"
-        description="Their groups set their app access, and what they can do in Keston Admin."
-      >
-        <div class="flex flex-col gap-4">
-          <p v-if="user.role === 'global_admin'" class="text-sm">As a global admin, they can do everything.</p>
-          <ul v-else-if="user.permissions.length" class="flex flex-wrap gap-2" aria-label="Permissions">
-            <li v-for="p in catalog.filter((c) => user!.permissions.includes(c.id))" :key="p.id">
-              <Badge size="sm" color="primary">{{ p.label }}</Badge>
-            </li>
-          </ul>
-          <p v-else class="text-sm text-black/65">None. They can’t use Keston Admin.</p>
-          <div class="flex flex-col gap-3">
-            <p class="text-sm font-bold">Groups</p>
-            <ul v-if="user.groups.length" class="flex flex-col divide-y divide-black/10">
-              <li v-for="g in user.groups" :key="g.id" class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
-                <span class="flex min-w-0 flex-1 flex-col">
-                  <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="truncate text-sm">{{ g.name }}</Link>
-                  <span class="text-xs text-black/65">
-                    {{ g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : 'App access only' }}
-                  </span>
-                </span>
-                <Button
-                  v-if="mayChange(allGroups.find((x) => x.id === g.id) ?? g)"
-                  size="sm"
-                  variant="ghost"
-                  :status="groupBusy === g.id ? 'loading' : 'idle'"
-                  @click="removeFromGroup(g)"
-                >
-                  Remove<span class="sr-only"> from {{ g.name }}</span>
-                </Button>
-              </li>
-            </ul>
-            <p v-else class="text-sm text-black/65">Not in any groups.</p>
-            <div v-if="groupOptions.length" class="flex items-start gap-2">
-              <Select v-model="groupChoice" label="Add to a group" :options="groupOptions" placeholder="Choose a group" class="flex-1" />
-              <Button
-                class="mt-6.5 shrink-0"
-                :disabled="!groupChoice"
-                :status="groupBusy === 'add' ? 'loading' : 'idle'"
-                loading-text="Adding"
-                @click="addToGroup"
+              <Card
+                v-if="!user.support"
+                title="Groups and permissions"
+                description="Their groups set their app access, and what they can do in Keston Admin."
               >
-                <template #leading><Plus /></template>
-                Add
-              </Button>
-            </div>
+                <div class="flex flex-col gap-4">
+                  <p v-if="user.role === 'global_admin'" class="text-sm">As a global admin, they can do everything.</p>
+                  <ul v-else-if="user.permissions.length" class="flex flex-wrap gap-2" aria-label="Permissions">
+                    <li v-for="p in catalog.filter((c) => user!.permissions.includes(c.id))" :key="p.id">
+                      <Badge size="sm" color="primary">{{ p.label }}</Badge>
+                    </li>
+                  </ul>
+                  <p v-else class="text-sm text-black/65">None. They can’t use Keston Admin.</p>
+                  <div class="flex flex-col gap-3">
+                    <p class="text-sm font-bold">Groups</p>
+                    <ul v-if="user.groups.length" class="flex flex-col divide-y divide-black/10">
+                      <li v-for="g in user.groups" :key="g.id" class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                        <span class="flex min-w-0 flex-1 flex-col">
+                          <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="truncate text-sm">{{ g.name }}</Link>
+                          <span class="text-xs text-black/65">
+                            {{ g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : 'App access only' }}
+                          </span>
+                        </span>
+                        <Button
+                          v-if="mayChange(allGroups.find((x) => x.id === g.id) ?? g)"
+                          size="sm"
+                          variant="ghost"
+                          :status="groupBusy === g.id ? 'loading' : 'idle'"
+                          @click="removeFromGroup(g)"
+                        >
+                          Remove<span class="sr-only"> from {{ g.name }}</span>
+                        </Button>
+                      </li>
+                    </ul>
+                    <p v-else class="text-sm text-black/65">Not in any groups.</p>
+                    <div v-if="groupOptions.length" class="flex items-start gap-2">
+                      <Select v-model="groupChoice" label="Add to a group" :options="groupOptions" placeholder="Choose a group" class="flex-1" />
+                      <Button
+                        class="mt-6.5 shrink-0"
+                        :disabled="!groupChoice"
+                        :status="groupBusy === 'add' ? 'loading' : 'idle'"
+                        loading-text="Adding"
+                        @click="addToGroup"
+                      >
+                        <template #leading><Plus /></template>
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card v-if="!isMe && can('users.status')" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
+                <div>
+                  <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
+                    {{ user.status === 'active' ? 'Disable user' : 'Enable user' }}
+                  </Button>
+                </div>
+              </Card>
+
+              <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
+              <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
           </div>
-        </div>
-      </Card>
-
-      <Card v-if="!isMe && can('users.status')" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
-        <div>
-          <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
-            {{ user.status === 'active' ? 'Disable user' : 'Enable user' }}
-          </Button>
-        </div>
-      </Card>
-
-      <LicencesCard
-        v-if="!user.support"
-        v-model="user.licences"
-        :org-id="orgId"
-        :user-id="userId"
-        :name="user.name"
-        :can-edit="can('users.licences')"
-      />
-      <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
-      <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
+        </template>
+        <template #licences>
+          <div class="flex flex-col gap-6">
+              <LicencesCard
+                v-if="!user.support"
+                v-model="user.licences"
+                :org-id="orgId"
+                :user-id="userId"
+                :name="user.name"
+                :can-edit="can('users.licences')"
+              />
+            <UserAppsCard :org-id="orgId" :user-id="userId" :name="user.name" />
+          </div>
+        </template>
+      </Tabs>
     </template>
 
     <Slideover v-model:open="editing" title="Edit user" initial-focus="auto">
