@@ -152,7 +152,7 @@ const counts = [
                 class="flex-1"
                 @keydown.enter.prevent="addWord"
               />
-              <Button class="mt-[1.625rem] shrink-0" @click="addWord">
+              <Button class="mt-6.5 shrink-0" @click="addWord">
                 <template #leading><Plus /></template>
                 Add
               </Button>

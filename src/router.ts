@@ -63,6 +63,16 @@ export const router = createRouter({
           meta: { title: 'Apps' },
         },
         {
+          path: 'organisations/:orgId/groups',
+          component: () => import('./pages/Groups.vue'),
+          meta: { title: 'Groups' },
+        },
+        {
+          path: 'organisations/:orgId/groups/:groupId',
+          component: () => import('./pages/GroupDetail.vue'),
+          meta: { title: 'Group' },
+        },
+        {
           path: 'organisations/:orgId/settings',
           component: () => import('./pages/OrganisationSettings.vue'),
           meta: { title: 'Settings' },

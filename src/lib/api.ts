@@ -48,17 +48,34 @@ export interface Organisation {
   deleteAfter?: string
 }
 
-export interface AppSummary {
+/** forced: on, can't be turned off · enabled: on, each person can turn it off · disabled: off. */
+export type AppMode = 'forced' | 'enabled' | 'disabled'
+
+export interface AppInfo {
   id: string
   name: string
   publisher: string
   verification: 'owned' | 'verified' | 'none'
+  /** One of Keston's own apps: forced unless set otherwise. */
+  builtin: boolean
 }
 
-export interface OrganisationApps {
-  builtin: AppSummary[]
-  organisation: { app: AppSummary; mode: 'enabled' | 'optional'; addedAt: string }[]
-  available: AppSummary[]
+export interface Group {
+  id: string
+  name: string
+  memberCount: number
+  createdAt: string
+}
+
+export interface AppAccess {
+  apps: AppInfo[]
+  groups: Group[]
+  policies: {
+    /** The organisation's default, per app. */
+    default: Record<string, AppMode>
+    /** Per group, per app: overrides the default for the group's members. */
+    groups: Record<string, Record<string, AppMode>>
+  }
 }
 
 export interface SupportRequest {
@@ -236,10 +253,22 @@ export const api = {
     request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
-  apps: (orgId: string) => request<OrganisationApps>('GET', `${org(orgId)}/apps`),
-  setApp: (orgId: string, appId: string, mode: 'enabled' | 'optional') =>
-    request<void>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}`, { mode }),
-  removeApp: (orgId: string, appId: string) => request<void>('DELETE', `${org(orgId)}/apps/${encodeURIComponent(appId)}`),
+  apps: (orgId: string) => request<AppAccess>('GET', `${org(orgId)}/apps`),
+  /** Sets the default (no groupId) or a group's access to an app; mode '' removes the setting. */
+  setAppAccess: (orgId: string, appId: string, mode: AppMode | '', groupId?: string) =>
+    request<void>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}`, { mode, groupId }),
+
+  groups: (orgId: string) => request<Group[]>('GET', `${org(orgId)}/groups`),
+  group: (orgId: string, groupId: string) =>
+    request<{ group: Group; members: User[] }>('GET', `${org(orgId)}/groups/${groupId}`),
+  createGroup: (orgId: string, name: string) => request<Group>('POST', `${org(orgId)}/groups`, { name }),
+  renameGroup: (orgId: string, groupId: string, name: string) =>
+    request<void>('PATCH', `${org(orgId)}/groups/${groupId}`, { name }),
+  deleteGroup: (orgId: string, groupId: string) => request<void>('DELETE', `${org(orgId)}/groups/${groupId}`),
+  addMember: (orgId: string, groupId: string, userId: string) =>
+    request<void>('PUT', `${org(orgId)}/groups/${groupId}/members/${userId}`, {}),
+  removeMember: (orgId: string, groupId: string, userId: string) =>
+    request<void>('DELETE', `${org(orgId)}/groups/${groupId}/members/${userId}`),
   settings: (orgId: string) => request<{ profileEditing: ProfileEditing }>('GET', `${org(orgId)}/settings`),
   saveSettings: (orgId: string, profileEditing: ProfileEditing) =>
     request<{ profileEditing: ProfileEditing }>('PUT', `${org(orgId)}/settings`, { profileEditing }),

@@ -1,178 +1,135 @@
 <script setup lang="ts">
-import { AppWindow, Plus, TriangleAlert } from '@lucide/vue'
-import {
-  Avatar,
-  Badge,
-  Button,
-  type ButtonStatus,
-  Card,
-  EmptyState,
-  PageHeader,
-  RadioGroup,
-  Select,
-  Slideover,
-  Spinner,
-  useNotifications,
-} from '@thekestongroup/ui'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { api, type OrganisationApps } from '../lib/api'
+import { TriangleAlert } from '@lucide/vue'
+import { Card, EmptyState, Link, PageHeader, Select, type SelectProps, Spinner, useNotifications } from '@thekestongroup/ui'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { api, type AppAccess, type AppInfo, type AppMode } from '../lib/api'
 
 /**
- * The apps everyone at the organisation sees under Connected apps in Keston
- * ID: Keston's own (always there), and apps the organisation adds, either
- * enabled for everyone or optional (each person can remove it).
+ * App access, for everyone (the default, which new users get too) or per
+ * group (overriding the default for its users):
+ *   - Forced: on, and they can't turn it off
+ *   - Enabled: on, and each person can turn it off
+ *   - Disabled: off, and they can't use it
+ * Keston's own apps are Forced unless set otherwise; other apps, unless set,
+ * are up to each person. When someone's groups disagree, Disabled wins, then
+ * Forced, then Enabled. Each change saves straight away.
  */
 const route = useRoute()
 const orgId = route.params.orgId as string
 const { notify } = useNotifications()
 
-const apps = ref<OrganisationApps>()
+const data = ref<AppAccess>()
 const error = ref<string>()
-const busy = ref<string>()
-const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
+/** 'everyone' (the default) or a group's id. */
+const EVERYONE = 'everyone'
+const UNSET = 'unset'
+const scope = ref(EVERYONE)
+const group = computed(() => (scope.value === EVERYONE ? undefined : scope.value))
+const saving = reactive<Record<string, { status?: SelectProps['status']; text?: string }>>({})
 
-async function load() {
-  apps.value = await api.apps(orgId)
-}
 onMounted(async () => {
   try {
-    await load()
+    data.value = await api.apps(orgId)
   } catch (e) {
-    error.value = message(e)
+    error.value = e instanceof Error ? e.message : String(e)
   }
 })
 
-const modes = [
-  { label: 'Enabled for everyone', value: 'enabled', description: 'Shown as “Enabled by your organisation”. People can’t remove it.' },
-  { label: 'Optional', value: 'optional', description: 'Shown as “Added by your organisation”. Each person can remove it.' },
+const scopes = computed(() => [
+  { label: 'Everyone (default)', value: EVERYONE, description: 'Also what new users get' },
+  ...(data.value?.groups ?? []).map((g) => ({ label: g.name, value: g.id, description: g.memberCount === 1 ? '1 user' : `${g.memberCount} users` })),
+])
+
+const words: Record<AppMode, string> = { forced: 'Forced', enabled: 'Enabled', disabled: 'Disabled' }
+const modeOptions = [
+  { label: 'Forced', value: 'forced', description: 'On, and they can’t turn it off' },
+  { label: 'Enabled', value: 'enabled', description: 'On, and each person can turn it off' },
+  { label: 'Disabled', value: 'disabled', description: 'Off, and they can’t use it' },
 ]
 
-// Adding an app.
-const adding = ref(false)
-const choice = ref<string>()
-const mode = ref<'enabled' | 'optional'>('optional')
-const addStatus = ref<ButtonStatus>('idle')
-const options = computed(() => (apps.value?.available ?? []).map((a) => ({ label: `${a.name} (${a.publisher})`, value: a.id })))
-
-function startAdding() {
-  choice.value = undefined
-  mode.value = 'optional'
-  addStatus.value = 'idle'
-  adding.value = true
+function defaultMode(app: AppInfo): AppMode | undefined {
+  return data.value?.policies.default[app.id] ?? (app.builtin ? 'forced' : undefined)
 }
 
-async function add() {
-  if (!choice.value) return
-  addStatus.value = 'loading'
+/** The options for an app here: "not set" first (what that means), then the modes. */
+function options(app: AppInfo) {
+  if (group.value) {
+    const d = defaultMode(app)
+    return [{ label: `Use the default (${d ? words[d] : 'people choose'})`, value: UNSET }, ...modeOptions]
+  }
+  return [
+    { label: app.builtin ? 'Forced (Keston’s default)' : 'Not set: people choose', value: UNSET },
+    ...modeOptions,
+  ]
+}
+
+function current(app: AppInfo): string {
+  const p = data.value!.policies
+  return (group.value ? p.groups[group.value]?.[app.id] : p.default[app.id]) ?? UNSET
+}
+
+async function change(app: AppInfo, value: string) {
+  const mode = value === UNSET ? '' : (value as AppMode)
+  const key = app.id
+  saving[key] = { status: 'loading', text: 'Saving…' }
   try {
-    await api.setApp(orgId, choice.value, mode.value)
-    await load()
-    adding.value = false
-    notify({ type: 'success', title: 'App added' })
+    await api.setAppAccess(orgId, app.id, mode, group.value)
+    const p = data.value!.policies
+    const target = group.value ? (p.groups[group.value] ??= {}) : p.default
+    if (mode) target[app.id] = mode
+    else delete target[app.id]
+    saving[key] = { status: 'success', text: 'Saved' }
+    setTimeout(() => {
+      if (saving[key]?.status === 'success') saving[key] = {}
+    }, 2000)
   } catch (e) {
-    addStatus.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t add the app', description: message(e) })
+    saving[key] = { status: 'error', text: 'Couldn’t save. Try again.' }
+    notify({ type: 'error', title: 'Couldn’t save', description: e instanceof Error ? e.message : String(e) })
   }
 }
 
-async function change(appId: string, newMode: 'enabled' | 'optional') {
-  busy.value = appId
-  try {
-    await api.setApp(orgId, appId, newMode)
-    await load()
-  } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change it', description: message(e) })
-  } finally {
-    busy.value = undefined
-  }
-}
-
-async function remove(appId: string, name: string) {
-  busy.value = appId
-  try {
-    await api.removeApp(orgId, appId)
-    await load()
-    notify({ type: 'success', title: `${name} removed`, description: 'It won’t be shown to your people any more.' })
-  } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t remove it', description: message(e) })
-  } finally {
-    busy.value = undefined
-  }
-}
+const builtin = computed(() => data.value?.apps.filter((a) => a.builtin) ?? [])
+const others = computed(() => data.value?.apps.filter((a) => !a.builtin) ?? [])
 </script>
 
 <template>
-  <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Apps" description="What your people see under Connected apps in their Keston account.">
-      <template #actions>
-        <Button variant="primary" :disabled="!apps?.available.length" @click="startAdding">
-          <template #leading><Plus /></template>
-          Add an app
-        </Button>
-      </template>
-    </PageHeader>
+  <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
+    <PageHeader title="Apps" description="Which apps your users have, shown under Connected apps in their Keston account." />
 
     <Card v-if="error">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the apps" :description="error" />
     </Card>
-    <div v-else-if="!apps" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!data" class="flex justify-center py-12"><Spinner label="Loading" /></div>
     <template v-else>
-      <Card title="Keston apps" description="Every organisation has these. Shown as “Enabled by your organisation”.">
-        <ul class="flex flex-col divide-y divide-black/10">
-          <li v-for="app in apps.builtin" :key="app.id" class="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-            <Avatar :user="{ name: app.name }" size="sm" decorative />
-            <span class="flex-1 text-sm font-bold">{{ app.name }}</span>
-            <Badge size="sm" color="blue">Always on</Badge>
-          </li>
-        </ul>
+      <Card>
+        <div class="flex flex-col gap-2">
+          <Select v-model="scope" label="Applies to" :options="scopes" class="max-w-sm" />
+          <p class="text-sm text-black/65">
+            <template v-if="!group">The default, for everyone not covered by a group’s setting.</template>
+            <template v-else>Overrides the default for this group’s users.</template>
+            If someone’s groups disagree, Disabled wins, then Forced, then Enabled.
+            <Link :as="RouterLink" :to="`/organisations/${orgId}/groups`">Manage groups</Link>
+          </p>
+        </div>
       </Card>
 
-      <Card title="Your organisation’s apps">
-        <EmptyState
-          v-if="!apps.organisation.length"
-          size="sm"
-          :icon="AppWindow"
-          title="No apps added"
-          description="Add apps your people use, so they find them in their Keston account."
-          class="p-0"
-        />
-        <ul v-else class="flex flex-col divide-y divide-black/10">
-          <li v-for="oa in apps.organisation" :key="oa.app.id" class="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
-            <Avatar :user="{ name: oa.app.name }" size="sm" decorative />
-            <span class="flex min-w-0 flex-1 flex-col">
-              <span class="text-sm font-bold">{{ oa.app.name }}</span>
-              <span class="text-xs text-black/65">By {{ oa.app.publisher }}</span>
-            </span>
-            <Button
-              size="sm"
-              :status="busy === oa.app.id ? 'loading' : 'idle'"
-              @click="change(oa.app.id, oa.mode === 'enabled' ? 'optional' : 'enabled')"
-            >
-              {{ oa.mode === 'enabled' ? 'Make optional' : 'Enable for everyone' }}
-            </Button>
-            <Badge size="sm" :color="oa.mode === 'enabled' ? 'blue' : 'basic'">
-              {{ oa.mode === 'enabled' ? 'Enabled for everyone' : 'Optional' }}
-            </Badge>
-            <Button size="sm" variant="ghost" :disabled="busy === oa.app.id" @click="remove(oa.app.id, oa.app.name)">
-              Remove<span class="sr-only"> {{ oa.app.name }}</span>
-            </Button>
-          </li>
-        </ul>
+      <Card v-for="section in [{ title: 'Keston apps', apps: builtin }, { title: 'Other apps', apps: others }]" :key="section.title" :title="section.title">
+        <EmptyState v-if="!section.apps.length" size="sm" title="No apps" class="p-0" />
+        <div v-else class="flex flex-col gap-4">
+          <Select
+            v-for="app in section.apps"
+            :key="app.id + scope"
+            :model-value="current(app)"
+            :label="app.name"
+            :helper="`By ${app.publisher}`"
+            :options="options(app)"
+            :status="saving[app.id]?.status"
+            :status-text="saving[app.id]?.text"
+            @update:model-value="change(app, String($event ?? UNSET))"
+          />
+        </div>
       </Card>
     </template>
-
-    <Slideover v-model:open="adding" title="Add an app" description="It’ll show under Connected apps for everyone here." initial-focus="auto">
-      <template #body>
-        <div class="flex flex-col gap-6">
-          <Select v-model="choice" label="App" :options="options" placeholder="Choose an app" />
-          <RadioGroup v-model="mode" label="For everyone, or optional?" :options="modes" />
-        </div>
-      </template>
-      <template #footer="{ close }">
-        <Button :disabled="addStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :disabled="!choice" :status="addStatus" loading-text="Adding" @click="add">Add app</Button>
-      </template>
-    </Slideover>
   </div>
 </template>
