@@ -22,6 +22,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
+import RecentActivity from '../components/RecentActivity.vue'
 import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
 /**
@@ -402,6 +403,8 @@ async function toggle() {
           </Button>
         </div>
       </Card>
+
+      <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
     </template>
 
     <Slideover v-model:open="editing" title="Edit user" initial-focus="auto">

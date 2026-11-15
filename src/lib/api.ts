@@ -164,6 +164,7 @@ export type PermissionId =
   | 'apps.manage'
   | 'policy.manage'
   | 'settings.manage'
+  | 'reports.view'
 
 export interface Permission {
   id: PermissionId
@@ -215,7 +216,7 @@ async function publicRequest<T>(method: string, path: string, body?: unknown): P
   return parse<T>(res)
 }
 
-async function request<T>(method: string, path: string, body?: unknown | Blob): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown | Blob): Promise<T> {
   const user = await currentUser()
   if (!user) {
     await signIn()
