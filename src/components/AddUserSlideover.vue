@@ -7,7 +7,6 @@ import {
   EmptyState,
   Input,
   Progress,
-  RadioGroup,
   Slideover,
   Spinner,
   SummaryList,
@@ -15,8 +14,9 @@ import {
 } from '@thekestongroup/ui'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import PasswordField from './PasswordField.vue'
+import RolesField, { type Roles } from './RolesField.vue'
 import { suggestUsername } from '../lib/usernames'
-import { ApiError, api, type Organisation, type Product, type User } from '../lib/api'
+import { ApiError, api, type AdminRole, type Organisation, type PermissionId, type Product } from '../lib/api'
 
 /**
  * Adding a user, in steps: User info, then Licences (for admins who can
@@ -30,6 +30,10 @@ const props = defineProps<{
   globalAdmin: boolean
   /** Has "Assign licences": the Licences step. */
   canAssignLicences: boolean
+  /** Can give admin roles ("Give permissions", or a global admin). */
+  canAssignRoles: boolean
+  /** Their own permissions here, for which roles they can give. */
+  myPermissions: PermissionId[]
 }>()
 const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ added: [] }>()
@@ -45,7 +49,7 @@ const blank = () => ({
   username: '',
   /** Typed by hand: stop suggesting one from the name. */
   usernameEdited: false,
-  role: 'member' as User['role'],
+  access: { admin: false, global: false, roles: [] as string[] } as Roles,
   autoPassword: true,
   password: '',
   requirePasswordChange: true,
@@ -66,10 +70,8 @@ function typedUsername(v: string) {
   form.username = v
   form.usernameEdited = v !== ''
 }
-const roles = [
-  { label: 'Member', value: 'member', description: 'Signs in to Keston apps.' },
-  { label: 'Global admin', value: 'global_admin', description: 'Also manages this organisation’s users and password policy here.' },
-]
+// The admin roles there are, for the Admin centre access field.
+const catalogue = ref<AdminRole[]>([])
 
 /** Done: what to show (the password only if Keston ID made it up). */
 const added = ref<{ name: string; email: string; password?: string; mustChange: boolean; licences: string[] }>()
@@ -97,6 +99,7 @@ watch(open, (isOpen) => {
   status.value = 'idle'
   added.value = undefined
   if (props.canAssignLicences) loadProducts()
+  if (props.canAssignRoles && !catalogue.value.length) api.roles(props.orgId).then((r) => (catalogue.value = r)).catch(() => {})
 })
 
 // Each step's heading takes focus, so screen readers hear where they are.
@@ -113,7 +116,8 @@ function checkUserInfo() {
     errors.username = 'Use lowercase letters, numbers, dots, dashes or underscores, like j.smith'
   if (!form.autoPassword && !passwordValid.value)
     errors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
-  return !errors.first && !errors.username && !errors.password
+  if (form.access.admin && !form.access.global && !form.access.roles.length) errors.roles = 'Choose at least one role'
+  return !errors.first && !errors.username && !errors.password && !errors.roles
 }
 
 function next() {
@@ -142,7 +146,8 @@ async function add() {
     const created = await api.createUser(props.orgId, {
       name: fullName.value,
       username: username.value,
-      role: form.role,
+      role: form.access.admin && form.access.global ? 'global_admin' : 'member',
+      roles: form.access.admin && !form.access.global ? form.access.roles : [],
       generatePassword: form.autoPassword,
       password: form.autoPassword ? undefined : form.password,
       requirePasswordChange: form.requirePasswordChange,
@@ -253,7 +258,14 @@ async function copyPassword(password: string) {
           >
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
-          <RadioGroup v-if="globalAdmin" v-model="form.role" label="Role" :options="roles" />
+          <RolesField
+            v-if="canAssignRoles"
+            v-model="form.access"
+            :catalogue="catalogue"
+            :i-am-global-admin="globalAdmin"
+            :my-permissions="myPermissions"
+            :error-text="errors.roles"
+          />
           <Checkbox v-model="form.autoPassword" label="Automatically create a password" description="Shown once after you add them." />
           <PasswordField
             v-if="!form.autoPassword"

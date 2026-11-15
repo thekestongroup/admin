@@ -95,6 +95,7 @@ export const actionGroups: { label: string; actions: Record<string, string> }[] 
       'user.deleted': 'User deleted',
       'user.restored': 'User restored',
       'user.licences_changed': 'Licences changed',
+      'user.roles_changed': 'Admin roles changed',
     },
   },
   {

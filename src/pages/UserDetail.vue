@@ -12,7 +12,6 @@ import {
   Input,
   Link,
   PageHeader,
-  RadioGroup,
   Select,
   Slideover,
   Spinner,
@@ -23,6 +22,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import DeleteUserCard from '../components/DeleteUserCard.vue'
+import AdminRolesCard from '../components/AdminRolesCard.vue'
 import LicencesCard from '../components/LicencesCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import RecentActivity from '../components/RecentActivity.vue'
@@ -74,12 +74,17 @@ onMounted(async () => {
 })
 
 const isMe = computed(() => user.value?.id === myId.value)
+
+/** After their roles change: their permissions, as Keston ID now has them. */
+async function reload() {
+  user.value = await api.user(orgId, userId)
+}
 const details = computed(() =>
   user.value
     ? [
         { label: 'Name', value: user.value.name },
         { label: 'Email', value: user.value.email, description: 'They sign in with this.' },
-        { label: 'Role', value: user.value.role === 'global_admin' ? 'Global admin' : 'Member' },
+        { label: 'Role', value: user.value.role === 'global_admin' ? 'Global admin' : user.value.roles.length ? 'Admin' : 'User' },
         { label: 'Password changed', value: formatDate(user.value.passwordChangedAt) },
         { label: 'User ID', value: user.value.id },
       ]
@@ -141,20 +146,16 @@ async function removeFromGroup(g: Group) {
 // ── Edit profile ────────────────────────────────────────────────────────────
 
 const editing = ref(false)
-const form = reactive({ name: '', username: '', role: 'member' as User['role'] })
+const form = reactive({ name: '', username: '' })
 const formErrors = reactive<Record<string, string | undefined>>({})
 const saveStatus = ref<ButtonStatus>('idle')
 const pictureBusy = ref(false)
 const pictureError = ref<string>()
 const fileInput = ref<HTMLInputElement>()
-const roles = [
-  { label: 'Member', value: 'member', description: 'Signs in to Keston apps.' },
-  { label: 'Global admin', value: 'global_admin', description: 'Also manages this organisation here.' },
-]
 
 function startEdit() {
   const a = user.value!
-  Object.assign(form, { name: a.name, username: a.username, role: a.role })
+  Object.assign(form, { name: a.name, username: a.username })
   for (const k of Object.keys(formErrors)) formErrors[k] = undefined
   pictureError.value = undefined
   saveStatus.value = 'idle'
@@ -163,10 +164,9 @@ function startEdit() {
 
 async function save() {
   const a = user.value!
-  const changes: { name?: string; username?: string; role?: User['role'] } = {}
+  const changes: { name?: string; username?: string } = {}
   if (form.name.trim() !== a.name) changes.name = form.name
   if (form.username.trim().toLowerCase() !== a.username) changes.username = form.username
-  if (form.role !== a.role) changes.role = form.role
   if (!Object.keys(changes).length) {
     editing.value = false
     return
@@ -373,6 +373,15 @@ async function toggle() {
         :can-issue-passes="can('users.access_pass')"
       />
 
+      <AdminRolesCard
+        v-if="!user.support && !isMe && user.canChange && (iAmGlobalAdmin || can('permissions.assign'))"
+        :org-id="orgId"
+        :user="user"
+        :i-am-global-admin="iAmGlobalAdmin"
+        :my-permissions="org?.permissions ?? []"
+        @changed="reload"
+      />
+
       <Card
         v-if="!user.support"
         title="Groups and permissions"
@@ -470,7 +479,6 @@ async function toggle() {
           <Input v-model="form.username" label="Email" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
-          <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" :error-text="formErrors.role" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>

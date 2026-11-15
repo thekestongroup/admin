@@ -19,7 +19,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
 import BulkActions from '../components/BulkActions.vue'
 import PasswordField from '../components/PasswordField.vue'
-import { api, loadMe, type Group, type Organisation, type PermissionId, type Product, type User } from '../lib/api'
+import { api, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
 
 /**
  * An organisation's users: add, reset a password, disable or enable; tick
@@ -103,6 +103,13 @@ const columns = computed<TableColumn<User>[]>(() => [
 // ── Add a user ──────────────────────────────────────────────────────────
 
 const adding = ref(false)
+
+// Role names, for the Role column.
+const roleCatalogue = ref<AdminRole[]>([])
+const roleName = (id: string) => roleCatalogue.value.find((r) => r.id === id)?.label ?? id
+onMounted(async () => {
+  roleCatalogue.value = await api.roles(orgId).catch(() => [])
+})
 
 // Product names, for the Licences column.
 const products = ref<Product[]>([])
@@ -224,7 +231,8 @@ async function toggle(a: User) {
             <template #leading><ShieldCheck /></template>
             Global admin
           </Badge>
-          <span v-else>Member</span>
+          <span v-else-if="row.roles?.length">{{ row.roles.map(roleName).join(', ') }}</span>
+          <span v-else class="text-black/65">User</span>
         </template>
         <template #cell-licences="{ row }">
           <span v-if="row.licences?.length">{{ row.licences.map(productName).join(', ') }}</span>
@@ -269,6 +277,8 @@ async function toggle(a: User) {
       :org="org"
       :global-admin="iAmGlobalAdmin"
       :can-assign-licences="has('users.licences')"
+      :can-assign-roles="iAmGlobalAdmin || has('permissions.assign')"
+      :my-permissions="org?.permissions ?? []"
       @added="load"
     />
 

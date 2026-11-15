@@ -13,7 +13,7 @@ import {
   Table,
   type TableColumn,
 } from '@thekestongroup/ui'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { api, type Organisation, type User } from '../lib/api'
 
@@ -43,18 +43,20 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const q = (k: string) => (typeof route.query[k] === 'string' ? (route.query[k] as string) : undefined)
 const view = computed(() => (q('view') === 'sign-ins' ? 'sign-ins' : 'actions'))
 const ALL = 'all'
-const filters = ref({
+/** The filters, as in the URL (actions: any of these; none, every action). */
+const fromQuery = () => ({
   user: q('user') ?? ALL,
-  action: q('action') ?? ALL,
+  action: q('action')?.split(',').filter(Boolean) ?? [],
   result: q('result') ?? ALL,
   reason: q('reason') ?? ALL,
   from: q('from'),
   to: q('to'),
 })
+const filters = ref(fromQuery())
 const filtered = computed(() => ['user', 'action', 'result', 'reason', 'from', 'to'].some((k) => q(k)))
 
 /** Filters change the URL (and so reload the page's entries). */
-function apply(changes: Partial<typeof filters.value> & { view?: string }) {
+function apply(changes: Partial<Record<'user' | 'action' | 'result' | 'reason' | 'from' | 'to' | 'view', string>>) {
   const next: Record<string, unknown> = { ...route.query, ...changes }
   for (const [k, v] of Object.entries(next)) if (v === ALL || v === undefined || v === '') delete next[k]
   router.replace({ query: next as typeof route.query })
@@ -73,12 +75,16 @@ const loading = ref(true)
 const loadingMore = ref(false)
 const error = ref<string>()
 
+// Only the latest load's entries are shown (filters can change quickly).
+let latest = 0
 async function load(before?: string) {
+  const n = ++latest
   const f = filters.value
   const opt = (v: string | undefined) => (v === ALL ? undefined : v)
   const common = { user: opt(f.user), from: f.from, to: f.to, before }
   if (view.value === 'actions') {
-    const page = await logsApi.auditLog(orgId, { ...common, action: opt(f.action) })
+    const page = await logsApi.auditLog(orgId, { ...common, action: f.action.length ? f.action.join(',') : undefined })
+    if (n !== latest) return
     actions.value = before ? [...actions.value, ...page.entries] : page.entries
     next.value = page.next
   } else {
@@ -87,6 +93,7 @@ async function load(before?: string) {
       result: opt(f.result) as 'success' | 'failure' | undefined,
       reason: opt(f.reason),
     })
+    if (n !== latest) return
     signIns.value = before ? [...signIns.value, ...page.entries] : page.entries
     next.value = page.next
   }
@@ -104,6 +111,24 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// The page stays put when the URL's filters change (so fields keep what's
+// being typed); the entries reload.
+watch(
+  () => route.query,
+  async () => {
+    filters.value = fromQuery()
+    loading.value = true
+    try {
+      await load()
+      error.value = undefined
+    } catch (e) {
+      error.value = message(e)
+    } finally {
+      loading.value = false
+    }
+  },
+)
 
 async function more() {
   loadingMore.value = true
@@ -123,7 +148,6 @@ const userOptions = computed<SelectOption[]>(() => [
   ...users.value.map((u) => ({ label: u.name, value: u.id, description: u.email })),
 ])
 const actionOptions = computed(() => [
-  { options: [{ label: 'Every action', value: ALL }] },
   ...actionGroups.map((g) => ({
     label: g.label,
     options: Object.entries(g.actions).map(([value, label]) => ({ label, value })),
@@ -204,10 +228,12 @@ const tabs = [
           <Select
             v-if="view === 'actions'"
             v-model="filters.action"
-            label="Action"
+            label="Actions"
+            placeholder="Every action"
             searchable
+            multiple
             :groups="actionOptions"
-            @update:model-value="apply({ action: String($event ?? ALL) })"
+            @update:model-value="apply({ action: (($event as string[] | undefined) ?? []).join(',') })"
           />
           <template v-else>
             <Select v-model="filters.result" label="Result" :options="resultOptions" @update:model-value="apply({ result: String($event) })" />

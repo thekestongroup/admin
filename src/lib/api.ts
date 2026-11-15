@@ -155,6 +155,16 @@ export interface User {
   canChange?: boolean
   /** The products they have a licence for (lists and one user). */
   licences?: string[]
+  /** Their admin roles, besides global admin (lists and one user). */
+  roles?: string[]
+}
+
+/** A built-in admin role: a named set of Keston Admin permissions, given to a user. */
+export interface AdminRole {
+  id: string
+  label: string
+  description: string
+  permissions: PermissionId[]
 }
 
 /** One of Keston's products (e.g. Keston Work): someone needs a licence to use it. */
@@ -238,6 +248,7 @@ export interface UserDetail extends User {
   permissions: PermissionId[]
   canChange: boolean
   licences: string[]
+  roles: string[]
 }
 
 /** A user in Deleted users: kept 30 days, then removed for good. */
@@ -429,8 +440,13 @@ export const api = {
       requirePasswordChange: boolean
       /** Products to give them a licence for (needs users.licences). */
       licences?: string[]
+      /** Admin roles, besides global admin (role). */
+      roles?: string[]
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
+  roles: (orgId: string) => request<AdminRole[]>('GET', `${org(orgId)}/roles`),
+  setRoles: (orgId: string, userId: string, roles: string[]) =>
+    request<{ roles: string[] }>('PUT', `${org(orgId)}/users/${userId}/roles`, { roles }),
   products: (orgId: string) => request<Product[]>('GET', `${org(orgId)}/products`),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),

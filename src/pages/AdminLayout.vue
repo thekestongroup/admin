@@ -183,6 +183,8 @@ function accountSettings() {
       </span>
       <Button size="sm" @click="switchUser()">Switch account</Button>
     </div>
-    <RouterView :key="route.fullPath" />
+    <!-- A new page for each path; pages whose URL carries filters (Logs)
+         watch the query themselves, so typing in a filter isn't lost. -->
+    <RouterView :key="route.path" />
   </AppShell>
 </template>
