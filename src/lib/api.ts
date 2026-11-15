@@ -390,8 +390,16 @@ export const api = {
   /** requirePasswordChange: they choose their own password when they first sign in. */
   createUser: (
     orgId: string,
-    body: { name: string; username: string; password: string; role: User['role']; requirePasswordChange: boolean },
-  ) => request<User>('POST', `${org(orgId)}/users`, body),
+    body: {
+      name: string
+      username: string
+      role: User['role']
+      /** Keston ID makes one up (meeting the policy): it's in the response, once. */
+      generatePassword: boolean
+      password?: string
+      requirePasswordChange: boolean
+    },
+  ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
   resetPassword: (orgId: string, userId: string, password: string, requirePasswordChange: boolean) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password, requirePasswordChange }),
 

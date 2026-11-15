@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, Plus, ShieldCheck, Trash2, TriangleAlert, Users } from '@lucide/vue'
+import { Copy, Lock, Plus, ShieldCheck, Trash2, TriangleAlert, Users } from '@lucide/vue'
 import {
   Badge,
   Button,
@@ -11,6 +11,7 @@ import {
   PageHeader,
   RadioGroup,
   Slideover,
+  SummaryList,
   formatDateTime,
   Table,
   type TableColumn,
@@ -103,7 +104,10 @@ const columns = computed<TableColumn<User>[]>(() => [
 // ── Add a user ──────────────────────────────────────────────────────────
 
 const adding = ref(false)
-const form = reactive({ name: '', username: '', password: '', role: 'member' as User['role'], requirePasswordChange: true })
+const blankForm = () => ({ name: '', username: '', autoPassword: true, password: '', role: 'member' as User['role'], requirePasswordChange: true })
+const form = reactive(blankForm())
+/** Just added, with the password Keston ID made up: shown once. */
+const added = ref<{ name: string; email: string; password: string }>()
 const formErrors = reactive<Record<string, string | undefined>>({})
 const formValid = ref(false)
 const addStatus = ref<ButtonStatus>('idle')
@@ -114,7 +118,8 @@ const roles = [
 const username = computed(() => form.username.trim().toLowerCase())
 
 function startAdding() {
-  Object.assign(form, { name: '', username: '', password: '', role: 'member', requirePasswordChange: true })
+  Object.assign(form, blankForm())
+  added.value = undefined
   for (const k of Object.keys(formErrors)) formErrors[k] = undefined
   addStatus.value = 'idle'
   adding.value = true
@@ -125,18 +130,41 @@ async function add() {
   if (!form.name.trim()) formErrors.name = 'Enter their name'
   if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(username.value))
     formErrors.username = 'Use lowercase letters, numbers, dots, dashes or underscores, like j.smith'
-  if (!formValid.value) formErrors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
+  if (!form.autoPassword && !formValid.value)
+    formErrors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
   if (formErrors.name || formErrors.username || formErrors.password) return
   addStatus.value = 'loading'
   try {
-    const created = await api.createUser(orgId, { name: form.name.trim(), username: username.value, password: form.password, role: form.role, requirePasswordChange: form.requirePasswordChange })
+    const created = await api.createUser(orgId, {
+      name: form.name.trim(),
+      username: username.value,
+      role: form.role,
+      generatePassword: form.autoPassword,
+      password: form.autoPassword ? undefined : form.password,
+      requirePasswordChange: form.autoPassword || form.requirePasswordChange,
+    })
     await load()
+    if (created.password) {
+      // Stay open to show the password, once.
+      added.value = { name: created.name, email: created.email, password: created.password }
+      addStatus.value = 'idle'
+      return
+    }
     adding.value = false
     notify({ type: 'success', title: 'User added', description: `${created.email} can sign in now.` })
   } catch (e) {
     addStatus.value = 'idle'
     if (e instanceof ApiError && e.field) formErrors[e.field] = e.message
     else notify({ type: 'error', title: 'Couldn’t add the user', description: message(e) })
+  }
+}
+
+async function copyPassword(password: string) {
+  try {
+    await navigator.clipboard.writeText(password)
+    notify({ type: 'success', title: 'Password copied' })
+  } catch {
+    notify({ type: 'error', title: 'Couldn’t copy', description: 'Select the password and copy it instead.' })
   }
 }
 
@@ -289,22 +317,57 @@ async function toggle(a: User) {
 
 
     <!-- Add a user -->
-    <Slideover v-model:open="adding" title="Add a user" :description="org ? `They’ll sign in as username@${org.domain}.` : undefined" initial-focus="auto">
-      <template #body>
+    <Slideover
+      v-model:open="adding"
+      :title="added ? `${added.name} has been added` : 'Add a user'"
+      :description="added ? 'Give them these details securely. The password is shown only once: once you close this, it’s gone.' : org ? `They’ll sign in as username@${org.domain}.` : undefined"
+      initial-focus="auto"
+    >
+      <template v-if="added" #body>
+        <div class="flex flex-col gap-4">
+          <SummaryList :items="[{ label: 'Email', value: added.email }, { label: 'Password', value: added.password }]" layout="stacked">
+            <template #value="{ item }">
+              <span :class="item.label === 'Password' && 'font-mono select-all'">{{ item.value }}</span>
+            </template>
+          </SummaryList>
+          <div>
+            <Button @click="copyPassword(added.password)">
+              <template #leading><Copy /></template>
+              Copy password
+            </Button>
+          </div>
+          <p class="text-sm text-black/65">They’ll choose their own password when they first sign in.</p>
+        </div>
+      </template>
+      <template v-else #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="add">
           <Input v-model="form.name" label="Name" autocomplete="off" :error-text="formErrors.name" />
           <Input v-model="form.username" label="Username" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
           <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" />
-          <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
-          <Checkbox v-model="form.requirePasswordChange" label="Ask them to choose a new password when they first sign in" description="Recommended, so only they know their password." />
+          <Checkbox
+            v-model="form.autoPassword"
+            label="Automatically create a password"
+            description="Shown once after you add them. They’ll choose their own when they first sign in."
+          />
+          <template v-if="!form.autoPassword">
+            <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
+            <Checkbox
+              v-model="form.requirePasswordChange"
+              label="Require this user to change their password when they first sign in"
+              description="Recommended, so only they know their password."
+            />
+          </template>
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="addStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="addStatus" loading-text="Adding" @click="add">Add user</Button>
+        <Button v-if="added" variant="primary" @click="close">Done</Button>
+        <template v-else>
+          <Button :disabled="addStatus !== 'idle'" @click="close">Cancel</Button>
+          <Button variant="primary" :status="addStatus" loading-text="Adding" @click="add">Add user</Button>
+        </template>
       </template>
     </Slideover>
 
