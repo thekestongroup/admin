@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImageUp, Pencil, Trash2, TriangleAlert } from '@lucide/vue'
+import { ImageUp, Pencil, Plus, Trash2, TriangleAlert } from '@lucide/vue'
 import {
   Avatar,
   Badge,
@@ -12,6 +12,7 @@ import {
   Link,
   PageHeader,
   RadioGroup,
+  Select,
   Slideover,
   Spinner,
   SummaryList,
@@ -21,7 +22,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
-import { ApiError, api, loadMe, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
+import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
 /**
  * One user: their profile (admins can always change it, whatever the
@@ -48,7 +49,14 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 onMounted(async () => {
   try {
-    const [o, a, me, perms] = await Promise.all([api.organisation(orgId), api.user(orgId, userId), loadMe(), api.permissions()])
+    const [o, a, me, perms, groups] = await Promise.all([
+      api.organisation(orgId),
+      api.user(orgId, userId),
+      loadMe(),
+      api.permissions(),
+      api.groups(orgId),
+    ])
+    allGroups.value = groups
     org.value = o
     user.value = a
     myId.value = me.user.id
@@ -76,6 +84,53 @@ const trail = computed(() => [
   { label: 'Users', to: `/organisations/${orgId}/users` },
   { label: user.value?.name ?? 'User' },
 ])
+
+// ── Groups ──────────────────────────────────────────────────────────────────
+
+const allGroups = ref<Group[]>([])
+const mine = (p: PermissionId) => !!org.value?.permissions?.includes(p)
+/** Who's in a group: Manage groups (or Give permissions); for a group that
+ *  gives permissions, Give permissions and every one of them. And only for
+ *  users you can change. */
+function mayChange(g: Group) {
+  if (!user.value?.canChange) return false
+  return g.permissions.length ? mine('permissions.assign') && g.permissions.every(mine) : mine('groups.manage') || mine('permissions.assign')
+}
+const groupOptions = computed(() =>
+  allGroups.value
+    .filter((g) => !user.value?.groups.some((x) => x.id === g.id) && mayChange(g))
+    .map((g) => ({
+      label: g.name,
+      value: g.id,
+      description: g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : undefined,
+    })),
+)
+const groupChoice = ref<string>()
+const groupBusy = ref<string>()
+async function addToGroup() {
+  if (!groupChoice.value) return
+  groupBusy.value = 'add'
+  try {
+    await api.addMember(orgId, groupChoice.value, userId)
+    groupChoice.value = undefined
+    user.value = await api.user(orgId, userId)
+  } catch (e) {
+    notify({ type: 'error', title: 'Couldn’t add them to the group', description: message(e) })
+  } finally {
+    groupBusy.value = undefined
+  }
+}
+async function removeFromGroup(g: Group) {
+  groupBusy.value = g.id
+  try {
+    await api.removeMember(orgId, g.id, userId)
+    user.value = await api.user(orgId, userId)
+  } catch (e) {
+    notify({ type: 'error', title: 'Couldn’t remove them from the group', description: message(e) })
+  } finally {
+    groupBusy.value = undefined
+  }
+}
 
 // ── Edit profile ────────────────────────────────────────────────────────────
 
@@ -290,8 +345,8 @@ async function toggle() {
 
       <Card
         v-if="!user.support"
-        title="Permissions"
-        description="What they can do in Keston Admin. Permissions come from groups."
+        title="Groups and permissions"
+        description="Their groups set their app access, and what they can do in Keston Admin."
       >
         <div class="flex flex-col gap-4">
           <p v-if="user.role === 'global_admin'" class="text-sm">As a global admin, they can do everything.</p>
@@ -301,14 +356,41 @@ async function toggle() {
             </li>
           </ul>
           <p v-else class="text-sm text-black/65">None. They can’t use Keston Admin.</p>
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-3">
             <p class="text-sm font-bold">Groups</p>
-            <ul v-if="user.groups.length" class="flex flex-wrap gap-2">
-              <li v-for="g in user.groups" :key="g.id">
-                <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="text-sm">{{ g.name }}</Link>
+            <ul v-if="user.groups.length" class="flex flex-col divide-y divide-black/10">
+              <li v-for="g in user.groups" :key="g.id" class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                <span class="flex min-w-0 flex-1 flex-col">
+                  <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="truncate text-sm">{{ g.name }}</Link>
+                  <span class="text-xs text-black/65">
+                    {{ g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : 'App access only' }}
+                  </span>
+                </span>
+                <Button
+                  v-if="mayChange(allGroups.find((x) => x.id === g.id) ?? g)"
+                  size="sm"
+                  variant="ghost"
+                  :status="groupBusy === g.id ? 'loading' : 'idle'"
+                  @click="removeFromGroup(g)"
+                >
+                  Remove<span class="sr-only"> from {{ g.name }}</span>
+                </Button>
               </li>
             </ul>
             <p v-else class="text-sm text-black/65">Not in any groups.</p>
+            <div v-if="groupOptions.length" class="flex items-start gap-2">
+              <Select v-model="groupChoice" label="Add to a group" :options="groupOptions" placeholder="Choose a group" class="flex-1" />
+              <Button
+                class="mt-6.5 shrink-0"
+                :disabled="!groupChoice"
+                :status="groupBusy === 'add' ? 'loading' : 'idle'"
+                loading-text="Adding"
+                @click="addToGroup"
+              >
+                <template #leading><Plus /></template>
+                Add
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
