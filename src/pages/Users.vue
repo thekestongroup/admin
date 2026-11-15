@@ -107,7 +107,7 @@ const adding = ref(false)
 const blankForm = () => ({ name: '', username: '', autoPassword: true, password: '', role: 'member' as User['role'], requirePasswordChange: true })
 const form = reactive(blankForm())
 /** Just added, with the password Keston ID made up: shown once. */
-const added = ref<{ name: string; email: string; password: string }>()
+const added = ref<{ name: string; email: string; password: string; mustChange: boolean }>()
 const formErrors = reactive<Record<string, string | undefined>>({})
 const formValid = ref(false)
 const addStatus = ref<ButtonStatus>('idle')
@@ -141,12 +141,12 @@ async function add() {
       role: form.role,
       generatePassword: form.autoPassword,
       password: form.autoPassword ? undefined : form.password,
-      requirePasswordChange: form.autoPassword || form.requirePasswordChange,
+      requirePasswordChange: form.requirePasswordChange,
     })
     await load()
     if (created.password) {
       // Stay open to show the password, once.
-      added.value = { name: created.name, email: created.email, password: created.password }
+      added.value = { name: created.name, email: created.email, password: created.password, mustChange: form.requirePasswordChange }
       addStatus.value = 'idle'
       return
     }
@@ -336,7 +336,7 @@ async function toggle(a: User) {
               Copy password
             </Button>
           </div>
-          <p class="text-sm text-black/65">They’ll choose their own password when they first sign in.</p>
+          <p v-if="added.mustChange" class="text-sm text-black/65">They’ll choose their own password when they first sign in.</p>
         </div>
       </template>
       <template v-else #body>
@@ -346,19 +346,20 @@ async function toggle(a: User) {
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
           <RadioGroup v-if="iAmGlobalAdmin" v-model="form.role" label="Role" :options="roles" />
-          <Checkbox
-            v-model="form.autoPassword"
-            label="Automatically create a password"
-            description="Shown once after you add them. They’ll choose their own when they first sign in."
+          <Checkbox v-model="form.autoPassword" label="Automatically create a password" description="Shown once after you add them." />
+          <PasswordField
+            v-if="!form.autoPassword"
+            v-model="form.password"
+            v-model:valid="formValid"
+            :organisation-id="orgId"
+            :username="username"
+            :error-text="formErrors.password"
           />
-          <template v-if="!form.autoPassword">
-            <PasswordField v-model="form.password" v-model:valid="formValid" :organisation-id="orgId" :username="username" :error-text="formErrors.password" />
-            <Checkbox
-              v-model="form.requirePasswordChange"
-              label="Require this user to change their password on sign in"
-              description="Recommended, so only they know their password."
-            />
-          </template>
+          <Checkbox
+            v-model="form.requirePasswordChange"
+            label="Require this user to change their password on sign in"
+            description="Recommended, so only they know their password."
+          />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
