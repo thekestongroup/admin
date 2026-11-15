@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { TriangleAlert } from '@lucide/vue'
-import { Card, EmptyState, Link, PageHeader, Select, type SelectProps, Spinner, useNotifications } from '@thekestongroup/ui'
+import { Plus, TriangleAlert } from '@lucide/vue'
+import { Button, Card, EmptyState, Link, PageHeader, Select, type SelectProps, Spinner, useNotifications } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { api, type AppAccess, type AppInfo, type AppMode } from '../lib/api'
@@ -90,12 +90,20 @@ async function change(app: AppInfo, value: string) {
 }
 
 const builtin = computed(() => data.value?.apps.filter((a) => a.builtin) ?? [])
-const others = computed(() => data.value?.apps.filter((a) => !a.builtin) ?? [])
+const own = computed(() => data.value?.apps.filter((a) => a.own) ?? [])
+const others = computed(() => data.value?.apps.filter((a) => !a.builtin && !a.own) ?? [])
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Apps" description="Which apps your users have, shown under Connected apps in their Keston account." />
+    <PageHeader title="Apps" description="Which apps your users have, shown under Connected apps in their Keston account.">
+      <template #actions>
+        <Button :as="RouterLink" :to="`/organisations/${orgId}/apps/new`">
+          <template #leading><Plus /></template>
+          Add an app
+        </Button>
+      </template>
+    </PageHeader>
 
     <Card v-if="error">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the apps" :description="error" />
@@ -114,20 +122,23 @@ const others = computed(() => data.value?.apps.filter((a) => !a.builtin) ?? [])
         </div>
       </Card>
 
-      <Card v-for="section in [{ title: 'Keston apps', apps: builtin }, { title: 'Other apps', apps: others }]" :key="section.title" :title="section.title">
+      <Card v-for="section in [{ title: 'Keston apps', apps: builtin }, { title: 'Your organisation’s apps', apps: own }, { title: 'Other apps', apps: others }]" :key="section.title" :title="section.title">
         <EmptyState v-if="!section.apps.length" size="sm" title="No apps" class="p-0" />
         <div v-else class="flex flex-col gap-4">
+          <div v-for="app in section.apps" :key="app.id + scope" class="flex flex-col gap-1">
           <Select
-            v-for="app in section.apps"
-            :key="app.id + scope"
             :model-value="current(app)"
             :label="app.name"
-            :helper="`By ${app.publisher}`"
+            :helper="app.own ? 'Added by your organisation' : `By ${app.publisher}`"
             :options="options(app)"
             :status="saving[app.id]?.status"
             :status-text="saving[app.id]?.text"
             @update:model-value="change(app, String($event ?? UNSET))"
           />
+            <Link v-if="app.own" :as="RouterLink" :to="`/organisations/${orgId}/apps/own/${app.id}`" class="self-start text-sm">
+              {{ app.protocol === 'saml' ? 'SAML' : 'OpenID Connect' }} settings<span class="sr-only"> for {{ app.name }}</span>
+            </Link>
+          </div>
         </div>
       </Card>
     </template>
