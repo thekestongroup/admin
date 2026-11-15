@@ -448,6 +448,12 @@ export const api = {
   /** One bulk action; groupId for adding to or removing from a group. */
   bulk: (orgId: string, action: BulkAction, userIds: string[], groupId?: string) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/${action}`, { userIds, groupId }),
+  /** Without a password, each gets their own (in the results, once). */
+  bulkResetPassword: (orgId: string, userIds: string[], opts: { password?: string; requirePasswordChange: boolean }) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/reset-password`, { userIds, ...opts }),
+  /** Add everyone to some groups and take them out of others. */
+  bulkGroups: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/groups`, { userIds, add, remove }),
   deletedUsers: (orgId: string) => request<DeletedUser[]>('GET', `${org(orgId)}/deleted-users`),
   restoreUsers: (orgId: string, userIds: string[]) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/deleted-users/restore`, { userIds }),

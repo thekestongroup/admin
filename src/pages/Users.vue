@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, Plus, ShieldCheck, Trash2, TriangleAlert, Users } from '@lucide/vue'
+import { Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
 import {
   Badge,
   Button,
@@ -170,22 +170,21 @@ async function toggle(a: User) {
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
     <PageHeader title="Users">
-      <template #actions>
-        <Button :as="RouterLink" :to="`/organisations/${orgId}/users/deleted`">
-          <template #leading><Trash2 /></template>
-          Deleted users
-        </Button>
-        <Button v-if="has('users.create')" variant="primary" @click="adding = true">
-          <template #leading><Plus /></template>
-          Add user
-        </Button>
-      </template>
+      <BulkActions
+        v-if="!loadError"
+        :org-id="orgId"
+        :selected="selectedUsers"
+        :groups="groups"
+        :can="has"
+        @add="adding = true"
+        @clear="selected = new Set()"
+        @done="bulkDone"
+      />
     </PageHeader>
 
     <Card v-if="loadError">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the users" :description="loadError" />
     </Card>
-    <BulkActions v-if="!loadError" :org-id="orgId" :selected="selectedUsers" :groups="groups" :can="has" @done="bulkDone" />
 
     <Card v-if="!loadError" padding="none">
       <Table
