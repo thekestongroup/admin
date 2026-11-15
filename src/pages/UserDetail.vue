@@ -22,6 +22,7 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PasswordField from '../components/PasswordField.vue'
+import RemovePasskeysSlideover from '../components/RemovePasskeysSlideover.vue'
 import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
 
 /**
@@ -255,6 +256,12 @@ async function turnOffMfa() {
   }
 }
 
+const removingPasskeys = ref(false)
+const passkeyCount = computed(() => {
+  const n = user.value?.passkeys ?? 0
+  return n === 1 ? '1 passkey' : `${n} passkeys`
+})
+
 // ── Disable / enable ────────────────────────────────────────────────────────
 
 const toggling = ref(false)
@@ -333,13 +340,18 @@ async function toggle() {
         </template>
         <div class="flex flex-col gap-3">
           <p v-if="user.mfa" class="text-sm text-black/65">
-            They sign in with their password and a code from their authenticator app. If they’ve lost it (and their
-            backup codes), turn MFA off so they can sign in with their password, then set it up again.
+            They sign in with their password and then
+            <template v-if="user.passkeys">a passkey or security key ({{ passkeyCount }})</template>
+            <template v-else>a code from their authenticator app</template>, unless they sign in with a passkey alone.
+            If they’ve lost what they use, turn MFA off so they can sign in with their password, then set it up again.
           </p>
           <p v-else class="text-sm text-black/65">
             They sign in with their password only. They can turn MFA on in their Keston account.
           </p>
-          <div v-if="user.mfa && can('users.mfa')"><Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button></div>
+          <div v-if="user.mfa && can('users.mfa')" class="flex flex-wrap gap-2">
+            <Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button>
+            <Button v-if="user.passkeys" @click="removingPasskeys = true">Remove passkeys</Button>
+          </div>
         </div>
       </Card>
 
@@ -439,10 +451,12 @@ async function toggle() {
       </template>
     </Slideover>
 
+    <RemovePasskeysSlideover v-if="user" v-model:open="removingPasskeys" :org-id="orgId" :user="user" @removed="merge" />
+
     <Slideover
       v-model:open="confirmMfaOff"
       :title="user ? `Turn off ${user.name}’s MFA?` : 'Turn off MFA?'"
-      description="Only do this once you’re sure it’s really them asking, e.g. they’ve lost their phone. Until they set it up again, their password alone signs them in, and their backup codes stop working."
+      description="Only do this once you’re sure it’s really them asking, e.g. they’ve lost their phone. Their authenticator app, backup codes, passkeys and security keys all stop working, and until they set MFA up again their password alone signs them in."
     >
       <template #footer="{ close }">
         <Button :disabled="mfaStatus !== 'idle'" @click="close">Cancel</Button>
