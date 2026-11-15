@@ -130,8 +130,10 @@ export interface User {
   role: 'member' | 'global_admin'
   platformAdmin: boolean
   status: 'active' | 'disabled'
-  /** Multi-factor authentication (an authenticator app) is on. */
+  /** Multi-factor authentication is on: an authenticator app, or any passkey. */
   mfa: boolean
+  /** How many passkeys and security keys they have. */
+  passkeys: number
   locked: boolean
   createdAt: string
   passwordChangedAt: string
@@ -383,6 +385,8 @@ export const api = {
     request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy/groups/${groupId}`, { required }),
   /** Turns off a user's MFA, e.g. when they've lost their authenticator. */
   disableMfa: (orgId: string, userId: string) => request<User>('POST', `${org(orgId)}/users/${userId}/mfa/disable`, {}),
+  /** Removes all of a user's passkeys and security keys (their authenticator app stays). */
+  removePasskeys: (orgId: string, userId: string) => request<User>('DELETE', `${org(orgId)}/users/${userId}/passkeys`, {}),
   setStatus: (orgId: string, userId: string, status: User['status']) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/status`, { status }),
 
