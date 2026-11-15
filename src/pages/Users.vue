@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
+import { Ban, CircleCheck, KeyRound, Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
 import {
   Badge,
-  Button,
-  type ButtonStatus,
   Card,
   Checkbox,
   EmptyState,
+  Menu,
+  type MenuItem,
   PageHeader,
-  Slideover,
   formatDateTime,
   Table,
   type TableColumn,
@@ -18,7 +17,6 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
 import BulkActions from '../components/BulkActions.vue'
-import PasswordField from '../components/PasswordField.vue'
 import { api, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
 
 /**
@@ -103,6 +101,7 @@ const columns = computed<TableColumn<User>[]>(() => [
 // ── Add a user ──────────────────────────────────────────────────────────
 
 const adding = ref(false)
+const bulk = ref<InstanceType<typeof BulkActions>>()
 
 // Role names, for the Role column.
 const roleCatalogue = ref<AdminRole[]>([])
@@ -118,58 +117,33 @@ onMounted(async () => {
   products.value = await api.products(orgId).catch(() => [])
 })
 
-// ── Reset a password ────────────────────────────────────────────────────────
+// ── Block or unblock sign-in ────────────────────────────────────────────────
 
-const resetting = ref<User>()
-const resetOpen = computed({ get: () => !!resetting.value, set: (v) => { if (!v) resetting.value = undefined } })
-const newPassword = ref('')
-const resetRequireChange = ref(true)
-const resetValid = ref(false)
-const resetError = ref<string>()
-const resetStatus = ref<ButtonStatus>('idle')
-
-function startReset(a: User) {
-  newPassword.value = ''
-  resetRequireChange.value = true
-  resetError.value = undefined
-  resetStatus.value = 'idle'
-  resetting.value = a
+/** A row's menu: what you can do to them. */
+function rowActions(row: User): MenuItem[] {
+  const out: MenuItem[] = []
+  if (has('users.reset_password')) out.push({ label: 'Reset password', icon: KeyRound, onSelect: () => bulk.value?.open('reset-password', row) })
+  if (row.id !== myId.value && has('users.status'))
+    out.push(
+      row.status === 'active'
+        ? { label: 'Block sign-in', icon: Ban, onSelect: () => toggle(row) }
+        : { label: 'Unblock sign-in', icon: CircleCheck, onSelect: () => toggle(row) },
+    )
+  return out
 }
 
-async function reset() {
-  const a = resetting.value!
-  resetError.value = resetValid.value ? undefined : newPassword.value ? 'The password doesn’t meet every rule yet' : 'Enter a new password'
-  if (resetError.value) return
-  resetStatus.value = 'loading'
-  try {
-    await api.resetPassword(orgId, a.id, newPassword.value, resetRequireChange.value)
-    await load()
-    resetting.value = undefined
-    notify({ type: 'success', title: 'Password reset', description: `${a.name} has been signed out everywhere, and can sign in with the new password.` })
-  } catch (e) {
-    resetStatus.value = 'idle'
-    resetError.value = message(e)
-  }
-}
-
-// ── Disable / enable ────────────────────────────────────────────────────────
-
-const changing = ref<string>()
 async function toggle(a: User) {
   const status = a.status === 'active' ? 'disabled' : 'active'
-  changing.value = a.id
   try {
     await api.setStatus(orgId, a.id, status)
     await load()
     notify({
       type: 'success',
-      title: status === 'disabled' ? 'User disabled' : 'User enabled',
+      title: status === 'disabled' ? 'Sign-in blocked' : 'Sign-in unblocked',
       description: status === 'disabled' ? `${a.name} has been signed out and can’t sign in.` : `${a.name} can sign in again.`,
     })
   } catch (e) {
     notify({ type: 'error', title: 'Couldn’t change the user', description: message(e) })
-  } finally {
-    changing.value = undefined
   }
 }
 </script>
@@ -179,6 +153,7 @@ async function toggle(a: User) {
     <PageHeader title="Users">
       <BulkActions
         v-if="!loadError"
+        ref="bulk"
         :org-id="orgId"
         :selected="selectedUsers"
         :groups="groups"
@@ -248,20 +223,12 @@ async function toggle(a: User) {
         </template>
         <template #cell-actions="{ row }">
           <span v-if="row.support" class="text-xs text-black/65">Until {{ formatDateTime(row.expiresAt!) }}</span>
-          <div v-else-if="row.canChange" class="flex justify-end gap-2">
-            <Button v-if="has('users.reset_password')" size="sm" @click="startReset(row)">
-              Reset password<span class="sr-only"> for {{ row.name }}</span>
-            </Button>
-            <Button
-              v-if="row.id !== myId && has('users.status')"
-              size="sm"
-              :variant="row.status === 'active' ? 'ghost' : 'basic'"
-              :status="changing === row.id ? 'loading' : 'idle'"
-              @click="toggle(row)"
-            >
-              {{ row.status === 'active' ? 'Disable' : 'Enable' }}<span class="sr-only"> {{ row.name }}</span>
-            </Button>
-          </div>
+          <Menu
+            v-else-if="row.canChange && rowActions(row).length"
+            :items="rowActions(row)"
+            :label="`Actions for ${row.name}`"
+            size="sm"
+          />
         </template>
         <template #empty>
           <EmptyState size="sm" :icon="Users" title="No users yet" description="Add the people who sign in to Keston here." class="p-0" />
@@ -282,31 +249,5 @@ async function toggle(a: User) {
       @added="load"
     />
 
-    <!-- Reset a password -->
-    <Slideover
-      v-model:open="resetOpen"
-      :title="resetting ? `Reset ${resetting.name}’s password` : 'Reset password'"
-      description="They’ll be signed out everywhere, and unlocked if they were locked out. Give them the new password securely."
-      initial-focus="auto"
-    >
-      <template #body>
-        <form class="flex flex-col gap-4" novalidate @submit.prevent="reset">
-          <PasswordField
-            v-model="newPassword"
-            v-model:valid="resetValid"
-            label="New password"
-            :organisation-id="orgId"
-            :username="resetting?.username"
-            :error-text="resetError"
-          />
-          <Checkbox v-model="resetRequireChange" label="Ask them to choose a new password when they next sign in" description="Recommended, so only they know their password." />
-          <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
-        </form>
-      </template>
-      <template #footer="{ close }">
-        <Button :disabled="resetStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="resetStatus" loading-text="Resetting" @click="reset">Reset password</Button>
-      </template>
-    </Slideover>
   </div>
 </template>
