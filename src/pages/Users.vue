@@ -151,7 +151,7 @@ async function toggle(a: User) {
 <template>
   <div class="flex flex-col gap-3 p-4 sm:p-6">
     <PageHeader title="Users" :toolbar="bulk?.actions ?? []" :link-component="RouterLink">
-      <template v-if="bulk?.count" #badge><Badge size="sm" aria-live="polite">{{ bulk.count }}</Badge></template>
+      <template v-if="bulk?.count" #toolbar-start>{{ bulk.count }}</template>
     </PageHeader>
     <BulkActions
       v-if="!loadError"
