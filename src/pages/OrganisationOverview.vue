@@ -153,7 +153,7 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
     <div v-else-if="!org || !support" class="flex justify-center py-12"><Spinner label="Loading" /></div>
     <template v-else>
       <PageHeader :title="org.name" :description="org.domain">
-        <template v-if="org.isPlatform" #badge><Badge color="primary">Keston staff</Badge></template>
+        <template v-if="org.isPlatform" #badge><Badge color="primary">Official TKG</Badge></template>
       </PageHeader>
 
       <!-- Scheduled for deletion. -->
