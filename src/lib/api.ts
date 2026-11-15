@@ -34,7 +34,10 @@ export interface ProfileEditing {
 export interface Organisation {
   id: string
   name: string
+  /** Its main domain. */
   domain: string
+  /** Every domain its users can have (when there's more than the main one). */
+  domains?: string[]
   passwordPolicy: PasswordPolicy
   profileEditing: ProfileEditing
   userCount: number
@@ -187,7 +190,14 @@ export type PermissionId =
   | 'reports.view'
 
 /** Whether MFA is required: the organisation's default, and per group (null: use the default). */
+/** off: nobody must; required: everyone (after the grace period); custom: rules (today, per group). */
+export type MfaMode = 'off' | 'required' | 'custom'
+
 export interface MfaPolicy {
+  mode: MfaMode
+  /** Required: days to set up MFA before it's enforced at their next sign-in (0: straight away). */
+  gracePeriodDays: number
+  /** Custom rules: the default, for everyone not covered by a group's rule. */
   required: boolean
   groups: { id: string; name: string; memberCount: number; required: boolean | null }[]
 }
@@ -434,6 +444,8 @@ export const api = {
     request<void>('DELETE', `${org(orgId)}/users/${userId}/access-passes/${passId}`),
   mfaPolicy: (orgId: string) => request<MfaPolicy>('GET', `${org(orgId)}/mfa-policy`),
   setMfaRequired: (orgId: string, required: boolean) => request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy`, { required }),
+  setMfaPolicy: (orgId: string, change: { mode?: MfaMode; gracePeriodDays?: number }) =>
+    request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy`, change),
   /** null: the group uses the default. */
   setGroupMfaRequired: (orgId: string, groupId: string, required: boolean | null) =>
     request<MfaPolicy>('PUT', `${org(orgId)}/mfa-policy/groups/${groupId}`, { required }),
@@ -454,7 +466,13 @@ export const api = {
   /** Add a list of members, each with their own password (in the results, once). */
   bulkCreate: (
     orgId: string,
-    body: { users: { name: string; username: string }[]; licences: string[]; requirePasswordChange: boolean },
+    body: {
+      users: { name: string; username: string; domain?: string }[]
+      /** One password for everyone; leave out for each their own. */
+      password?: string
+      licences: string[]
+      requirePasswordChange: boolean
+    },
   ) => request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/create`, body),
   /** Add everyone to some groups and take them out of others. */
   bulkGroups: (orgId: string, userIds: string[], add: string[], remove: string[]) =>

@@ -61,7 +61,7 @@ const actions = computed<Action[]>(() => {
   if (props.can('users.status')) out.push({ label: titles['sign-in'], icon: Ban, onSelect: () => ask('sign-in') })
   if (props.can('groups.manage') || props.can('permissions.assign'))
     out.push({ label: titles.groups, icon: UsersRound, onSelect: () => ask('groups') })
-  if (props.can('users.delete')) out.push({ label: titles.delete, icon: Trash2, danger: true, onSelect: () => ask('delete') })
+  if (props.can('users.delete')) out.push({ label: titles.delete, icon: Trash2, onSelect: () => ask('delete') })
   out.push({ label: 'Clear selection', icon: X, onSelect: () => emit('clear') })
   return out
 })
@@ -178,7 +178,7 @@ async function run() {
 
 <template>
   <ActionBar :actions="actions" :label="selected.length ? `Actions for ${count}` : 'User actions'">
-    <p v-if="selected.length" class="mr-2 ml-2.5 text-sm font-bold" aria-live="polite">{{ count }}</p>
+    <p v-if="selected.length" class="mr-2 ml-4 text-sm font-bold" aria-live="polite">{{ count }}</p>
   </ActionBar>
 
   <Slideover v-model:open="open" :title="kind ? titles[kind] : ''" :description="count" initial-focus="auto">

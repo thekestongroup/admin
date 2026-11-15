@@ -16,7 +16,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { api, type MfaPolicy } from '../lib/api'
 
 /**
- * Who must use MFA: the organisation's default, overridden per group. If
+ * MFA's custom rules (used when Settings → Multi-factor authentication is
+ * "Custom rules"): a default for everyone, overridden per group. If
  * any of someone's groups requires it, it's required; otherwise a group
  * that doesn't require it wins over the default. People who must use it but
  * don't have it yet set it up when they next sign in. Each change saves
@@ -58,7 +59,7 @@ const setDefault = (required: boolean) => save(DEFAULT, () => api.setMfaRequired
 
 function groupOptions() {
   return [
-    { label: `Use the default (${policy.value?.required ? 'required' : 'not required'})`, value: DEFAULT },
+    { label: `Same as everyone else (${policy.value?.required ? 'required' : 'not required'})`, value: DEFAULT },
     { label: 'Required', value: 'required', description: 'Wins if their groups disagree' },
     { label: 'Not required', value: 'not-required' },
   ]
@@ -72,17 +73,25 @@ function setGroup(groupId: string, value: string) {
 
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Security" description="Who must use multi-factor authentication (MFA) to sign in." />
+    <PageHeader title="Security" description="Custom rules for who must use multi-factor authentication (MFA) to sign in." />
 
     <Card v-if="error">
       <EmptyState :icon="TriangleAlert" title="Couldn’t load the security settings" :description="error" />
     </Card>
     <div v-else-if="!policy" class="flex justify-center py-12"><Spinner label="Loading" /></div>
     <template v-else>
-      <Card title="Require MFA" description="For everyone not covered by a group’s setting, including new users.">
+      <Card v-if="policy.mode !== 'custom'">
+        <p class="text-sm">
+          These rules aren’t in use: multi-factor authentication is set to
+          <span class="font-bold">{{ policy.mode === 'off' ? 'Off' : 'Require MFA for everyone' }}</span>.
+          To use them, choose Custom rules in
+          <Link :as="RouterLink" :to="`/organisations/${orgId}/settings`">Settings</Link>.
+        </p>
+      </Card>
+      <Card title="Everyone else" description="For everyone not covered by a group’s rule, including new users.">
         <Switch
           :model-value="policy.required"
-          label="Require MFA for everyone"
+          label="Require MFA"
           description="Users without MFA set it up when they next sign in, before they can use any app."
           :status="saving[DEFAULT]?.status"
           :status-text="saving[DEFAULT]?.text"
@@ -90,7 +99,7 @@ function setGroup(groupId: string, value: string) {
         />
       </Card>
 
-      <Card title="Groups" description="Overrides the default for a group’s users. If someone’s groups disagree, Required wins.">
+      <Card title="Group rules" description="Overrides Everyone else for a group’s users. If someone’s groups disagree, Required wins.">
         <p v-if="!policy.groups.length" class="text-sm text-black/65">
           No groups yet. <Link :as="RouterLink" :to="`/organisations/${orgId}/groups`">Manage groups</Link>
         </p>

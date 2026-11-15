@@ -7,8 +7,10 @@ import {
   Checkbox,
   EmptyState,
   Input,
+  Notification,
   PageHeader,
   Progress,
+  Select,
   Spinner,
   Table,
   type TableColumn,
@@ -17,13 +19,15 @@ import {
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
+import PasswordField from '../components/PasswordField.vue'
 import { downloadCsv } from '../lib/csv'
 
 /**
  * Adding a list of users at once, in steps: Users (a row each: first name,
- * last name, username), then Licences (for admins who can assign them),
- * then what happened, with each new user's temporary password (shown once).
- * Everyone is a member and gets their own password.
+ * last name, username, domain), then Licences (for admins who can assign
+ * them), then what happened. Everyone is a member. Each gets their own
+ * temporary password (shown once), or all get one the admin sets (e.g. for
+ * a new school year, changed at first sign-in).
  */
 const route = useRoute()
 const orgId = route.params.orgId as string
@@ -46,13 +50,40 @@ interface Row {
   username: string
   /** Typed by hand: stop suggesting one from the name. */
   usernameEdited: boolean
+  domain: string
   errors: Record<string, string | undefined>
 }
 let nextKey = 0
-const newRow = (): Row => ({ key: nextKey++, first: '', last: '', username: '', usernameEdited: false, errors: {} })
-const rows = ref<Row[]>(Array.from({ length: 5 }, newRow))
+const newRow = (): Row => ({
+  key: nextKey++,
+  first: '',
+  last: '',
+  username: '',
+  usernameEdited: false,
+  domain: domains.value[0] ?? '',
+  errors: {},
+})
+const rows = ref<Row[]>([])
 const requireChange = ref(true)
 const usersError = ref<string>()
+
+// The organisation's domains (one for now; each row picks one).
+const domains = computed(() => (org.value ? (org.value.domains ?? [org.value.domain]) : []))
+const domainOptions = computed(() => domains.value.map((d) => ({ label: `@${d}`, value: d })))
+const changingAll = ref(false)
+const allDomain = ref<string>()
+function changeAllDomains() {
+  if (!allDomain.value) return
+  for (const r of rows.value) r.domain = allDomain.value
+  changingAll.value = false
+  notify({ type: 'success', title: `Every user is now @${allDomain.value}` })
+}
+
+// One password for everyone, instead of each their own.
+const autoPassword = ref(true)
+const sharedPassword = ref('')
+const sharedValid = ref(false)
+const passwordError = ref<string>()
 
 /** first.last, in the characters a username allows. */
 function suggest(r: Row) {
@@ -99,14 +130,17 @@ function checkUsers(): boolean {
     const u = r.username.trim().toLowerCase()
     if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(u))
       r.errors.username = 'Use lowercase letters, numbers, dots, dashes or underscores'
-    else if (seen.has(u)) r.errors.username = 'Already in the list'
-    seen.set(u, r)
+    else if (seen.has(`${u}@${r.domain}`)) r.errors.username = 'Already in the list'
+    seen.set(`${u}@${r.domain}`, r)
   }
+  passwordError.value = undefined
+  if (!autoPassword.value && !sharedValid.value)
+    passwordError.value = sharedPassword.value ? 'The password doesn’t meet every rule yet' : 'Enter a password'
   if (!people.value.length) usersError.value = 'Add at least one user'
   else if (people.value.length > MAX) usersError.value = `Add up to ${MAX} users at a time`
   const bad = rows.value.find((r) => Object.values(r.errors).some(Boolean))
   if (bad) focusField(`${bad.errors.first ? 'first' : 'username'}-${bad.key}`)
-  return !usersError.value && !bad
+  return !usersError.value && !bad && !passwordError.value
 }
 
 // ── Licences ────────────────────────────────────────────────────────────────
@@ -120,6 +154,7 @@ function toggleLicence(id: string, on: boolean) {
 onMounted(async () => {
   try {
     org.value = await api.organisation(orgId)
+    rows.value = Array.from({ length: 5 }, newRow)
     if (canAssign.value) {
       products.value = await api.products(orgId)
       licences.value = products.value.map((p) => p.id)
@@ -159,7 +194,12 @@ async function add() {
   status.value = 'loading'
   try {
     const res = await api.bulkCreate(orgId, {
-      users: people.value.map((r) => ({ name: `${r.first.trim()} ${r.last.trim()}`.trim(), username: r.username.trim() })),
+      users: people.value.map((r) => ({
+        name: `${r.first.trim()} ${r.last.trim()}`.trim(),
+        username: r.username.trim(),
+        domain: r.domain,
+      })),
+      password: autoPassword.value ? undefined : sharedPassword.value,
       licences: canAssign.value ? licences.value : [],
       requirePasswordChange: requireChange.value,
     })
@@ -169,6 +209,10 @@ async function add() {
   } catch (e) {
     status.value = 'idle'
     if (e instanceof ApiError && e.field === 'licences') usersError.value = e.message
+    if (e instanceof ApiError && e.field === 'password') {
+      passwordError.value = e.message
+      step.value = 0
+    }
     notify({ type: 'error', title: 'Couldn’t add the users', description: e instanceof Error ? e.message : String(e) })
   }
 }
@@ -189,11 +233,12 @@ const plural = (n: number) => `${n} ${n === 1 ? 'user' : 'users'}`
 const productNames = computed(() =>
   licences.value.map((id) => products.value?.find((p) => p.id === id)?.name ?? id).join(', '),
 )
-const addedColumns: TableColumn<BulkResult>[] = [
+const shared = computed(() => !!results.value?.length && !results.value.some((r) => r.password))
+const addedColumns = computed<TableColumn<BulkResult>[]>(() => [
   { key: 'name', label: 'Name', rowHeader: true },
   { key: 'email', label: 'Email' },
-  { key: 'password', label: 'Temporary password' },
-]
+  ...(shared.value ? [] : [{ key: 'password', label: 'Temporary password' }]),
+])
 const skippedColumns: TableColumn<BulkResult>[] = [
   { key: 'name', label: 'Name', rowHeader: true },
   { key: 'email', label: 'Email' },
@@ -224,7 +269,8 @@ const skippedColumns: TableColumn<BulkResult>[] = [
             {{ added.length ? `${plural(added.length)} added` : 'Nobody was added' }}
           </h2>
           <p class="max-w-prose text-sm text-black/65">
-            <template v-if="added.length">
+            <template v-if="added.length && shared">They sign in with their email and the password you set.</template>
+            <template v-else-if="added.length">
               Give each person their email and temporary password securely. The passwords are shown only once: once you
               leave this page, they’re gone.
               <template v-if="requireChange">They’ll choose their own when they first sign in.</template>
@@ -236,7 +282,7 @@ const skippedColumns: TableColumn<BulkResult>[] = [
 
       <Card v-if="added.length" title="Added" :description="canAssign ? `Licences: ${productNames || 'none'}` : undefined" padding="none">
         <template #actions>
-          <Button size="sm" @click="downloadCsv(added)">
+          <Button v-if="!shared" size="sm" @click="downloadCsv(added)">
             <template #leading><Download /></template>
             Download as CSV
           </Button>
@@ -271,14 +317,26 @@ const skippedColumns: TableColumn<BulkResult>[] = [
           <div class="flex flex-col gap-1">
             <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">Add a list of users</h2>
             <p class="text-sm text-black/65">
-              Enter up to {{ MAX }} users. Everyone is added as a member and gets their own temporary password. Empty
-              rows are left out.
+              Enter up to {{ MAX }} users. Everyone is added as a member. Empty rows are left out.
             </p>
+          </div>
+
+          <div v-if="domains.length" class="flex flex-col gap-3">
+            <div>
+              <Button size="sm" @click="changingAll = !changingAll; allDomain = undefined">Change all domains</Button>
+            </div>
+            <div v-if="changingAll" class="flex flex-col gap-2 rounded border border-black/15 p-4 sm:flex-row sm:items-start">
+              <Select v-model="allDomain" label="Domain for every user" :options="domainOptions" placeholder="Choose a domain" class="flex-1" />
+              <div class="flex gap-2 sm:mt-6.5">
+                <Button @click="changingAll = false">Cancel</Button>
+                <Button variant="primary" :disabled="!allDomain" @click="changeAllDomains">Change all</Button>
+              </div>
+            </div>
           </div>
 
           <fieldset v-for="(r, i) in rows" :key="r.key" class="flex items-start gap-2 border-t border-black/10 pt-4 first-of-type:border-t-0 first-of-type:pt-0">
             <legend class="sr-only">User {{ i + 1 }}</legend>
-            <div class="grid flex-1 gap-3 sm:grid-cols-3">
+            <div class="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Input :data-field="`first-${r.key}`" v-model="r.first" label="First name" autocomplete="off" :error-text="r.errors.first" @update:model-value="suggest(r)" />
               <Input v-model="r.last" label="Last name" autocomplete="off" @update:model-value="suggest(r)" />
               <Input
@@ -290,9 +348,8 @@ const skippedColumns: TableColumn<BulkResult>[] = [
                 autocomplete="off"
                 :error-text="r.errors.username"
                 @update:model-value="typedUsername(r, String($event ?? ''))"
-              >
-                <template #trailing><span class="text-sm text-black/65">@{{ org.domain }}</span></template>
-              </Input>
+              />
+              <Select v-model="r.domain" label="Domain" :options="domainOptions" />
             </div>
             <Button
               variant="ghost"
@@ -314,6 +371,20 @@ const skippedColumns: TableColumn<BulkResult>[] = [
           </div>
           <p v-if="usersError" class="text-sm text-red" role="alert">{{ usersError }}</p>
 
+          <Checkbox
+            v-model="autoPassword"
+            label="Automatically create a password"
+            description="Each user gets their own, shown once after they’re added."
+          />
+          <template v-if="!autoPassword">
+            <Notification
+              type="warning"
+              title="Everyone gets the same password"
+              description="This will apply the same password for all of these users. As the password is shared, it’s recommended to require users to change it when they sign in."
+              :dismissible="false"
+            />
+            <PasswordField v-model="sharedPassword" v-model:valid="sharedValid" :organisation-id="orgId" :error-text="passwordError" />
+          </template>
           <Checkbox
             v-model="requireChange"
             label="Require these users to change their password on sign in"

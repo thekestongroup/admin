@@ -16,6 +16,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MfaSettings from '../components/MfaSettings.vue'
 import { ApiError, api, loadMe, type Me, type Organisation, type ProfileEditing } from '../lib/api'
 
 /**
@@ -133,6 +134,14 @@ async function save(key: keyof ProfileEditing, on: boolean) {
           @update:model-value="save(f.key, $event)"
         />
       </div>
+    </Card>
+
+    <Card
+      v-if="loaded && org?.permissions?.includes('policy.manage')"
+      title="Sign-in security"
+      description="Changes apply at each person’s next sign-in."
+    >
+      <MfaSettings :org-id="orgId" />
     </Card>
 
     <Card
