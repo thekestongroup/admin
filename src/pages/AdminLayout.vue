@@ -124,7 +124,7 @@ const user = computed(() =>
 )
 
 function accountSettings() {
-  // Your own account (password, two-step, profile) is in Keston ID.
+  // Your own account (password, MFA, profile) is in Keston ID.
   window.location.assign(`${window.location.protocol}//${window.location.hostname.replace(/^admin\./, 'id.')}/account`)
 }
 </script>

@@ -55,7 +55,6 @@ const details = computed(() =>
         { label: 'Name', value: user.value.name },
         { label: 'Email', value: user.value.email, description: 'They sign in with this.' },
         { label: 'Role', value: user.value.role === 'global_admin' ? 'Global admin' : 'Member' },
-        { label: 'Two-step verification', value: user.value.twoStep ? 'On' : 'Off' },
         { label: 'Password changed', value: formatDate(user.value.passwordChangedAt) },
         { label: 'User ID', value: user.value.id },
       ]
@@ -169,6 +168,27 @@ async function reset() {
   }
 }
 
+// ── Turn off MFA (lost authenticator) ─────────────────────────────────────────
+
+const confirmMfaOff = ref(false)
+const mfaStatus = ref<ButtonStatus>('idle')
+async function turnOffMfa() {
+  mfaStatus.value = 'loading'
+  try {
+    user.value = await api.disableMfa(orgId, userId)
+    confirmMfaOff.value = false
+    notify({
+      type: 'success',
+      title: 'MFA turned off',
+      description: `${user.value.name} can sign in with their password now, and set MFA up again in their Keston account.`,
+    })
+  } catch (e) {
+    notify({ type: 'error', title: 'Couldn’t turn off MFA', description: message(e) })
+  } finally {
+    mfaStatus.value = 'idle'
+  }
+}
+
 // ── Disable / enable ────────────────────────────────────────────────────────
 
 const toggling = ref(false)
@@ -225,6 +245,23 @@ async function toggle() {
         <div><Button @click="startReset">Reset password</Button></div>
       </Card>
 
+      <Card title="Multi-factor authentication (MFA)">
+        <template #actions>
+          <Badge v-if="user.mfa" color="green">On</Badge>
+          <Badge v-else color="yellow">Off</Badge>
+        </template>
+        <div class="flex flex-col gap-3">
+          <p v-if="user.mfa" class="text-sm text-black/65">
+            They sign in with their password and a code from their authenticator app. If they’ve lost it (and their
+            backup codes), turn MFA off so they can sign in with their password, then set it up again.
+          </p>
+          <p v-else class="text-sm text-black/65">
+            They sign in with their password only. They can turn MFA on in their Keston account.
+          </p>
+          <div v-if="user.mfa"><Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button></div>
+        </div>
+      </Card>
+
       <Card v-if="!isMe" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
         <div>
           <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
@@ -266,6 +303,17 @@ async function toggle() {
       <template #footer="{ close }">
         <Button :disabled="saveStatus !== 'idle'" @click="close">Cancel</Button>
         <Button variant="primary" :status="saveStatus" loading-text="Saving" @click="save">Save</Button>
+      </template>
+    </Slideover>
+
+    <Slideover
+      v-model:open="confirmMfaOff"
+      :title="user ? `Turn off ${user.name}’s MFA?` : 'Turn off MFA?'"
+      description="Only do this once you’re sure it’s really them asking, e.g. they’ve lost their phone. Until they set it up again, their password alone signs them in, and their backup codes stop working."
+    >
+      <template #footer="{ close }">
+        <Button :disabled="mfaStatus !== 'idle'" @click="close">Cancel</Button>
+        <Button variant="danger" :status="mfaStatus" loading-text="Turning off" @click="turnOffMfa">Turn off MFA</Button>
       </template>
     </Slideover>
 

@@ -102,7 +102,8 @@ export interface User {
   role: 'member' | 'global_admin'
   platformAdmin: boolean
   status: 'active' | 'disabled'
-  twoStep: boolean
+  /** Multi-factor authentication (an authenticator app) is on. */
+  mfa: boolean
   locked: boolean
   createdAt: string
   passwordChangedAt: string
@@ -249,6 +250,8 @@ export const api = {
     request<User>('POST', `${org(orgId)}/users`, body),
   resetPassword: (orgId: string, userId: string, password: string) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password }),
+  /** Turns off a user's MFA, e.g. when they've lost their authenticator. */
+  disableMfa: (orgId: string, userId: string) => request<User>('POST', `${org(orgId)}/users/${userId}/mfa/disable`, {}),
   setStatus: (orgId: string, userId: string, status: User['status']) =>
     request<void>('POST', `${org(orgId)}/users/${userId}/status`, { status }),
 
