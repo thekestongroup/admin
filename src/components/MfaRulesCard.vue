@@ -136,7 +136,7 @@ async function remove() {
     </template>
     <EmptyState v-if="error" size="sm" :title="t('mfa.rules.couldntLoad')" :description="error" />
     <div v-else-if="!rules" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
-    <Table v-else :columns="columns" :rows="rules" row-key="id" :caption="t('mfa.rules.caption')">
+    <Table v-else inset :columns="columns" :rows="rules" row-key="id" :caption="t('mfa.rules.caption')">
       <template #cell-name="{ row, index }">
         <span class="text-black/65">{{ index + 1 }}.</span> {{ row.name }}
         <Badge v-if="!row.enabled" size="sm" class="ml-1">{{ t('mfa.rules.turnedOffBadge') }}</Badge>

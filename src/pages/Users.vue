@@ -3,7 +3,6 @@ import { Ban, CircleCheck, KeyRound, Lock, ShieldCheck, TriangleAlert, Users } f
 import {
   Badge,
   Card,
-  Checkbox,
   EmptyState,
   Menu,
   type MenuItem,
@@ -43,7 +42,7 @@ const loadError = ref<string>()
 async function load() {
   users.value = await api.users(orgId)
   const ids = new Set(users.value.filter(selectable).map((u) => u.id))
-  selected.value = new Set([...selected.value].filter((id) => ids.has(id)))
+  selected.value = selected.value.filter((id) => ids.has(id))
 }
 
 onMounted(async () => {
@@ -67,32 +66,15 @@ const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'user
 const canBulk = computed(() => bulkPerms.some(has))
 /** Only users you can change can be ticked. */
 const selectable = (u: User) => !!u.canChange && !u.support
-const selected = ref(new Set<string>())
+const selected = ref<string[]>([])
 const groups = ref<Group[]>([])
-const selectedUsers = computed(() => users.value.filter((u) => selected.value.has(u.id)))
-const selectableCount = computed(() => users.value.filter(selectable).length)
-const allSelected = computed<boolean | 'indeterminate'>(() =>
-  !selected.value.size ? false : selected.value.size === selectableCount.value ? true : 'indeterminate',
-)
-
-function selectAll(on: boolean | 'indeterminate') {
-  selected.value = new Set(on === true ? users.value.filter(selectable).map((u) => u.id) : [])
-}
-
-function selectRow(u: User, on: boolean | 'indeterminate') {
-  const next = new Set(selected.value)
-  if (on === true) next.add(u.id)
-  else next.delete(u.id)
-  selected.value = next
-}
-
+const selectedUsers = computed(() => users.value.filter((u) => selected.value.includes(u.id)))
 async function bulkDone() {
-  selected.value = new Set()
+  selected.value = []
   await load()
 }
 
 const columns = computed<TableColumn<User>[]>(() => [
-  ...(canBulk.value ? [{ key: 'select', label: t('users.columns.select'), hideLabel: true, class: 'w-0' }] : []),
   { key: 'name', label: t('users.columns.name'), rowHeader: true, sortable: true },
   { key: 'email', label: t('users.columns.email'), sortable: true },
   { key: 'role', label: t('users.columns.role'), sortable: true },
@@ -164,7 +146,7 @@ async function toggle(a: User) {
       :groups="groups"
       :can="has"
       @add="adding = true"
-      @clear="selected = new Set()"
+      @clear="selected = []"
       @done="bulkDone"
     />
 
@@ -181,25 +163,10 @@ async function toggle(a: User) {
         :caption="t('users.title')"
         :row-link="(row: User) => `/organisations/${orgId}/users/${row.id}`"
         :link-component="RouterLink"
+        :selectable="canBulk && selectable"
+        :row-label="(row: User) => t('users.select', { name: row.name })"
+        v-model:selected="selected"
       >
-        <template #header-select>
-          <Checkbox
-            v-if="selectableCount"
-            :model-value="allSelected"
-            :label="t('users.selectAll')"
-            hide-label
-            @update:model-value="selectAll"
-          />
-        </template>
-        <template #cell-select="{ row }">
-          <Checkbox
-            v-if="selectable(row)"
-            :model-value="selected.has(row.id)"
-            :label="t('users.select', { name: row.name })"
-            hide-label
-            @update:model-value="selectRow(row, $event)"
-          />
-        </template>
         <template #cell-name="{ row }">
           {{ row.name }}
           <Badge v-if="row.support" size="sm" color="blue" class="ml-1">{{ t('users.kestonSupport') }}</Badge>
