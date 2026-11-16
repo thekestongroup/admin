@@ -483,8 +483,12 @@ export const api = {
   products: (orgId: string) => request<Product[]>('GET', `${org(orgId)}/products`),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
-  resetPassword: (orgId: string, userId: string, password: string, requirePasswordChange: boolean) =>
-    request<void>('POST', `${org(orgId)}/users/${userId}/reset-password`, { password, requirePasswordChange }),
+  /** Set a password, or with `generatePassword` have Keston ID make one up: returned once. */
+  resetPassword: (
+    orgId: string,
+    userId: string,
+    body: { password?: string; generatePassword?: boolean; requirePasswordChange: boolean },
+  ) => request<{ password?: string } | undefined>('POST', `${org(orgId)}/users/${userId}/reset-password`, body),
 
   signInState: (orgId: string, userId: string) => request<SignInState>('GET', `${org(orgId)}/users/${userId}/sign-in`),
   requirePasswordChange: (orgId: string, userId: string, required = true) =>

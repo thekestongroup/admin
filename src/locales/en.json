@@ -180,7 +180,6 @@
   "users": {
     "title": "Users",
     "columns": {
-      "select": "Select",
       "name": "Name",
       "email": "Email",
       "role": "Role",
@@ -196,7 +195,6 @@
     "signInUnblockedDescription": "{name} can sign in again.",
     "couldntChange": "Couldn’t change the user",
     "couldntLoad": "Couldn’t load the users",
-    "selectAll": "Select every user you can change",
     "select": "Select {name}",
     "kestonSupport": "Keston support",
     "you": "(you)",
@@ -823,7 +821,6 @@
     "couldntLoad": "Couldn’t load deleted users",
     "restoring": "Restoring",
     "restore": "Restore",
-    "selectAll": "Select every user you can restore",
     "by": "by {name}",
     "none": "No deleted users",
     "noneDescription": "Users you delete stay here for 30 days."
@@ -1047,7 +1044,9 @@
     "resetNamed": "Reset {name}’s password",
     "resetDescription": "They’ll be signed out everywhere, and unlocked if they were locked out. Give them the new password securely.",
     "newPassword": "New password",
-    "askChoose": "Ask them to choose a new password when they next sign in"
+    "askChoose": "Ask them to choose a new password when they next sign in",
+    "autoDescription": "Shown once after you reset it.",
+    "resetDone": "Give them this password securely. It’s shown only once: once you close this, it’s gone."
   },
   "addUsers": {
     "everyUserNow": "Every user is now on {domain}",

@@ -42,7 +42,7 @@ const columns = computed<TableColumn<BulkResult>[]>(() => [
         </Button>
       </div>
     </template>
-    <Table :columns="columns" :rows="results" :row-key="(_r: BulkResult, i: number) => i" size="sm" :caption="title">
+    <Table inset :columns="columns" :rows="results" :row-key="(_r: BulkResult, i: number) => i" size="sm" :caption="title">
       <template #header-password>
         <span class="inline-flex items-center gap-2">
           {{ t('password.label') }}

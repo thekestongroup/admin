@@ -47,7 +47,7 @@ const columns = computed<TableColumn<UserApp>[]>(() => [
     </template>
     <EmptyState v-if="error" size="sm" :title="t('userApps.couldntLoad')" :description="error" />
     <div v-else-if="!apps" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
-    <Table v-else :columns="columns" :rows="apps" row-key="id" size="sm" :caption="t('userApps.caption', { name })">
+    <Table v-else inset :columns="columns" :rows="apps" row-key="id" size="sm" :caption="t('userApps.caption', { name })">
       <template #cell-access="{ row }">
         <Badge size="sm" :color="access[row.access].color">{{ access[row.access].label }}</Badge>
       </template>

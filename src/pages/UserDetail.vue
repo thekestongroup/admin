@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, ImageUp, KeyRound, Pencil, Plus, RectangleEllipsis, ShieldOff, Ticket, Trash2, TriangleAlert, UserRound } from '@lucide/vue'
+import { AppWindow, Copy, ImageUp, KeyRound, Pencil, Plus, RectangleEllipsis, ShieldOff, Ticket, Trash2, TriangleAlert, UserRound } from '@lucide/vue'
 import {
   Avatar,
   Badge,
@@ -232,27 +232,50 @@ async function removePicture() {
 const resetting = ref(false)
 const newPassword = ref('')
 const resetRequireChange = ref(true)
+const resetAuto = ref(false)
+/** The password Keston ID made up: shown once, after resetting. */
+const resetResult = ref<string>()
 const resetValid = ref(false)
 const resetError = ref<string>()
 const resetStatus = ref<ButtonStatus>('idle')
 
 function startReset() {
   newPassword.value = ''
+  resetAuto.value = false
+  resetResult.value = undefined
   resetRequireChange.value = true
   resetError.value = undefined
   resetStatus.value = 'idle'
   resetting.value = true
 }
 
+async function copyResetPassword(password: string) {
+  try {
+    await navigator.clipboard.writeText(password)
+    notify({ type: 'success', title: t('addUser.passwordCopied') })
+  } catch {
+    notify({ type: 'error', title: t('addUser.couldntCopy'), description: t('addUser.couldntCopyDescription') })
+  }
+}
+
 async function reset() {
-  resetError.value = resetValid.value ? undefined : newPassword.value ? t('password.notYetValid') : t('userDetail.enterNew')
+  resetError.value = resetAuto.value || resetValid.value ? undefined : newPassword.value ? t('password.notYetValid') : t('userDetail.enterNew')
   if (resetError.value) return
   resetStatus.value = 'loading'
   try {
-    await api.resetPassword(orgId, userId, newPassword.value, resetRequireChange.value)
+    const done = await api.resetPassword(
+      orgId,
+      userId,
+      resetAuto.value
+        ? { generatePassword: true, requirePasswordChange: resetRequireChange.value }
+        : { password: newPassword.value, requirePasswordChange: resetRequireChange.value },
+    )
     signInCard.value?.reload()
     user.value = await api.user(orgId, userId)
-    resetting.value = false
+    // A made-up password is shown once; the panel stays open to give it out.
+    if (done?.password) resetResult.value = done.password
+    else resetting.value = false
+    resetStatus.value = 'idle'
     notify({ type: 'success', title: t('userDetail.passwordReset'), description: t('userDetail.passwordResetDescription', { name: user.value.name }) })
   } catch (e) {
     resetStatus.value = 'idle'
@@ -549,17 +572,33 @@ async function toggle() {
     <Slideover
       v-model:open="resetting"
       :title="user ? t('userDetail.resetNamed', { name: user.name }) : t('users.resetPassword')"
-      :description="t('userDetail.resetDescription')"
+      :description="resetResult ? t('userDetail.resetDone') : t('userDetail.resetDescription')"
       initial-focus="auto"
     >
       <template #body>
-        <form class="flex flex-col gap-4" novalidate @submit.prevent="reset">
-          <PasswordField v-model="newPassword" v-model:valid="resetValid" :label="t('userDetail.newPassword')" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
+        <div v-if="resetResult" class="flex flex-col gap-4">
+          <SummaryList :items="[{ label: t('password.label'), value: resetResult }]" layout="stacked">
+            <template #value="{ item }"><span class="font-mono select-all">{{ item.value }}</span></template>
+          </SummaryList>
+          <div>
+            <Button @click="copyResetPassword(resetResult)">
+              <template #leading><Copy /></template>
+              {{ t('addUser.copyPassword') }}
+            </Button>
+          </div>
+        </div>
+        <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="reset">
+          <Checkbox v-model="resetAuto" :label="t('password.auto')" :description="t('userDetail.autoDescription')" />
+          <PasswordField v-if="!resetAuto" v-model="newPassword" v-model:valid="resetValid" :label="t('userDetail.newPassword')" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
           <Checkbox v-model="resetRequireChange" :label="t('userDetail.askChoose')" :description="t('password.requireChangeDescription')" />
+          <p v-if="resetAuto && resetError" class="text-sm text-red" role="alert">{{ resetError }}</p>
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
-      <template #footer="{ close }">
+      <template v-if="resetResult" #footer="{ close }">
+        <Button variant="primary" @click="close">{{ t('common.done') }}</Button>
+      </template>
+      <template v-else #footer="{ close }">
         <Button :disabled="resetStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
         <Button variant="primary" :status="resetStatus" :loading-text="t('bulk.resetPassword.loading')" @click="reset">{{ t('users.resetPassword') }}</Button>
       </template>

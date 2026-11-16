@@ -5,7 +5,6 @@ import {
   Button,
   type ButtonStatus,
   Card,
-  Checkbox,
   EmptyState,
   PageHeader,
   Table,
@@ -46,7 +45,7 @@ const trail = computed(() => [
 async function load() {
   users.value = await api.deletedUsers(orgId)
   const ids = new Set(users.value.filter(selectable).map((u) => u.id))
-  selected.value = new Set([...selected.value].filter((id) => ids.has(id)))
+  selected.value = selected.value.filter((id) => ids.has(id))
 }
 
 onMounted(async () => {
@@ -61,7 +60,6 @@ onMounted(async () => {
 })
 
 const columns = computed<TableColumn<DeletedUser>[]>(() => [
-  ...(canRestore.value ? [{ key: 'select', label: t('users.columns.select'), hideLabel: true, class: 'w-0' }] : []),
   { key: 'name', label: t('common.name'), rowHeader: true, sortable: true },
   { key: 'email', label: t('common.email'), sortable: true },
   { key: 'deletedAt', label: t('deleted.columns.deleted'), sortable: true },
@@ -72,20 +70,7 @@ const columns = computed<TableColumn<DeletedUser>[]>(() => [
 // ── Selecting and restoring ─────────────────────────────────────────────────
 
 const selectable = (u: DeletedUser) => !!u.canChange
-const selected = ref(new Set<string>())
-const selectableCount = computed(() => users.value.filter(selectable).length)
-const allSelected = computed<boolean | 'indeterminate'>(() =>
-  !selected.value.size ? false : selected.value.size === selectableCount.value ? true : 'indeterminate',
-)
-function selectAll(on: boolean | 'indeterminate') {
-  selected.value = new Set(on === true ? users.value.filter(selectable).map((u) => u.id) : [])
-}
-function selectRow(u: DeletedUser, on: boolean | 'indeterminate') {
-  const next = new Set(selected.value)
-  if (on === true) next.add(u.id)
-  else next.delete(u.id)
-  selected.value = next
-}
+const selected = ref<string[]>([])
 
 const restoring = ref<string>()
 const status = ref<ButtonStatus>('idle')
@@ -97,7 +82,7 @@ async function restore(ids: string[], one?: DeletedUser) {
   else status.value = 'loading'
   try {
     const res = await api.restoreUsers(orgId, ids)
-    selected.value = new Set()
+    selected.value = []
     await load()
     if (one && res.results[0]?.result === 'done') {
       notify({ type: 'success', title: t('deleted.restored'), description: t('deleted.restoredDescription', { name: one.name }) })
@@ -112,7 +97,7 @@ async function restore(ids: string[], one?: DeletedUser) {
     status.value = 'idle'
   }
 }
-const count = computed(() => t('deleted.selected', selected.value.size))
+const count = computed(() => t('deleted.selected', selected.value.length))
 </script>
 
 <template>
@@ -127,10 +112,10 @@ const count = computed(() => t('deleted.selected', selected.value.size))
       <EmptyState :icon="TriangleAlert" :title="t('deleted.couldntLoad')" :description="loadError" />
     </Card>
     <template v-else>
-      <Card v-if="selected.size">
+      <Card v-if="selected.length">
         <div class="flex flex-wrap items-center gap-2">
           <p class="mr-2 text-sm font-bold">{{ count }}</p>
-          <Button size="sm" variant="primary" :status="status" :loading-text="t('deleted.restoring')" @click="restore([...selected])">
+          <Button size="sm" variant="primary" :status="status" :loading-text="t('deleted.restoring')" @click="restore(selected)">
             <template #leading><RotateCcw /></template>
             {{ t('deleted.restore') }}
           </Button>
@@ -138,25 +123,16 @@ const count = computed(() => t('deleted.selected', selected.value.size))
       </Card>
 
       <Card padding="none">
-        <Table :columns="columns" :rows="users" row-key="id" :loading="loading" :caption="t('deleted.title')">
-          <template #header-select>
-            <Checkbox
-              v-if="selectableCount"
-              :model-value="allSelected"
-              :label="t('deleted.selectAll')"
-              hide-label
-              @update:model-value="selectAll"
-            />
-          </template>
-          <template #cell-select="{ row }">
-            <Checkbox
-              v-if="selectable(row)"
-              :model-value="selected.has(row.id)"
-              :label="t('users.select', { name: row.name })"
-              hide-label
-              @update:model-value="selectRow(row, $event)"
-            />
-          </template>
+        <Table
+          v-model:selected="selected"
+          :columns="columns"
+          :rows="users"
+          row-key="id"
+          :loading="loading"
+          :caption="t('deleted.title')"
+          :selectable="canRestore && selectable"
+          :row-label="(row: DeletedUser) => t('users.select', { name: row.name })"
+        >
           <template #cell-deletedAt="{ row }">
             {{ formatDate(row.deletedAt) }}<span v-if="row.deletedByName" class="text-black/65"> {{ t('deleted.by', { name: row.deletedByName }) }}</span>
           </template>
