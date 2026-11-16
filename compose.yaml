@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     environment:
       # Every service behind the API, name=address. Add each new Keston app.
-      KESTON_API_SERVICES: ${KESTON_API_SERVICES:-id=http://keston-id:4444}
+      KESTON_API_SERVICES: ${KESTON_API_SERVICES:-id=http://keston-id:8080}
       # Only when the web app calls the API on another site (api.keston.co).
       KESTON_API_ORIGINS: ${KESTON_API_ORIGINS:-}
     networks:
