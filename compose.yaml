@@ -1,7 +1,10 @@
-# Keston Admin: the web app and its own API (/api), in one container. It runs
-# alongside Keston ID (the id repo's compose), on its "keston" network. Keston
-# ID's Caddy serves http://admin.keston.localhost (https://admin.keston.co
-# live) from it.
+# Keston Admin: the web app and its own API (/api), in one container.
+#
+# This file is for LOCAL DEVELOPMENT. Live (https://admin.keston.co) is the
+# Azure Container App `keston-admin` behind Cloudflare, defined in the infra
+# repo (apps.bicep); its README is the runbook. Locally the container runs
+# alongside Keston ID (the id repo's compose), on its "keston" network, and
+# Keston ID's Caddy serves http://admin.keston.localhost from it.
 #
 # The API is only for the Keston Admin web app: it passes its requests on to
 # Keston ID (and, later, Keston's other apps), and splits requests that touch
