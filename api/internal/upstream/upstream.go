@@ -34,7 +34,7 @@ type Service struct {
 // Registry is every service behind the API, by name.
 type Registry struct{ services map[string]*Service }
 
-// Parse reads "id=http://keston-id:4444,work=http://work:3000".
+// Parse reads "id=http://keston-id:8080,work=http://work:3000".
 func Parse(spec string) (*Registry, error) {
 	transport := &http.Transport{
 		DialContext:           (&net.Dialer{Timeout: 3 * time.Second}).DialContext,

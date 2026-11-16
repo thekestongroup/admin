@@ -24,7 +24,7 @@ Admin API ──passes on as it is────────────► Keston
 
 ## Adding a Keston app
 
-1. Add it to `KESTON_API_SERVICES`: `id=http://keston-id:4444,work=http://work:3000`
+1. Add it to `KESTON_API_SERVICES`: `id=http://keston-id:8080,work=http://work:3000`
 2. Give it its routes in `internal/gateway/gateway.go`:
    `mux.Handle("/v1/organisations/{orgID}/work/", g.services.Get("work").Proxy())`
 3. A request that touches several services is a handler like `bulkupdate.go`:
@@ -35,7 +35,7 @@ Admin API ──passes on as it is────────────► Keston
 | | Default |
 |---|---|
 | `KESTON_API_ADDR` | `:8080` |
-| `KESTON_API_SERVICES` | `id=http://keston-id:4444` |
+| `KESTON_API_SERVICES` | `id=http://keston-id:8080` |
 | `KESTON_API_ORIGINS` | none. Sites allowed to call it from a browser, for when it has its own address (`https://api.keston.co`) |
 
 ## Run

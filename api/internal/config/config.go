@@ -22,7 +22,7 @@ type Config struct {
 func Load() (*Config, error) {
 	c := &Config{
 		Addr:     env("KESTON_API_ADDR", ":8080"),
-		Services: env("KESTON_API_SERVICES", "id=http://keston-id:4444"),
+		Services: env("KESTON_API_SERVICES", "id=http://keston-id:8080"),
 	}
 	for _, o := range strings.Split(os.Getenv("KESTON_API_ORIGINS"), ",") {
 		if o = strings.TrimRight(strings.TrimSpace(o), "/"); o != "" {
