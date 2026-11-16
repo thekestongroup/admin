@@ -302,9 +302,9 @@ const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
           <!-- A table of fields: the headings once, each field labelled for
                screen readers ("First name, user 2"). Scrolls sideways on
                narrow screens. -->
-          <div class="overflow-x-auto">
+          <div class="-m-1 overflow-x-auto p-1">
             <div
-              class="grid min-w-max grid-cols-[repeat(3,minmax(--spacing(36),1fr))_auto_minmax(--spacing(44),1fr)_auto] items-start gap-x-2 gap-y-3"
+              class="grid grid-cols-[repeat(3,minmax(--spacing(36),1fr))_auto_minmax(--spacing(44),1fr)_auto] items-start gap-x-2 gap-y-3"
             >
               <p class="text-sm" aria-hidden="true">{{ t('addUser.firstName') }}</p>
               <p class="text-sm" aria-hidden="true">{{ t('addUser.lastName') }}</p>
