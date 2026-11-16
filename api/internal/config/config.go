@@ -1,10 +1,9 @@
-// Package config reads Keston API's settings from environment variables.
+// Package config reads Keston Admin's settings from environment variables.
 package config
 
 import (
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Config struct {
@@ -13,24 +12,22 @@ type Config struct {
 	// The services behind the API, "name=url" separated by commas. "id" is
 	// required (Keston ID). Add each new Keston app here as it appears.
 	Services string
-	// Sites allowed to call the API from a browser (exact origins, e.g.
-	// https://admin.keston.co). Empty: none, which is right when the API is
-	// reached on the same origin as the web app (admin.keston.co/api).
-	Origins []string
+	// Keston ID's public address, for the web app to sign in with. Blank: the
+	// app works it out from its own address (admin.keston.co → id.keston.co).
+	IDURL string
+	// The built web app.
+	WebDir string
 }
 
 func Load() (*Config, error) {
 	c := &Config{
-		Addr:     env("KESTON_API_ADDR", ":8080"),
+		Addr:     env("KESTON_ADMIN_ADDR", ":8080"),
 		Services: env("KESTON_API_SERVICES", "id=http://keston-id:8080"),
-	}
-	for _, o := range strings.Split(os.Getenv("KESTON_API_ORIGINS"), ",") {
-		if o = strings.TrimRight(strings.TrimSpace(o), "/"); o != "" {
-			c.Origins = append(c.Origins, o)
-		}
+		IDURL:    os.Getenv("KESTON_ID_URL"),
+		WebDir:   env("KESTON_ADMIN_WEB_DIR", "/srv"),
 	}
 	if c.Addr == "" {
-		return nil, fmt.Errorf("KESTON_API_ADDR is empty")
+		return nil, fmt.Errorf("KESTON_ADMIN_ADDR is empty")
 	}
 	return c, nil
 }

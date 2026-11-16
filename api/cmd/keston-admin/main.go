@@ -1,9 +1,10 @@
-// Keston Admin's backend: the one address the Keston Admin web app talks to,
-// in front of Keston ID and Keston's other apps. Not a public API: other
-// clients use each service's own API. See internal/gateway.
+// Keston Admin: the web app, and its own API behind it (/api), in one
+// container. The API sits in front of Keston ID and Keston's other apps. It's
+// not a public API: other clients use each service's own API. See
+// internal/gateway.
 //
-//	keston-api serve         run the API
-//	keston-api healthcheck   for Docker: exits 0 when it's running
+//	keston-admin serve         run it
+//	keston-admin healthcheck   for Docker: exits 0 when it's running
 package main
 
 import (
@@ -20,6 +21,7 @@ import (
 	"github.com/thekestongroup/admin/api/internal/config"
 	"github.com/thekestongroup/admin/api/internal/gateway"
 	"github.com/thekestongroup/admin/api/internal/upstream"
+	"github.com/thekestongroup/admin/api/internal/web"
 )
 
 func main() {
@@ -49,7 +51,7 @@ func serve(cfg *config.Config) {
 	}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           gateway.New(services, cfg.Origins).Handler(),
+		Handler:           gateway.New(services, web.Handler(cfg.WebDir, cfg.IDURL)).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       120 * time.Second,
@@ -57,7 +59,7 @@ func serve(cfg *config.Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() {
-		slog.Info("keston-api listening", "addr", cfg.Addr)
+		slog.Info("keston-admin listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			fatal(err)
 		}
@@ -78,6 +80,6 @@ func healthcheck(cfg *config.Config) {
 }
 
 func fatal(err error) {
-	slog.Error("keston-api", "error", err)
+	slog.Error("keston-admin", "error", err)
 	os.Exit(1)
 }
