@@ -19,6 +19,10 @@ COPY . .
 # Keston ID's address, built in: docker build --build-arg VITE_ID_URL=https://id.example.com
 ARG VITE_ID_URL
 ENV VITE_ID_URL=$VITE_ID_URL
+# The Admin API's address, when it's on its own site (https://admin-api.example.com).
+# Leave it out to use /api on the app's own address.
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 RUN pnpm build
 
 # ── 2. Serve it: static files, index.html for the app's own routes ──────────
