@@ -1,13 +1,18 @@
 import { t } from '../i18n'
-import { currentUser, idUrl, signIn } from './auth'
+import { currentUser, signIn } from './auth'
 
 /**
- * Keston ID's API. Admin talks to Keston ID directly (VITE_ID_URL: Keston ID
- * lists this site in KESTON_ID_API_ORIGINS). Without VITE_ID_URL (local
- * development) it's /api on this origin, passed on by the dev server or
- * Caddy. Each request carries the Keston ID access token.
+ * Keston Admin's own backend (the Admin API, only for this app): every request
+ * goes here, and it passes it to
+ * the right service (Keston ID, and later Keston's other apps) or splits it
+ * between several. Signing in is the exception: it goes straight to Keston ID
+ * (lib/auth.ts). VITE_API_URL is its address when it's on its own site (the
+ * API lists this site in KESTON_API_ORIGINS); without it, it's /api on this
+ * origin, passed on by Caddy or the dev server. Each request carries the
+ * Keston ID access token.
  */
-const API = import.meta.env.VITE_ID_URL ? `${idUrl()}/v1` : '/api'
+const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '')
+const API = apiUrl ? `${apiUrl}/v1` : '/api'
 
 
 export interface Rule {
