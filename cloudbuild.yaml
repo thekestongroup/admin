@@ -1,0 +1,82 @@
+# Builds Keston Admin (the web app) and the Admin API, and puts them live on
+# Cloud Run. Make a Cloud Build trigger on this repo that uses this file and
+# set the substitutions below (Cloud Build → Triggers → the trigger → Advanced).
+#
+# The web app has its addresses built in, which is why this is a file and not
+# Cloud Run's "Connect repository" button (that can't pass build arguments).
+#
+# Substitutions (_NAME) you set on the trigger:
+#   _ID_URL    Keston ID's public address        https://id.staging.example.com
+#   _API_URL   Admin API's own address, or empty to use /api on the same
+#              site as the app (that needs a path rule in front of both)
+#   _REGION    where Artifact Registry and Cloud Run are      europe-west2
+#   _REPO      the Artifact Registry Docker repository        keston
+#   _ADMIN_SERVICE / _API_SERVICE   the Cloud Run services    keston-admin / keston-admin-api
+
+substitutions:
+  _REGION: europe-west2
+  _REPO: keston
+  _ID_URL: ""
+  _API_URL: ""
+  _ADMIN_SERVICE: keston-admin
+  _API_SERVICE: keston-admin-api
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  env:
+    - DOCKER_BUILDKIT=1
+
+steps:
+  - id: build-admin
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg=VITE_ID_URL=${_ID_URL}
+      - --build-arg=VITE_API_URL=${_API_URL}
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin:$SHORT_SHA
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin:latest
+      - .
+    waitFor: ["-"]
+
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin-api:$SHORT_SHA
+      - --tag=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin-api:latest
+      - api
+    waitFor: ["-"]
+
+  - id: push-admin
+    name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin"]
+    waitFor: [build-admin]
+
+  - id: push-api
+    name: gcr.io/cloud-builders/docker
+    args: [push, --all-tags, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin-api"]
+    waitFor: [build-api]
+
+  # Only the image changes: each service keeps the settings it has (port,
+  # env vars, secrets, domains). Create the services once in the console first.
+  - id: deploy-admin
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_ADMIN_SERVICE}
+      - --region=${_REGION}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin:$SHORT_SHA
+    waitFor: [push-admin]
+
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_API_SERVICE}
+      - --region=${_REGION}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/admin-api:$SHORT_SHA
+    waitFor: [push-api]
