@@ -16,6 +16,9 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY . .
+# Keston ID's address, built in: docker build --build-arg VITE_ID_URL=https://id.example.com
+ARG VITE_ID_URL
+ENV VITE_ID_URL=$VITE_ID_URL
 RUN pnpm build
 
 # ── 2. Serve it: static files, index.html for the app's own routes ──────────
