@@ -1,10 +1,5 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import { i18n } from './i18n'
-import { reloadOnStaleBuild } from './lib/staleBuild'
-import { router } from './router'
-import './style.css'
+import { loadConfig } from './lib/config'
 
-reloadOnStaleBuild(router)
-
-createApp(App).use(router).use(i18n).mount('#app')
+// The addresses of Keston ID and the Admin API come from the server at
+// start-up (lib/config.ts), so load them before anything that reads them.
+loadConfig().then(() => import('./app'))

@@ -1,16 +1,17 @@
 import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
+import { runtimeConfig } from './config'
 
 /**
  * Signing in with Keston ID (OpenID Connect, code flow with PKCE). Keston
  * Admin is the "admin" app in Keston ID; it skips the consent prompt, as one
  * of The Keston Group's own apps.
  *
- * Keston ID's address is VITE_ID_URL (set when the app is built, e.g.
- * https://id.example.com). Without it, it comes from this one's: admin.keston.co
+ * Keston ID's address is KESTON_ID_URL on the server (lib/config.ts), or
+ * VITE_ID_URL when the app is built. Without either, it comes from this one's: admin.keston.co
  * → id.keston.co, admin.keston.localhost → id.keston.localhost.
  */
 export function idUrl() {
-  const set = import.meta.env.VITE_ID_URL?.replace(/\/+$/, '')
+  const set = (runtimeConfig().idUrl || import.meta.env.VITE_ID_URL)?.replace(/\/+$/, '')
   if (set) return set
   const { protocol, hostname } = window.location
   return `${protocol}//${hostname.replace(/^admin\./, 'id.')}`
