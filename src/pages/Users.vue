@@ -34,6 +34,7 @@ const org = ref<Organisation>()
 const users = ref<User[]>([])
 const myId = ref<string>()
 const iAmGlobalAdmin = ref(false)
+const iAmPlatformAdmin = ref(false)
 const loading = ref(true)
 const has = (p: PermissionId) => !!org.value?.permissions?.includes(p)
 
@@ -51,6 +52,7 @@ onMounted(async () => {
     org.value = o
     myId.value = me.user.id
     iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
+    iAmPlatformAdmin.value = me.platformAdmin
     await load()
     if (has('groups.manage') || has('permissions.assign')) groups.value = await api.groups(orgId)
   } catch (e) {
@@ -175,7 +177,7 @@ async function toggle(a: User) {
         <template #cell-role="{ row }">
           <Badge v-if="row.role === 'global_admin'" color="primary" size="sm">
             <template #leading><ShieldCheck /></template>
-            {{ t('users.globalAdmin') }}
+            {{ row.platformAdmin ? t('users.tkgAdmin') : t('users.globalAdmin') }}
           </Badge>
           <span v-else-if="row.roles?.length">{{ row.roles.map(roleName).join(', ') }}</span>
           <span v-else class="text-black/65">{{ t('users.roleUser') }}</span>
@@ -214,6 +216,7 @@ async function toggle(a: User) {
       :org-id="orgId"
       :org="org"
       :global-admin="iAmGlobalAdmin"
+      :platform-admin="iAmPlatformAdmin"
       :can-assign-licences="has('users.licences')"
       :can-assign-roles="iAmGlobalAdmin || has('permissions.assign')"
       :my-permissions="org?.permissions ?? []"

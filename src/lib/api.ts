@@ -439,7 +439,7 @@ export const api = {
   users: (orgId: string) => request<User[]>('GET', `${org(orgId)}/users`),
   user: (orgId: string, userId: string) => request<UserDetail>('GET', `${org(orgId)}/users/${userId}`),
   permissions: () => request<Permission[]>('GET', '/permissions'),
-  updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role'] }) =>
+  updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role']; platformAdmin?: boolean }) =>
     request<User>('PATCH', `${org(orgId)}/users/${userId}`, changes),
   setUserPicture: (orgId: string, userId: string, file: File) =>
     request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
@@ -494,6 +494,8 @@ export const api = {
       name: string
       username: string
       role: User['role']
+      /** TKG Admin: a global admin of The Keston Group who sees every organisation. */
+      platformAdmin?: boolean
       /** Keston ID makes one up (meeting the policy): it's in the response, once. */
       generatePassword: boolean
       password?: string
