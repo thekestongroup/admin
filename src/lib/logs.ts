@@ -77,7 +77,7 @@ export const logsApi = {
 // ── Labels ─────────────────────────────────────────────────────────────────
 
 /** Admin actions, grouped as the filter shows them. */
-const actionKeys: Record<string, string[]> = {'users': ['user.created', 'user.updated', 'user.picture_changed', 'user.picture_removed', 'user.password_reset', 'user.disabled', 'user.enabled', 'user.mfa_disabled', 'user.passkeys_removed', 'user.password_change_required', 'user.access_pass_issued', 'user.access_pass_revoked', 'user.deleted', 'user.restored', 'user.licences_changed', 'user.roles_changed'], 'groups': ['group.created', 'group.renamed', 'group.deleted', 'group.member_added', 'group.member_removed', 'group.permissions_changed'], 'organisation': ['organisation.created', 'app.access_changed', 'settings.changed', 'password_policy.changed', 'mfa_policy.changed', 'deletion.scheduled', 'deletion.cancelled'], 'ownApps': ['own_app.created', 'own_app.updated', 'own_app.deleted', 'own_app.secret_changed'], 'support': ['support.requested', 'support.allowed', 'support.declined', 'support.ended', 'support.opened', 'lockout.started', 'lockout.denied', 'lockout.cancelled', 'lockout.completed']}
+const actionKeys: Record<string, string[]> = {'users': ['user.created', 'user.updated', 'user.picture_changed', 'user.picture_removed', 'user.password_reset', 'user.disabled', 'user.enabled', 'user.mfa_disabled', 'user.passkeys_removed', 'user.password_change_required', 'user.access_pass_issued', 'user.access_pass_revoked', 'user.deleted', 'user.restored', 'user.licences_changed', 'user.roles_changed'], 'groups': ['group.created', 'group.renamed', 'group.deleted', 'group.member_added', 'group.member_removed', 'group.permissions_changed'], 'organisation': ['organisation.created', 'organisation.verified', 'platform_settings.changed', 'app.access_changed', 'settings.changed', 'password_policy.changed', 'mfa_policy.changed', 'deletion.scheduled', 'deletion.cancelled'], 'ownApps': ['own_app.created', 'own_app.updated', 'own_app.deleted', 'own_app.secret_changed'], 'support': ['support.requested', 'support.allowed', 'support.declined', 'support.ended', 'support.opened', 'lockout.started', 'lockout.denied', 'lockout.cancelled', 'lockout.completed']}
 
 export const actionGroups = (): { label: string; actions: Record<string, string> }[] =>
   Object.entries(actionKeys).map(([group, actions]) => ({
@@ -90,7 +90,7 @@ export const actionLabel = (a: string) => (te(`logs.actions.${a}`) ? t(`logs.act
 
 export const methodLabel = (m: string) => (te(`logs.methods.${m}`) ? t(`logs.methods.${m}`) : m)
 
-const reasons = ['unknown_user', 'wrong_password', 'locked', 'disabled', 'expired', 'support_account', 'mfa_failed', 'wrong_access_pass', 'app_disabled', 'no_licence']
+const reasons = ['unknown_user', 'wrong_password', 'locked', 'disabled', 'expired', 'support_account', 'mfa_failed', 'wrong_access_pass', 'app_disabled', 'no_licence', 'organisation_unverified']
 /** Why a sign-in failed, for the filter. */
 export const reasonOptions = () => reasons.map((r) => ({ label: t(`logs.reasons.${r}`), value: r }))
 export const reasonLabel = (r: string) => (te(`logs.reasons.${r}`) ? t(`logs.reasons.${r}`) : r)

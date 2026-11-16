@@ -65,6 +65,15 @@ export interface Organisation {
   /** Deletion scheduled: it goes on deleteAfter unless a global admin signs in. */
   deletionRequestedAt?: string
   deleteAfter?: string
+  /** Verified by Keston staff. Until then its people can't sign in. Always true for The Keston Group. */
+  verified: boolean
+  verifiedAt?: string
+}
+
+/** Platform-wide settings (platform admins only). */
+export interface PlatformSettings {
+  /** Organisations that sign themselves up start unverified. */
+  requireOrganisationVerification: boolean
 }
 
 /** forced: on, can't be turned off · enabled: on, each person can turn it off · disabled: off. */
@@ -402,7 +411,11 @@ export const publicApi = {
   passwordCheck: (password: string, username?: string) =>
     publicRequest<RuleResult[]>('POST', '/password-check', { password, username }),
   createOrganisation: (body: NewOrganisation) =>
-    publicRequest<{ organisation: Organisation; admin: User }>('POST', '/organisations', body),
+    publicRequest<{ organisation: Organisation; admin: User; awaitingVerification: boolean }>(
+      'POST',
+      '/organisations',
+      body,
+    ),
 }
 
 export const api = {
@@ -417,6 +430,10 @@ export const api = {
 
   organisations: () => request<Organisation[]>('GET', '/organisations'),
   organisation: (id: string) => request<Organisation>('GET', org(id)),
+  platformSettings: () => request<PlatformSettings>('GET', '/platform-settings'),
+  savePlatformSettings: (settings: PlatformSettings) => request<PlatformSettings>('PUT', '/platform-settings', settings),
+  /** Verify an organisation (platform admins). */
+  verifyOrganisation: (id: string) => request<Organisation>('POST', `${org(id)}/verify`, {}),
 
 
   users: (orgId: string) => request<User[]>('GET', `${org(orgId)}/users`),
