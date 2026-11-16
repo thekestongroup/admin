@@ -1,0 +1,42 @@
+# Keston Admin for development: the Vite dev server instead of the built site,
+# so edits to this repo (and to Keston UI) show in the browser as you save.
+# Same address as always, http://admin.keston.localhost, through Keston ID's
+# Caddy, so sign-in works as normal. Start the id stack first, then:
+#
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+#
+# Back to the built site (what's live):
+#
+#   docker compose up -d --build
+#
+# Keston UI is read from ../ui/src, so changes there are live too (no build,
+# no release). It needs ../ui to have its dependencies installed (pnpm install).
+
+services:
+  admin:
+    build:
+      context: .
+      target: dev
+    image: keston-admin-dev
+    volumes:
+      - .:/app
+      # The container's own node_modules, not the Mac's.
+      - node_modules:/app/node_modules
+      # `link:../ui` in package.json points here.
+      - ../ui:/ui
+      # pnpm's download cache, so a reinstall is quick and nothing lands in this repo.
+      - pnpm-store:/pnpm-store
+    environment:
+      npm_config_store_dir: /pnpm-store
+      KESTON_DEV_HOST: 0.0.0.0
+      KESTON_DEV_PORT: "8080"
+      KESTON_HMR_PORT: "80"
+      KESTON_DEV_POLL: "1"
+      KESTON_UI_SRC: /ui/src
+    deploy:
+      resources:
+        limits: { memory: 2G }
+
+volumes:
+  node_modules:
+  pnpm-store:

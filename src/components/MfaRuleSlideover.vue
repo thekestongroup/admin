@@ -3,6 +3,9 @@ import { Plus } from '@lucide/vue'
 import { Button, type ButtonStatus, Chip, Input, RadioGroup, Select, Slideover } from '@thekestongroup/ui'
 import { computed, reactive, ref, watch } from 'vue'
 import { ApiError, api, type MfaRule, type MfaRuleOptions } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Adding or changing an MFA custom rule: a name, what it applies to (users,
@@ -33,10 +36,10 @@ watch(open, (isOpen) => {
   status.value = 'idle'
 })
 
-const answer = [
-  { label: 'Require MFA', value: 'require', description: 'They must use MFA (and set it up if they haven’t).' },
-  { label: 'Don’t require MFA', value: 'skip', description: 'They don’t need MFA here, even if the rules below would ask for it.' },
-]
+const answer = computed(() => [
+  { label: t('mfa.rule.requireLabel'), value: 'require', description: t('mfa.rule.requireDescription') },
+  { label: t('mfa.rule.skipLabel'), value: 'skip', description: t('mfa.rule.skipDescription') },
+])
 const answerValue = computed({
   get: () => (form.require ? 'require' : 'skip'),
   set: (v) => (form.require = v === 'require'),
@@ -51,7 +54,7 @@ function addRange() {
   errors.ipRanges = undefined
   if (!v) return
   if (form.ipRanges.includes(v)) {
-    errors.ipRanges = `${v} is already in the list`
+    errors.ipRanges = t('mfa.rule.alreadyListed', { value: v })
     return
   }
   form.ipRanges = [...form.ipRanges, v]
@@ -62,7 +65,7 @@ const removeRange = (v: string) => (form.ipRanges = form.ipRanges.filter((r) => 
 async function save() {
   for (const k of Object.keys(errors)) errors[k] = undefined
   if (newRange.value.trim()) addRange()
-  if (!form.name.trim()) errors.name = 'Give the rule a name'
+  if (!form.name.trim()) errors.name = t('mfa.rule.nameRequired')
   if (errors.name || errors.ipRanges) return
   status.value = 'loading'
   try {
@@ -80,18 +83,18 @@ async function save() {
 <template>
   <Slideover
     v-model:open="open"
-    :title="rule ? 'Change rule' : 'Add a rule'"
-    description="When all of these match, the answer below is used. Leave one empty to match everyone, everywhere."
+    :title="rule ? t('mfa.rule.changeTitle') : t('mfa.rule.addTitle')"
+    :description="t('mfa.rule.description')"
     initial-focus="auto"
   >
     <template #body>
       <form class="flex flex-col gap-4" novalidate @submit.prevent="save">
-        <Input v-model="form.name" label="Name" helper="e.g. Staff away from school" autocomplete="off" :error-text="errors.name" />
+        <Input v-model="form.name" :label="t('mfa.rule.name')" :helper="t('mfa.rule.nameHelper')" autocomplete="off" :error-text="errors.name" />
         <Select
           v-model="form.users"
-          label="Users"
-          helper="Any of these people."
-          placeholder="Anyone"
+          :label="t('mfa.rule.users')"
+          :helper="t('mfa.rule.usersHelper')"
+          :placeholder="t('mfa.rule.anyone')"
           :options="userOptions"
           :error-text="errors.users"
           multiple
@@ -99,9 +102,9 @@ async function save() {
         />
         <Select
           v-model="form.groups"
-          label="Groups"
-          helper="Anyone in any of these groups."
-          placeholder="Any group"
+          :label="t('mfa.rule.groups')"
+          :helper="t('mfa.rule.groupsHelper')"
+          :placeholder="t('mfa.rule.anyGroup')"
           :options="groupOptions"
           :error-text="errors.groups"
           multiple
@@ -109,9 +112,9 @@ async function save() {
         />
         <Select
           v-model="form.apps"
-          label="Apps"
-          helper="When signing in to any of these apps."
-          placeholder="Any app"
+          :label="t('mfa.rule.apps')"
+          :helper="t('mfa.rule.appsHelper')"
+          :placeholder="t('mfa.rule.anyApp')"
           :options="appOptions"
           :error-text="errors.apps"
           multiple
@@ -121,8 +124,8 @@ async function save() {
           <div class="flex items-start gap-2">
             <Input
               v-model="newRange"
-              label="IP addresses"
-              helper="A single address or a range, e.g. 203.0.113.7 or 10.0.0.0/8. Matches when they sign in from any of them."
+              :label="t('mfa.rule.ipAddresses')"
+              :helper="t('mfa.rule.ipHelper')"
               autocapitalize="off"
               spellcheck="false"
               :error-text="errors.ipRanges"
@@ -131,24 +134,24 @@ async function save() {
             />
             <Button class="mt-6.5 shrink-0" @click="addRange">
               <template #leading><Plus /></template>
-              Add
+              {{ t('common.add') }}
             </Button>
           </div>
-          <ul v-if="form.ipRanges.length" class="flex flex-wrap gap-2" aria-label="IP addresses">
+          <ul v-if="form.ipRanges.length" class="flex flex-wrap gap-2" :aria-label="t('mfa.rule.ipAddresses')">
             <li v-for="r in form.ipRanges" :key="r">
-              <Chip removable :remove-label="`Remove ${r}`" @remove="removeRange(r)">{{ r }}</Chip>
+              <Chip removable :remove-label="t('common.removeItem', { name: r })" @remove="removeRange(r)">{{ r }}</Chip>
             </li>
           </ul>
-          <p v-else class="text-sm text-black/65">Any address.</p>
+          <p v-else class="text-sm text-black/65">{{ t('mfa.rule.anyAddress') }}</p>
         </div>
-        <p class="text-sm text-black/65">Devices: coming soon.</p>
-        <RadioGroup v-model="answerValue" label="Then" :options="answer" />
+        <p class="text-sm text-black/65">{{ t('mfa.rule.devicesSoon') }}</p>
+        <RadioGroup v-model="answerValue" :label="t('mfa.rule.then')" :options="answer" />
         <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
       </form>
     </template>
     <template #footer="{ close }">
-      <Button :disabled="status !== 'idle'" @click="close">Cancel</Button>
-      <Button variant="primary" :status="status" loading-text="Saving" @click="save">{{ rule ? 'Save rule' : 'Add rule' }}</Button>
+      <Button :disabled="status !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+      <Button variant="primary" :status="status" :loading-text="t('common.saving')" @click="save">{{ rule ? t('mfa.rule.save') : t('mfa.rule.add') }}</Button>
     </template>
   </Slideover>
 </template>

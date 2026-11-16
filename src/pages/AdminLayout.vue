@@ -15,6 +15,9 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation, type PermissionId } from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
+import { I18nT, useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Every Keston Admin page: the Keston header (with the notifications bell),
@@ -39,7 +42,7 @@ function toInput(n: AdminNotification) {
     description: n.body,
     createdAt: new Date(n.createdAt),
     read: !!n.readAt,
-    action: n.link ? { label: 'Open', onSelect: () => router.push(n.link) } : undefined,
+    action: n.link ? { label: t('common.open'), onSelect: () => router.push(n.link) } : undefined,
   }
 }
 
@@ -73,7 +76,7 @@ onMounted(async () => {
     // /v1/me answers for everyone; Keston Admin is for people with a
     // permission in their organisation, and Keston staff.
     if (!loaded.platformAdmin && !loaded.permissions.length) {
-      error.value = 'Keston Admin is for your organisation’s admins. Ask one of them if you need something changed.'
+      error.value = t('layout.notAnAdmin')
       return
     }
     me.value = loaded
@@ -105,30 +108,30 @@ const nav = computed<SidebarSection[]>(() => {
   const active = (to: string, exact = true) => (exact ? route.path === to : route.path.startsWith(to))
   if (me.value?.platformAdmin) {
     sections.push({
-      items: [{ label: 'Organisations', icon: Building2, to: '/organisations', active: route.path === '/organisations' }],
+      items: [{ label: t('nav.organisations'), icon: Building2, to: '/organisations', active: route.path === '/organisations' }],
     })
   }
   const id = orgId.value
   if (id) {
     const base = `/organisations/${id}`
-    const items: SidebarSection['items'] = [{ label: 'Overview', icon: House, to: base, active: active(base) }]
+    const items: SidebarSection['items'] = [{ label: t('nav.overview'), icon: House, to: base, active: active(base) }]
     // The rest, by what you can do here (Keston support: through a support account).
     const can = (p: PermissionId) => !!org.value?.permissions?.includes(p)
-    if (can('users.view')) items.push({ label: 'Users', icon: Users, to: `${base}/users`, active: active(`${base}/users`, false) })
+    if (can('users.view')) items.push({ label: t('nav.users'), icon: Users, to: `${base}/users`, active: active(`${base}/users`, false) })
     if (can('users.view'))
-      items.push({ label: 'Groups', icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) })
-    if (can('apps.manage')) items.push({ label: 'Apps', icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
+      items.push({ label: t('nav.groups'), icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) })
+    if (can('apps.manage')) items.push({ label: t('nav.apps'), icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
     if (can('policy.manage'))
-      items.push({ label: 'Password policy', icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
+      items.push({ label: t('nav.passwordPolicy'), icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
     if (can('policy.manage'))
       items.push({
-        label: 'Security',
+        label: t('nav.security'),
         icon: ShieldCheck,
-        children: [{ label: 'Manage MFA', icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security`, false) }],
+        children: [{ label: t('nav.mfaSettings'), icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security`, false) }],
       })
-    if (can('settings.manage')) items.push({ label: 'Settings', icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
-    if (can('reports.view')) items.push({ label: 'Logs', icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
-    sections.push({ label: org.value?.name ?? 'Organisation', items })
+    if (can('settings.manage')) items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
+    if (can('reports.view')) items.push({ label: t('nav.logs'), icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
+    sections.push({ label: org.value?.name ?? t('nav.organisation'), items })
   }
   return sections
 })
@@ -150,21 +153,21 @@ function accountSettings() {
     <Card class="w-full max-w-100">
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-2">
-          <h1 class="text-xl font-bold">You can't use Keston Admin</h1>
+          <h1 class="text-xl font-bold">{{ t('layout.cantUse') }}</h1>
           <p class="text-sm" role="alert">{{ error }}</p>
         </div>
         <!-- Signed in as someone who isn't an admin: try another account. -->
         <div class="flex flex-wrap gap-2">
-          <Button variant="primary" @click="switchUser()">Switch user</Button>
-          <Button @click="signOut()">Sign out</Button>
+          <Button variant="primary" @click="switchUser()">{{ t('layout.switchUser') }}</Button>
+          <Button @click="signOut()">{{ t('layout.signOut') }}</Button>
         </div>
       </div>
     </Card>
   </div>
-  <div v-else-if="!me" class="flex min-h-dvh items-center justify-center bg-background"><Spinner label="Loading" /></div>
+  <div v-else-if="!me" class="flex min-h-dvh items-center justify-center bg-background"><Spinner :label="t('common.loading')" /></div>
   <AppShell
     v-else
-    title="Keston Admin"
+    :title="t('layout.appName')"
     title-to="/"
     :sections="nav"
     :user="user"
@@ -181,11 +184,12 @@ function accountSettings() {
     <div v-if="me.user.support" class="flex flex-wrap items-center gap-3 border-b border-black/15 bg-surface-elevated px-4 py-3 text-sm sm:px-6" role="status">
       <LifeBuoy class="size-4 shrink-0 text-blue" aria-hidden="true" />
       <span class="flex-1">
-        You’re using a Keston support account in <span class="font-bold">{{ me.organisation.name }}</span><template
-          v-if="me.user.expiresAt"
-        >, until {{ formatDateTime(me.user.expiresAt) }}</template>.
+        <I18nT :keypath="me.user.expiresAt ? 'layout.supportAccountUntil' : 'layout.supportAccount'" tag="span" scope="global">
+          <template #organisation><span class="font-bold">{{ me.organisation.name }}</span></template>
+          <template v-if="me.user.expiresAt" #until>{{ formatDateTime(me.user.expiresAt) }}</template>
+        </I18nT>
       </span>
-      <Button size="sm" @click="switchUser()">Switch account</Button>
+      <Button size="sm" @click="switchUser()">{{ t('layout.switchAccount') }}</Button>
     </div>
     <!-- A new page for each path; pages whose URL carries filters (Logs)
          watch the query themselves, so typing in a filter isn't lost. -->

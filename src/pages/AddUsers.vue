@@ -10,9 +10,10 @@ import {
   Notification,
   PageHeader,
   Popover,
-  Progress,
+  CheckboxGroup,
   Select,
   Spinner,
+  Steps,
   Table,
   type TableColumn,
   useNotifications,
@@ -23,6 +24,9 @@ import { ApiError, api, type BulkResult, type Organisation, type Product } from 
 import PasswordField from '../components/PasswordField.vue'
 import UserDetailsTable from '../components/UserDetailsTable.vue'
 import { suggestUsername } from '../lib/usernames'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Adding a list of users at once, in steps: Users (a row each: first name,
@@ -39,7 +43,7 @@ const MAX = 250
 const org = ref<Organisation>()
 const loadError = ref<string>()
 const canAssign = computed(() => !!org.value?.permissions?.includes('users.licences'))
-const steps = computed(() => (canAssign.value ? ['Users', 'Licences'] : ['Users']))
+const steps = computed(() => (canAssign.value ? [t('users.title'), t('licences.title')] : [t('users.title')]))
 const step = ref(0)
 const last = computed(() => step.value === steps.value.length - 1)
 
@@ -76,7 +80,7 @@ const allDomain = ref<string>()
 function changeAllDomains() {
   if (!allDomain.value) return
   for (const r of rows.value) r.domain = allDomain.value
-  notify({ type: 'success', title: `Every user is now on ${allDomain.value}` })
+  notify({ type: 'success', title: t('addUsers.everyUserNow', { domain: allDomain.value }) })
 }
 
 // One password for everyone, instead of each their own.
@@ -120,18 +124,18 @@ function checkUsers(): boolean {
   for (const r of rows.value) {
     r.errors = {}
     if (!filled(r)) continue
-    if (!r.first.trim()) r.errors.first = 'Enter their first name'
+    if (!r.first.trim()) r.errors.first = t('addUser.errors.firstName')
     const u = r.username.trim().toLowerCase()
     if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(u))
-      r.errors.username = 'Use lowercase letters, numbers, dots, dashes or underscores'
-    else if (seen.has(`${u}@${r.domain}`)) r.errors.username = 'Already in the list'
+      r.errors.username = t('addUsers.errors.username')
+    else if (seen.has(`${u}@${r.domain}`)) r.errors.username = t('addUsers.errors.duplicate')
     seen.set(`${u}@${r.domain}`, r)
   }
   passwordError.value = undefined
   if (!autoPassword.value && !sharedValid.value)
-    passwordError.value = sharedPassword.value ? 'The password doesn’t meet every rule yet' : 'Enter a password'
-  if (!people.value.length) usersError.value = 'Add at least one user'
-  else if (people.value.length > MAX) usersError.value = `Add up to ${MAX} users at a time`
+    passwordError.value = sharedPassword.value ? t('password.notYetValid') : t('password.enter')
+  if (!people.value.length) usersError.value = t('addUsers.errors.atLeastOne')
+  else if (people.value.length > MAX) usersError.value = t('addUsers.errors.upTo', { max: MAX })
   const bad = rows.value.find((r) => Object.values(r.errors).some(Boolean))
   if (bad) focusField(`${bad.errors.first ? 'first' : 'username'}-${bad.key}`)
   return !usersError.value && !bad && !passwordError.value
@@ -141,9 +145,6 @@ function checkUsers(): boolean {
 
 const products = ref<Product[]>()
 const licences = ref<string[]>([])
-function toggleLicence(id: string, on: boolean) {
-  licences.value = on ? [...licences.value, id] : licences.value.filter((l) => l !== id)
-}
 
 onMounted(async () => {
   try {
@@ -207,7 +208,7 @@ async function add() {
       passwordError.value = e.message
       step.value = 0
     }
-    notify({ type: 'error', title: 'Couldn’t add the users', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('addUsers.couldntAdd'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 
@@ -223,31 +224,31 @@ function startAgain() {
 
 const added = computed(() => results.value?.filter((r) => r.result === 'done') ?? [])
 const skipped = computed(() => results.value?.filter((r) => r.result === 'skipped') ?? [])
-const plural = (n: number) => `${n} ${n === 1 ? 'user' : 'users'}`
+const plural = (n: number) => t('addUsers.userCount', n)
 const productNames = computed(() =>
   licences.value.map((id) => products.value?.find((p) => p.id === id)?.name ?? id).join(', '),
 )
 const shared = computed(() => !!results.value?.length && !results.value.some((r) => r.password))
 
-const skippedColumns: TableColumn<BulkResult>[] = [
-  { key: 'name', label: 'Name', rowHeader: true },
-  { key: 'email', label: 'Email' },
-  { key: 'reason', label: 'Why', nowrap: false },
-]
+const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
+  { key: 'name', label: t('common.name'), rowHeader: true },
+  { key: 'email', label: t('common.email') },
+  { key: 'reason', label: t('bulkSummary.why'), nowrap: false },
+])
 </script>
 
 <template>
   <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
     <PageHeader
-      title="Add multiple users"
-      :breadcrumb="[{ label: 'Users', to: `/organisations/${orgId}/users` }, { label: 'Add multiple users' }]"
+      :title="t('bulk.addMultiple')"
+      :breadcrumb="[{ label: t('users.title'), to: `/organisations/${orgId}/users` }, { label: t('bulk.addMultiple') }]"
       :link-component="RouterLink"
     />
 
     <Card v-if="loadError">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the organisation" :description="loadError" />
+      <EmptyState :icon="TriangleAlert" :title="t('overview.couldntLoad')" :description="loadError" />
     </Card>
-    <div v-else-if="!org" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!org" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
 
     <!-- Done -->
     <template v-else-if="results">
@@ -256,16 +257,15 @@ const skippedColumns: TableColumn<BulkResult>[] = [
           <CircleCheck v-if="added.length" class="size-10 text-green" aria-hidden="true" />
           <TriangleAlert v-else class="size-10 text-red" aria-hidden="true" />
           <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">
-            {{ added.length ? `${plural(added.length)} added` : 'Nobody was added' }}
+            {{ added.length ? t('addUsers.added', { users: plural(added.length) }) : t('addUsers.nobodyAdded') }}
           </h2>
           <p class="max-w-prose text-sm text-black/65">
-            <template v-if="added.length && shared">They sign in with their email and the password you set.</template>
+            <template v-if="added.length && shared">{{ t('addUsers.signInShared') }}</template>
             <template v-else-if="added.length">
-              Give each person their email and temporary password securely: print or download them now. The passwords
-              are shown only once: once you leave this page, they’re gone.
-              <template v-if="requireChange">They’ll choose their own when they first sign in.</template>
+              {{ t('addUsers.giveDetails') }}
+              <template v-if="requireChange">{{ t('addUsers.willChoose') }}</template>
             </template>
-            <template v-if="skipped.length"> {{ plural(skipped.length) }} couldn’t be added, listed below.</template>
+            <template v-if="skipped.length"> {{ t('addUsers.couldntBeAdded', { users: plural(skipped.length) }) }}</template>
           </p>
         </div>
       </Card>
@@ -273,37 +273,30 @@ const skippedColumns: TableColumn<BulkResult>[] = [
       <UserDetailsTable
         v-if="added.length"
         :results="added"
-        title="Users added"
-        :description="canAssign ? `Licences: ${productNames || 'none'}` : undefined"
+        :title="t('addUsers.usersAdded')"
+        :description="canAssign ? t('addUsers.licencesList', { names: productNames || t('common.noneLower') }) : undefined"
       />
 
-      <Card v-if="skipped.length" title="Not added" padding="none">
-        <Table :columns="skippedColumns" :rows="skipped" :row-key="(_r: BulkResult, i: number) => i" size="sm" caption="Users not added" />
+      <Card v-if="skipped.length" :title="t('addUsers.notAdded')" padding="none">
+        <Table :columns="skippedColumns" :rows="skipped" :row-key="(_r: BulkResult, i: number) => i" size="sm" :caption="t('addUsers.usersNotAdded')" />
       </Card>
 
       <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button @click="startAgain">Add more users</Button>
-        <Button variant="primary" :as="RouterLink" :to="`/organisations/${orgId}/users`">Done</Button>
+        <Button @click="startAgain">{{ t('addUsers.addMore') }}</Button>
+        <Button variant="primary" :as="RouterLink" :to="`/organisations/${orgId}/users`">{{ t('common.done') }}</Button>
       </div>
     </template>
 
     <!-- Steps -->
     <Card v-else>
       <form class="flex flex-col gap-6" novalidate @submit.prevent="next">
-        <div v-if="steps.length > 1" class="flex flex-col gap-3">
-          <Progress label="Add multiple users" segments :value="step + 1" :max="steps.length" />
-          <p class="text-sm text-black/65">
-            Step {{ step + 1 }} of {{ steps.length }}: <span class="text-black">{{ steps[step] }}</span>
-          </p>
-        </div>
+        <Steps v-if="steps.length > 1" :steps="steps" :step="step" :label="t('bulk.addMultiple')" />
 
         <!-- Users -->
         <div v-if="step === 0" class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
-            <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">Add a list of users</h2>
-            <p class="text-sm text-black/65">
-              Enter up to {{ MAX }} users. Everyone is added as a member. Empty rows are left out.
-            </p>
+            <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">{{ t('addUsers.title') }}</h2>
+            <p class="text-sm text-black/65">{{ t('addUsers.description', { max: MAX }) }}</p>
           </div>
 
           <!-- A table of fields: the headings once, each field labelled for
@@ -313,20 +306,20 @@ const skippedColumns: TableColumn<BulkResult>[] = [
             <div
               class="grid min-w-max grid-cols-[repeat(3,minmax(--spacing(36),1fr))_auto_minmax(--spacing(44),1fr)_auto] items-start gap-x-2 gap-y-3"
             >
-              <p class="text-sm" aria-hidden="true">First name</p>
-              <p class="text-sm" aria-hidden="true">Last name</p>
-              <p class="text-sm" aria-hidden="true">Username</p>
+              <p class="text-sm" aria-hidden="true">{{ t('addUser.firstName') }}</p>
+              <p class="text-sm" aria-hidden="true">{{ t('addUser.lastName') }}</p>
+              <p class="text-sm" aria-hidden="true">{{ t('addUser.username') }}</p>
               <span />
               <div class="flex items-center gap-2">
-                <p class="text-sm" aria-hidden="true">Domain</p>
+                <p class="text-sm" aria-hidden="true">{{ t('organisations.columns.domain') }}</p>
                 <Popover v-if="domains.length">
-                  <Button size="sm" variant="ghost">Change all domains</Button>
+                  <Button size="sm" variant="ghost">{{ t('addUsers.changeAll') }}</Button>
                   <template #content="{ close }">
                     <div class="flex w-72 flex-col gap-3 p-4">
-                      <Select v-model="allDomain" label="Domain for every user" :options="domainOptions" placeholder="Choose a domain" />
+                      <Select v-model="allDomain" :label="t('addUsers.domainForEvery')" :options="domainOptions" :placeholder="t('addUsers.chooseDomain')" />
                       <div class="flex justify-end gap-2">
-                        <Button @click="close">Cancel</Button>
-                        <Button variant="primary" :disabled="!allDomain" @click="changeAllDomains(); close()">Change all</Button>
+                        <Button @click="close">{{ t('common.cancel') }}</Button>
+                        <Button variant="primary" :disabled="!allDomain" @click="changeAllDomains(); close()">{{ t('addUsers.changeAllConfirm') }}</Button>
                       </div>
                     </div>
                   </template>
@@ -334,21 +327,21 @@ const skippedColumns: TableColumn<BulkResult>[] = [
               </div>
               <span />
 
-              <div v-for="(r, i) in rows" :key="r.key" role="group" :aria-label="`User ${i + 1}`" class="contents">
+              <div v-for="(r, i) in rows" :key="r.key" role="group" :aria-label="t('addUsers.userN', { n: i + 1 })" class="contents">
                 <Input
                   :data-field="`first-${r.key}`"
                   v-model="r.first"
-                  :label="`First name, user ${i + 1}`"
+                  :label="t('addUsers.fieldFor', { field: t('addUser.firstName'), n: i + 1 })"
                   hide-label
                   autocomplete="off"
                   :error-text="r.errors.first"
                   @update:model-value="suggest(r)"
                 />
-                <Input v-model="r.last" :label="`Last name, user ${i + 1}`" hide-label autocomplete="off" @update:model-value="suggest(r)" />
+                <Input v-model="r.last" :label="t('addUsers.fieldFor', { field: t('addUser.lastName'), n: i + 1 })" hide-label autocomplete="off" @update:model-value="suggest(r)" />
                 <Input
                   :data-field="`username-${r.key}`"
                   :model-value="r.username"
-                  :label="`Username, user ${i + 1}`"
+                  :label="t('addUsers.fieldFor', { field: t('addUser.username'), n: i + 1 })"
                   hide-label
                   autocapitalize="off"
                   spellcheck="false"
@@ -357,8 +350,8 @@ const skippedColumns: TableColumn<BulkResult>[] = [
                   @update:model-value="typedUsername(r, String($event ?? ''))"
                 />
                 <span class="flex h-9.5 items-center text-sm text-black/65" aria-hidden="true">@</span>
-                <Select v-model="r.domain" :label="`Domain, user ${i + 1}`" hide-label :options="domainOptions" />
-                <Button variant="ghost" square :aria-label="`Remove user ${i + 1}`" @click="removeRow(r)">
+                <Select v-model="r.domain" :label="t('addUsers.fieldFor', { field: t('organisations.columns.domain'), n: i + 1 })" hide-label :options="domainOptions" />
+                <Button variant="ghost" square :aria-label="t('addUsers.removeUserN', { n: i + 1 })" @click="removeRow(r)">
                   <X />
                 </Button>
               </div>
@@ -368,64 +361,58 @@ const skippedColumns: TableColumn<BulkResult>[] = [
           <div class="flex flex-wrap items-center gap-3">
             <Button :disabled="rows.length >= MAX" @click="addRow">
               <template #leading><Plus /></template>
-              Add another user
+              {{ t('addUsers.addAnother') }}
             </Button>
-            <p class="text-sm text-black/65">{{ plural(people.length) }} to add</p>
+            <p class="text-sm text-black/65">{{ t('addUsers.toAdd', { users: plural(people.length) }) }}</p>
           </div>
           <p v-if="usersError" class="text-sm text-red" role="alert">{{ usersError }}</p>
 
           <Checkbox
             v-model="autoPassword"
-            label="Automatically create a password"
-            description="Each user gets their own, shown once after they’re added."
+            :label="t('password.auto')"
+            :description="t('addUsers.autoDescription')"
           />
           <template v-if="!autoPassword">
             <Notification
               type="warning"
-              title="Everyone gets the same password"
-              description="This will apply the same password for all of these users. As the password is shared, it’s recommended to require users to change it when they sign in."
+              :title="t('bulk.resetPassword.sameTitle')"
+              :description="t('addUsers.sameDescription')"
               :dismissible="false"
             />
             <PasswordField v-model="sharedPassword" v-model:valid="sharedValid" :organisation-id="orgId" :error-text="passwordError" />
           </template>
           <Checkbox
             v-model="requireChange"
-            label="Require these users to change their password on sign in"
-            description="Recommended, so only they know their password."
+            :label="t('addUsers.requireChange')"
+            :description="t('password.requireChangeDescription')"
           />
         </div>
 
         <!-- Licences -->
         <div v-else class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
-            <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">Licences</h2>
-            <p class="text-sm text-black/65">
-              The Keston products these {{ plural(people.length) }} can use. Without a licence, they can’t sign in to it.
-            </p>
+            <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">{{ t('licences.title') }}</h2>
+            <p class="text-sm text-black/65">{{ t('addUsers.licencesDescription', { users: plural(people.length) }) }}</p>
           </div>
-          <EmptyState v-if="!products?.length" size="sm" title="No products yet" class="p-0" />
-          <fieldset v-else class="flex flex-col gap-3">
-            <legend class="sr-only">Licences</legend>
-            <Checkbox
-              v-for="p in products"
-              :key="p.id"
-              :model-value="licences.includes(p.id)"
-              :label="p.name"
-              :description="`By ${p.publisher}. ${p.assigned === 1 ? '1 user has' : `${p.assigned} users have`} a licence.`"
-              @update:model-value="toggleLicence(p.id, !!$event)"
-            />
-          </fieldset>
+          <EmptyState v-if="!products?.length" size="sm" :title="t('licences.none')" class="p-0" />
+          <CheckboxGroup
+            v-else
+            v-model="licences"
+            :label="t('licences.title')"
+            hide-label
+            :options="products.map((p) => ({ label: p.name, value: p.id, description: t('addUser.licenceDescription', { publisher: p.publisher }, p.assigned) }))"
+          />
           <p v-if="usersError" class="text-sm text-red" role="alert">{{ usersError }}</p>
         </div>
 
         <div class="flex items-center justify-between gap-2">
           <Button v-if="step > 0" :disabled="status !== 'idle'" @click="previous">
             <template #leading><ArrowLeft /></template>
-            Previous
+            {{ t('common.previous') }}
           </Button>
-          <Button v-else :as="RouterLink" :to="`/organisations/${orgId}/users`">Cancel</Button>
-          <Button type="submit" variant="primary" :status="status" loading-text="Adding">
-            {{ last ? `Add ${plural(people.length)}` : 'Next' }}
+          <Button v-else :as="RouterLink" :to="`/organisations/${orgId}/users`">{{ t('common.cancel') }}</Button>
+          <Button type="submit" variant="primary" :status="status" :loading-text="t('addUser.adding')">
+            {{ last ? t('addUsers.addUsers', { users: plural(people.length) }) : t('common.next') }}
             <template v-if="!last" #trailing><ArrowRight /></template>
           </Button>
         </div>

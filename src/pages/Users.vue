@@ -18,6 +18,9 @@ import { RouterLink, useRoute } from 'vue-router'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
 import BulkActions from '../components/BulkActions.vue'
 import { api, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * An organisation's users: add, reset a password, disable or enable; tick
@@ -89,13 +92,13 @@ async function bulkDone() {
 }
 
 const columns = computed<TableColumn<User>[]>(() => [
-  ...(canBulk.value ? [{ key: 'select', label: 'Select', hideLabel: true, class: 'w-0' }] : []),
-  { key: 'name', label: 'Name', rowHeader: true, sortable: true },
-  { key: 'email', label: 'Email', sortable: true },
-  { key: 'role', label: 'Role', sortable: true },
-  { key: 'licences', label: 'Licences' },
-  { key: 'status', label: 'Status', sortable: true },
-  { key: 'actions', label: 'Actions', hideLabel: true, align: 'end' },
+  ...(canBulk.value ? [{ key: 'select', label: t('users.columns.select'), hideLabel: true, class: 'w-0' }] : []),
+  { key: 'name', label: t('users.columns.name'), rowHeader: true, sortable: true },
+  { key: 'email', label: t('users.columns.email'), sortable: true },
+  { key: 'role', label: t('users.columns.role'), sortable: true },
+  { key: 'licences', label: t('users.columns.licences') },
+  { key: 'status', label: t('users.columns.status'), sortable: true },
+  { key: 'actions', label: t('common.actions'), hideLabel: true, align: 'end' },
 ])
 
 // ── Add a user ──────────────────────────────────────────────────────────
@@ -122,12 +125,12 @@ onMounted(async () => {
 /** A row's menu: what you can do to them. */
 function rowActions(row: User): MenuItem[] {
   const out: MenuItem[] = []
-  if (has('users.reset_password')) out.push({ label: 'Reset password', icon: KeyRound, onSelect: () => bulk.value?.open('reset-password', row) })
+  if (has('users.reset_password')) out.push({ label: t('users.resetPassword'), icon: KeyRound, onSelect: () => bulk.value?.open('reset-password', row) })
   if (row.id !== myId.value && has('users.status'))
     out.push(
       row.status === 'active'
-        ? { label: 'Block sign-in', icon: Ban, onSelect: () => toggle(row) }
-        : { label: 'Unblock sign-in', icon: CircleCheck, onSelect: () => toggle(row) },
+        ? { label: t('users.blockSignIn'), icon: Ban, onSelect: () => toggle(row) }
+        : { label: t('users.unblockSignIn'), icon: CircleCheck, onSelect: () => toggle(row) },
     )
   return out
 }
@@ -139,18 +142,18 @@ async function toggle(a: User) {
     await load()
     notify({
       type: 'success',
-      title: status === 'disabled' ? 'Sign-in blocked' : 'Sign-in unblocked',
-      description: status === 'disabled' ? `${a.name} has been signed out and can’t sign in.` : `${a.name} can sign in again.`,
+      title: status === 'disabled' ? t('users.signInBlocked') : t('users.signInUnblocked'),
+      description: status === 'disabled' ? t('users.signInBlockedDescription', { name: a.name }) : t('users.signInUnblockedDescription', { name: a.name }),
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change the user', description: message(e) })
+    notify({ type: 'error', title: t('users.couldntChange'), description: message(e) })
   }
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-3 p-4 sm:p-6">
-    <PageHeader title="Users" :toolbar="bulk?.actions ?? []" :link-component="RouterLink">
+    <PageHeader :title="t('users.title')" :toolbar="bulk?.actions ?? []" :link-component="RouterLink">
       <template v-if="bulk?.count" #toolbar-start>{{ bulk.count }}</template>
     </PageHeader>
     <BulkActions
@@ -166,7 +169,7 @@ async function toggle(a: User) {
     />
 
     <Card v-if="loadError">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the users" :description="loadError" />
+      <EmptyState :icon="TriangleAlert" :title="t('users.couldntLoad')" :description="loadError" />
     </Card>
 
     <Card v-if="!loadError" padding="none">
@@ -175,7 +178,7 @@ async function toggle(a: User) {
         :rows="users"
         row-key="id"
         :loading="loading"
-        caption="Users"
+        :caption="t('users.title')"
         :row-link="(row: User) => `/organisations/${orgId}/users/${row.id}`"
         :link-component="RouterLink"
       >
@@ -183,8 +186,8 @@ async function toggle(a: User) {
           <Checkbox
             v-if="selectableCount"
             :model-value="allSelected"
-            label="Select every user you can change"
-            class="[&_label]:sr-only"
+            :label="t('users.selectAll')"
+            hide-label
             @update:model-value="selectAll"
           />
         </template>
@@ -192,47 +195,47 @@ async function toggle(a: User) {
           <Checkbox
             v-if="selectable(row)"
             :model-value="selected.has(row.id)"
-            :label="`Select ${row.name}`"
-            class="[&_label]:sr-only"
+            :label="t('users.select', { name: row.name })"
+            hide-label
             @update:model-value="selectRow(row, $event)"
           />
         </template>
         <template #cell-name="{ row }">
           {{ row.name }}
-          <Badge v-if="row.support" size="sm" color="blue" class="ml-1">Keston support</Badge>
-          <span v-if="row.id === myId" class="text-black/65"> (you)</span>
+          <Badge v-if="row.support" size="sm" color="blue" class="ml-1">{{ t('users.kestonSupport') }}</Badge>
+          <span v-if="row.id === myId" class="text-black/65"> {{ t('users.you') }}</span>
         </template>
         <template #cell-role="{ row }">
           <Badge v-if="row.role === 'global_admin'" color="primary" size="sm">
             <template #leading><ShieldCheck /></template>
-            Global admin
+            {{ t('users.globalAdmin') }}
           </Badge>
           <span v-else-if="row.roles?.length">{{ row.roles.map(roleName).join(', ') }}</span>
-          <span v-else class="text-black/65">User</span>
+          <span v-else class="text-black/65">{{ t('users.roleUser') }}</span>
         </template>
         <template #cell-licences="{ row }">
           <span v-if="row.licences?.length">{{ row.licences.map(productName).join(', ') }}</span>
-          <span v-else class="text-black/65">None</span>
+          <span v-else class="text-black/65">{{ t('common.none') }}</span>
         </template>
         <template #cell-status="{ row }">
-          <Badge v-if="row.status === 'disabled'" color="basic" size="sm">Disabled</Badge>
+          <Badge v-if="row.status === 'disabled'" color="basic" size="sm">{{ t('users.status.disabled') }}</Badge>
           <Badge v-else-if="row.locked" color="yellow" size="sm">
             <template #leading><Lock /></template>
-            Locked
+            {{ t('users.status.locked') }}
           </Badge>
-          <Badge v-else color="green" size="sm">Active</Badge>
+          <Badge v-else color="green" size="sm">{{ t('users.status.active') }}</Badge>
         </template>
         <template #cell-actions="{ row }">
-          <span v-if="row.support" class="text-xs text-black/65">Until {{ formatDateTime(row.expiresAt!) }}</span>
+          <span v-if="row.support" class="text-xs text-black/65">{{ t('users.until', { date: formatDateTime(row.expiresAt!) }) }}</span>
           <Menu
             v-else-if="row.canChange && rowActions(row).length"
             :items="rowActions(row)"
-            :label="`Actions for ${row.name}`"
+            :label="t('common.actionsFor', { name: row.name })"
             size="sm"
           />
         </template>
         <template #empty>
-          <EmptyState size="sm" :icon="Users" title="No users yet" description="Add the people who sign in to Keston here." class="p-0" />
+          <EmptyState size="sm" :icon="Users" :title="t('users.none')" :description="t('users.noneDescription')" class="p-0" />
         </template>
       </Table>
     </Card>

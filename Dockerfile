@@ -1,5 +1,14 @@
 # syntax=docker/dockerfile:1
 
+# ── 0. Development: the Vite dev server, for compose.dev.yaml ───────────────
+# Nothing is built into the image: the source is mounted, so edits show up in
+# the browser at once. See compose.dev.yaml.
+FROM node:24-alpine AS dev
+WORKDIR /app
+RUN corepack enable
+EXPOSE 8080
+CMD ["sh", "-c", "pnpm install --frozen-lockfile=false && pnpm dev"]
+
 # ── 1. Build the app (Vue + Keston UI) ──────────────────────────────────────
 FROM node:24-alpine AS build
 WORKDIR /app

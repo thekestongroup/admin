@@ -15,6 +15,9 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
 import { api, type AccessPass, type SignInState, type User } from '../lib/api'
+import { I18nT, useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * On a user's page: what they must do when they next sign in (choose a new
@@ -57,11 +60,11 @@ async function setPasswordChange(required: boolean) {
     await reload()
     notify({
       type: 'success',
-      title: required ? 'Password change required' : 'Password change no longer required',
-      description: required ? `${props.user.name} will choose a new password when they next sign in.` : undefined,
+      title: required ? t('signInCard.pwRequired') : t('signInCard.pwNotRequired'),
+      description: required ? t('signInCard.pwWillChoose', { name: props.user.name }) : undefined,
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change that', description: message(e) })
+    notify({ type: 'error', title: t('signInCard.couldntChange'), description: message(e) })
   } finally {
     pwStatus.value = 'idle'
   }
@@ -70,25 +73,25 @@ async function setPasswordChange(required: boolean) {
 // ── Access passes ───────────────────────────────────────────────────────────
 
 function passStatus(p: AccessPass): { label: string; color: 'green' | 'basic' } {
-  if (p.active) return { label: 'Active', color: 'green' }
-  if (p.revokedAt) return { label: 'Revoked', color: 'basic' }
-  if (p.oneTime && p.lastUsedAt) return { label: 'Used', color: 'basic' }
-  return { label: 'Expired', color: 'basic' }
+  if (p.active) return { label: t('signInCard.pass.active'), color: 'green' }
+  if (p.revokedAt) return { label: t('signInCard.pass.revoked'), color: 'basic' }
+  if (p.oneTime && p.lastUsedAt) return { label: t('signInCard.pass.used'), color: 'basic' }
+  return { label: t('signInCard.pass.expired'), color: 'basic' }
 }
 
 function passDetail(p: AccessPass) {
-  const kind = p.oneTime ? 'One-time' : 'Time-limited'
-  const until = p.active ? `, until ${formatDateTime(p.expiresAt)}` : ''
-  const by = p.createdBy ? ` · Issued by ${p.createdBy}` : ''
+  const kind = p.oneTime ? t('signInCard.oneTime') : t('signInCard.timeLimited')
+  const until = p.active ? t('signInCard.until', { date: formatDateTime(p.expiresAt) }) : ''
+  const by = p.createdBy ? ` · ${t('signInCard.issuedBy', { name: p.createdBy })}` : ''
   return `${kind}${until}${by}`
 }
 
 const issuing = ref(false)
-const kinds = [
-  { label: 'One-time', value: 'one-time', description: 'Works once, within the time below.' },
-  { label: 'Time-limited', value: 'time-limited', description: 'Works as often as needed until it expires.' },
-]
-const hourOptions = Array.from({ length: 8 }, (_, i) => ({ label: i === 0 ? '1 hour' : `${i + 1} hours`, value: String(i + 1) }))
+const kinds = computed(() => [
+  { label: t('signInCard.oneTime'), value: 'one-time', description: t('signInCard.oneTimeDescription') },
+  { label: t('signInCard.timeLimited'), value: 'time-limited', description: t('signInCard.timeLimitedDescription') },
+])
+const hourOptions = computed(() => Array.from({ length: 8 }, (_, i) => ({ label: t('signInCard.hours', i + 1), value: String(i + 1) })))
 const form = ref({ kind: 'one-time', hours: '1', requirePasswordChange: false })
 const issueStatus = ref<ButtonStatus>('idle')
 /** The new pass's code: shown once. */
@@ -122,7 +125,7 @@ async function issue() {
     await reload()
   } catch (e) {
     issueStatus.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t issue an access pass', description: message(e) })
+    notify({ type: 'error', title: t('signInCard.couldntIssue'), description: message(e) })
   }
 }
 
@@ -132,9 +135,9 @@ async function revoke(p: AccessPass) {
   try {
     await api.revokeAccessPass(props.orgId, props.user.id, p.id)
     await reload()
-    notify({ type: 'success', title: 'Access pass revoked', description: 'It no longer signs them in.' })
+    notify({ type: 'success', title: t('signInCard.revoked'), description: t('signInCard.revokedDescription') })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t revoke the access pass', description: message(e) })
+    notify({ type: 'error', title: t('signInCard.couldntRevoke'), description: message(e) })
   } finally {
     revoking.value = undefined
   }
@@ -142,61 +145,60 @@ async function revoke(p: AccessPass) {
 </script>
 
 <template>
-  <Card title="Signing in" description="What they must do when they next sign in, and access passes.">
+  <Card :title="t('signInCard.title')" :description="t('signInCard.description')">
     <p v-if="error" class="text-sm text-red" role="alert">{{ error }}</p>
-    <div v-else-if="!state" class="flex justify-center py-6"><Spinner label="Loading" /></div>
+    <div v-else-if="!state" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
     <div v-else class="flex flex-col gap-6">
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-2">
-          <p class="flex-1 text-sm font-bold">New password at next sign-in</p>
-          <Badge v-if="state.passwordChangeRequired" color="yellow">Required</Badge>
-          <Badge v-else>Not required</Badge>
+          <p class="flex-1 text-sm font-bold">{{ t('signInCard.newPassword') }}</p>
+          <Badge v-if="state.passwordChangeRequired" color="yellow">{{ t('signInCard.required') }}</Badge>
+          <Badge v-else>{{ t('signInCard.notRequired') }}</Badge>
         </div>
         <p class="text-sm text-black/65">
           <template v-if="state.passwordChangeRequired">
-            When they next sign in, they’ll choose a new password before they can continue.
+            {{ t('signInCard.willChooseNew') }}
           </template>
-          <template v-else>They sign in with their current password.</template>
+          <template v-else>{{ t('signInCard.currentPassword') }}</template>
         </p>
         <div v-if="canRequirePassword">
           <Button
             v-if="state.passwordChangeRequired"
             :status="pwStatus"
-            loading-text="Saving"
+            :loading-text="t('common.saving')"
             @click="setPasswordChange(false)"
           >
-            Don’t require a password change
+            {{ t('signInCard.dontRequire') }}
           </Button>
-          <Button v-else :status="pwStatus" loading-text="Saving" @click="setPasswordChange(true)">
-            Require password change
+          <Button v-else :status="pwStatus" :loading-text="t('common.saving')" @click="setPasswordChange(true)">
+            {{ t('signInCard.requireChange') }}
           </Button>
         </div>
       </div>
 
       <div v-if="state.mfaRequired" class="flex flex-col gap-1">
-        <p class="text-sm font-bold">MFA is required for them</p>
+        <p class="text-sm font-bold">{{ t('signInCard.mfaRequired') }}</p>
         <p class="text-sm text-black/65">
-          <template v-if="user.mfa">They use it every time they sign in.</template>
-          <template v-else>They don’t have it yet, so they’ll set it up when they next sign in.</template>
+          <template v-if="user.mfa">{{ t('signInCard.mfaUses') }}</template>
+          <template v-else>{{ t('signInCard.mfaWillSetUp') }}</template>
         </p>
       </div>
 
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-2">
-          <p class="flex-1 text-sm font-bold">Access passes</p>
+          <p class="flex-1 text-sm font-bold">{{ t('signInCard.accessPasses') }}</p>
           <Button v-if="canIssuePasses && user.status === 'active'" size="sm" @click="startIssue">
             <template #leading><Ticket /></template>
-            Issue access pass
+            {{ t('signInCard.issue') }}
           </Button>
         </div>
         <p class="text-sm text-black/65">
-          A temporary code that signs them in instead of their password and MFA, e.g. after losing their phone. They
-          then set up MFA again.
+          {{ t('signInCard.passExplanation') }}
         </p>
         <ul v-if="state.accessPasses.length" class="flex flex-col divide-y divide-black/10">
           <li v-for="p in state.accessPasses" :key="p.id" class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
             <span class="flex min-w-0 flex-1 flex-col">
-              <span class="text-sm">Issued {{ formatDateTime(p.createdAt) }}</span>
+              <span class="text-sm">{{ t('signInCard.issued', { date: formatDateTime(p.createdAt) }) }}</span>
               <span class="text-xs text-black/65">{{ passDetail(p) }}</span>
             </span>
             <Badge size="sm" :color="passStatus(p).color">{{ passStatus(p).label }}</Badge>
@@ -205,56 +207,54 @@ async function revoke(p: AccessPass) {
               size="sm"
               variant="ghost"
               :status="revoking === p.id ? 'loading' : 'idle'"
-              loading-text="Revoking"
+              :loading-text="t('signInCard.revoking')"
               @click="revoke(p)"
             >
-              Revoke
+              {{ t('signInCard.revoke') }}
             </Button>
           </li>
         </ul>
-        <p v-else class="text-sm text-black/65">None in the last week.</p>
+        <p v-else class="text-sm text-black/65">{{ t('signInCard.noPasses') }}</p>
       </div>
     </div>
   </Card>
 
   <Slideover
     v-model:open="issuing"
-    :title="code ? 'Give them this access pass' : `Issue an access pass for ${user.name}`"
-    :description="
-      code
-        ? 'You won’t see it again. Give it to them securely, e.g. in person or on the phone, never by email.'
-        : 'Only issue one once you’re sure it’s really them asking.'
-    "
+    :title="code ? t('signInCard.giveTitle') : t('signInCard.issueTitle', { name: user.name })"
+    :description="code ? t('signInCard.giveDescription') : t('signInCard.issueDescription')"
   >
     <template #body>
       <div v-if="code" class="flex flex-col gap-4">
         <p class="rounded bg-surface px-3 py-4 text-center font-mono text-xl font-bold tracking-wide select-all">
           {{ code }}
         </p>
-        <p class="text-sm">
-          They choose <span class="font-bold">Sign in with an access pass</span> on the Keston sign-in page, and enter
-          {{ user.email }} and this code. Then they<template v-if="form.requirePasswordChange">
-            choose a new password and</template
-          >
-          set up MFA.
-        </p>
+        <I18nT
+          :keypath="form.requirePasswordChange ? 'signInCard.howToUseWithPassword' : 'signInCard.howToUse'"
+          tag="p"
+          scope="global"
+          class="text-sm"
+        >
+          <template #action><span class="font-bold">{{ t('signInCard.signInWithPass') }}</span></template>
+          <template #email>{{ user.email }}</template>
+        </I18nT>
       </div>
       <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="issue">
-        <RadioGroup v-model="form.kind" label="Type" :options="kinds" />
-        <Select v-model="form.hours" label="Expires after" :options="hourOptions" />
+        <RadioGroup v-model="form.kind" :label="t('signInCard.type')" :options="kinds" />
+        <Select v-model="form.hours" :label="t('signInCard.expiresAfter')" :options="hourOptions" />
         <Checkbox
           v-model="form.requirePasswordChange"
-          label="They need a new password too"
-          description="E.g. they’ve forgotten it. They’ll choose one when they sign in."
+          :label="t('signInCard.needNewPassword')"
+          :description="t('signInCard.needNewPasswordDescription')"
         />
         <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
       </form>
     </template>
     <template #footer="{ close }">
-      <Button v-if="code" variant="primary" @click="close">Done</Button>
+      <Button v-if="code" variant="primary" @click="close">{{ t('common.done') }}</Button>
       <template v-else>
-        <Button :disabled="issueStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="issueStatus" loading-text="Issuing" @click="issue">Issue access pass</Button>
+        <Button :disabled="issueStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="issueStatus" :loading-text="t('signInCard.issuing')" @click="issue">{{ t('signInCard.issue') }}</Button>
       </template>
     </template>
   </Slideover>

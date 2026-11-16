@@ -13,9 +13,10 @@
   "packageManager": "pnpm@11.6.0",
   "dependencies": {
     "@lucide/vue": "^1.72.0",
-    "@thekestongroup/ui": "^0.7.0",
+    "@thekestongroup/ui": "link:../ui",
     "oidc-client-ts": "^3.5.0",
     "vue": "^3.5.45",
+    "vue-i18n": "^11.4.20",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {

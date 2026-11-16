@@ -1,3 +1,4 @@
+import { currentLocale, t } from '../i18n'
 import type { BulkResult } from './api'
 
 /**
@@ -6,7 +7,7 @@ import type { BulkResult } from './api'
  */
 function rows(results: BulkResult[]) {
   const withPasswords = results.some((r) => r.password)
-  const header = withPasswords ? ['Name', 'Email', 'Password'] : ['Name', 'Email']
+  const header = withPasswords ? [t('common.name'), t('common.email'), t('password.label')] : [t('common.name'), t('common.email')]
   return [header, ...results.map((r) => (withPasswords ? [r.name, r.email, r.password ?? ''] : [r.name, r.email]))]
 }
 
@@ -33,7 +34,7 @@ export function printUserDetails(results: BulkResult[], title: string) {
     th, td { border: 1px solid #999; padding: 6pt 8pt; text-align: left }
     td:nth-child(3) { font-family: ui-monospace, monospace }
     tr { break-inside: avoid }
-  </style></head><body><h1>${esc(title)}</h1><p>Printed ${esc(new Date().toLocaleString('en-GB'))}. Keep this safe, and destroy it once the details are handed out.</p>
+  </style></head><body><h1>${esc(title)}</h1><p>${esc(t('userDetails.printed', { date: new Date().toLocaleString(currentLocale()) }))}</p>
   <table><thead><tr>${header.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body
     .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
     .join('')}</tbody></table></body></html>`

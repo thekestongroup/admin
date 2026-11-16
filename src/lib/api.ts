@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { currentUser, signIn } from './auth'
 
 /**
@@ -322,7 +323,7 @@ async function parse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new ApiError(res.status, data.error ?? 'error', data.message ?? 'Something went wrong. Try again.', data.field)
+    throw new ApiError(res.status, data.error ?? 'error', data.message ?? t('errors.generic'), data.field)
   }
   return data as T
 }
@@ -346,7 +347,7 @@ export async function request<T>(method: string, path: string, body?: unknown | 
   const user = await currentUser()
   if (!user) {
     await signIn()
-    throw new ApiError(401, 'signed_out', 'Signing you in…')
+    throw new ApiError(401, 'signed_out', t('errors.signingIn'))
   }
   let res: Response
   try {
@@ -365,7 +366,7 @@ export async function request<T>(method: string, path: string, body?: unknown | 
   // has a session), then come back here.
   if (res.status === 401) {
     await signIn()
-    throw new ApiError(401, 'signed_out', 'Signing you in again…')
+    throw new ApiError(401, 'signed_out', t('errors.signingInAgain'))
   }
   return parse<T>(res)
 }

@@ -17,6 +17,9 @@ import {
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api, type Organisation, type PasswordPolicy, type Rule } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * An organisation's password rules. Keston's baseline (8+ characters, not a
@@ -59,7 +62,7 @@ function addWord() {
   wordError.value = undefined
   if (!word) return
   if (policy.blocked.includes(word)) {
-    wordError.value = `“${word}” is already on the list`
+    wordError.value = t('passwordPolicy.alreadyBanned', { word })
     return
   }
   policy.blocked = [...policy.blocked, word].sort()
@@ -74,59 +77,59 @@ async function save() {
   try {
     apply(await api.savePolicy(orgId, { ...policy, minLength: Math.max(policy.minLength ?? baselineMin.value, baselineMin.value) }))
     status.value = 'success'
-    notify({ type: 'success', title: 'Password policy saved', description: 'New passwords must meet it. Existing ones aren’t affected until they’re changed.' })
+    notify({ type: 'success', title: t('passwordPolicy.saved'), description: t('passwordPolicy.savedDescription') })
   } catch (e) {
     status.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t save the policy', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('passwordPolicy.couldntSave'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 
 const preview = computed(() => rules.value.map((r) => ({ label: r.label, done: true })))
-const counts = [
-  { key: 'minUppercase', label: 'Capital letters', helper: 'A–Z' },
-  { key: 'minLowercase', label: 'Lowercase letters', helper: 'a–z' },
-  { key: 'minDigits', label: 'Numbers', helper: '0–9' },
-  { key: 'minSpecial', label: 'Special characters', helper: 'Anything else, like ! ? # % or a space' },
-] as const
+const counts = computed(() => [
+  { key: 'minUppercase', label: t('passwordPolicy.counts.upper'), helper: 'A–Z' },
+  { key: 'minLowercase', label: t('passwordPolicy.counts.lower'), helper: 'a–z' },
+  { key: 'minDigits', label: t('passwordPolicy.counts.digits'), helper: '0–9' },
+  { key: 'minSpecial', label: t('passwordPolicy.counts.special'), helper: t('passwordPolicy.counts.specialHelper') },
+] as const)
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
     <PageHeader
-      title="Password policy"
-      :description="org ? `The rules for new passwords at ${org.name}.` : undefined"
+      :title="t('nav.passwordPolicy')"
+      :description="org ? t('passwordPolicy.description', { name: org.name }) : undefined"
     />
 
     <Card v-if="loadError">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the policy" :description="loadError" />
+      <EmptyState :icon="TriangleAlert" :title="t('passwordPolicy.couldntLoad')" :description="loadError" />
     </Card>
-    <div v-else-if="!loaded" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!loaded" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
-      <Card title="Keston’s baseline" description="Set by The Keston Group for every organisation. It can’t be turned off.">
+      <Card :title="t('passwordPolicy.baseline.title')" :description="t('passwordPolicy.baseline.description')">
         <ul class="flex flex-col gap-2 text-sm">
           <li class="flex items-center gap-2">
             <Lock class="size-4 shrink-0 text-black/55" aria-hidden="true" />
-            At least {{ baselineMin }} characters
+            {{ t('passwordPolicy.baseline.minLength', { count: baselineMin }) }}
           </li>
           <li class="flex items-center gap-2">
             <Lock class="size-4 shrink-0 text-black/55" aria-hidden="true" />
-            Not a commonly used password, like “password1” or “qwerty”
+            {{ t('passwordPolicy.baseline.common') }}
           </li>
         </ul>
       </Card>
 
-      <Card title="Your rules" description="On top of the baseline. Make them as strict as you need.">
+      <Card :title="t('passwordPolicy.rules.title')" :description="t('passwordPolicy.rules.description')">
         <form id="policy-form" class="flex flex-col gap-6" novalidate @submit.prevent="save">
           <InputNumber
             v-model="policy.minLength"
-            label="Minimum length"
+            :label="t('passwordPolicy.rules.minLength')"
             :min="baselineMin"
             :max="128"
-            :helper="`At least ${baselineMin}.`"
+            :helper="t('passwordPolicy.rules.atLeast', { count: baselineMin })"
             class="max-w-48"
           />
           <fieldset class="flex flex-col gap-3">
-            <legend class="mb-1 text-sm font-bold">It must contain at least</legend>
+            <legend class="mb-1 text-sm font-bold">{{ t('passwordPolicy.rules.mustContain') }}</legend>
             <div class="grid gap-4 sm:grid-cols-2">
               <InputNumber
                 v-for="c in counts"
@@ -147,40 +150,40 @@ const counts = [
             <div class="flex items-start gap-2">
               <Input
                 v-model="newWord"
-                label="Also ban these passwords"
+                :label="t('passwordPolicy.rules.alsoBan')"
                 :error-text="wordError"
                 class="flex-1"
                 @keydown.enter.prevent="addWord"
               />
               <Button class="mt-6.5 shrink-0" @click="addWord">
                 <template #leading><Plus /></template>
-                Add
+                {{ t('common.add') }}
               </Button>
             </div>
             <p class="-mt-1 text-sm text-black/65">
-              e.g. your organisation’s name or town. Matching ignores capitals, and numbers or symbols on the end.
+              {{ t('passwordPolicy.rules.banHelper') }}
             </p>
-            <ul v-if="policy.blocked.length" class="flex flex-wrap gap-2" aria-label="Banned passwords">
+            <ul v-if="policy.blocked.length" class="flex flex-wrap gap-2" :aria-label="t('passwordPolicy.rules.banned')">
               <li v-for="word in policy.blocked" :key="word">
-                <Chip removable :remove-label="`Remove ${word}`" @remove="removeWord(word)">{{ word }}</Chip>
+                <Chip removable :remove-label="t('common.removeItem', { name: word })" @remove="removeWord(word)">{{ word }}</Chip>
               </li>
             </ul>
-            <p v-else class="text-sm text-black/65">No extra banned passwords.</p>
+            <p v-else class="text-sm text-black/65">{{ t('passwordPolicy.rules.noBanned') }}</p>
           </div>
         </form>
         <template #footer>
           <!-- v-model: the button sets itself back to idle a couple of
                seconds after "Saved", so the policy can be changed again. -->
-          <Button type="submit" form="policy-form" variant="primary" v-model:status="status" loading-text="Saving" success-text="Saved">
-            Save policy
+          <Button type="submit" form="policy-form" variant="primary" v-model:status="status" :loading-text="t('common.saving')" :success-text="t('common.saved')">
+            {{ t('passwordPolicy.save') }}
           </Button>
         </template>
       </Card>
 
-      <Card title="What people see" description="The checklist shown when someone sets a password (as last saved).">
+      <Card :title="t('passwordPolicy.preview.title')" :description="t('passwordPolicy.preview.description')">
         <div class="flex flex-col gap-3">
           <Checklist :items="preview" />
-          <div><Badge size="sm">{{ policy.blocked.length }} extra banned {{ policy.blocked.length === 1 ? 'password' : 'passwords' }}</Badge></div>
+          <div><Badge size="sm">{{ t('passwordPolicy.preview.extraBanned', policy.blocked.length) }}</Badge></div>
         </div>
       </Card>
     </template>

@@ -2,6 +2,9 @@
 import { Checklist, InputPassword } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, publicApi, type RuleResult } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * A new password, with the rules it must meet ticked off as you type. Keston
@@ -18,7 +21,7 @@ const props = withDefaults(
     /** Self-service sign-up: check without signing in (baseline rules). */
     public?: boolean
   }>(),
-  { label: 'Password' },
+  {},
 )
 
 const password = defineModel<string>({ default: '' })
@@ -51,9 +54,9 @@ const items = computed(() => rules.value.map((r) => ({ label: r.label, done: r.m
 
 <template>
   <div class="flex flex-col gap-3">
-    <InputPassword v-model="password" :label="label" autocomplete="new-password" :error-text="errorText" />
+    <InputPassword v-model="password" :label="label ?? t('password.label')" autocomplete="new-password" :error-text="errorText" />
     <div v-if="items.length" class="flex flex-col gap-2">
-      <p id="password-rules" class="text-sm font-bold">The password needs:</p>
+      <p id="password-rules" class="text-sm font-bold">{{ t('password.needs') }}</p>
       <Checklist :items="items" aria-labelledby="password-rules" />
     </div>
   </div>

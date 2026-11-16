@@ -3,6 +3,9 @@ import { Card, Link, Spinner } from '@thekestongroup/ui'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signIn, userManager } from '../lib/auth'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /** Back from Keston ID: finish signing in, then go where we were going. */
 const router = useRouter()
@@ -17,7 +20,7 @@ onMounted(async () => {
     const params = new URLSearchParams(window.location.search)
     error.value =
       params.get('error') === 'access_denied'
-        ? "Keston ID didn't sign you in."
+        ? t('callback.denied')
         : e instanceof Error
           ? e.message
           : String(e)
@@ -29,11 +32,11 @@ onMounted(async () => {
   <div class="flex min-h-dvh items-center justify-center bg-background p-4">
     <Card v-if="error" class="w-full max-w-100">
       <div class="flex flex-col gap-2">
-        <h1 class="text-xl font-bold">Couldn't sign you in</h1>
+        <h1 class="text-xl font-bold">{{ t('callback.couldntSignIn') }}</h1>
         <p class="text-sm" role="alert">{{ error }}</p>
-        <p class="text-sm"><Link as="button" @click="signIn('/')">Try again</Link></p>
+        <p class="text-sm"><Link as="button" @click="signIn('/')">{{ t('callback.tryAgain') }}</Link></p>
       </div>
     </Card>
-    <Spinner v-else label="Signing you in" />
+    <Spinner v-else :label="t('callback.signingIn')" />
   </div>
 </template>

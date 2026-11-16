@@ -18,6 +18,9 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import OwnAppForm from '../components/OwnAppForm.vue'
 import { type OwnApp, type OwnAppChanges, ownApps } from '../lib/api'
+import { I18nT, useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * One of the organisation's own apps: what to put in the app's SSO
@@ -44,7 +47,7 @@ onMounted(async () => {
   }
 })
 
-const trail = computed(() => [{ label: 'Apps', to: `/organisations/${orgId}/apps` }, { label: app.value?.name ?? 'App' }])
+const trail = computed(() => [{ label: t('nav.apps'), to: `/organisations/${orgId}/apps` }, { label: app.value?.name ?? t('titles.app') }])
 
 /** What to put in the app's SSO settings. */
 const details = computed(() => {
@@ -52,34 +55,33 @@ const details = computed(() => {
   if (!a) return []
   if (a.oidc) {
     return [
-      { label: 'Client ID', value: a.oidc.clientId },
+      { label: t('ownApp.details.clientId'), value: a.oidc.clientId, copyable: true },
       {
-        label: 'Client secret',
-        value: a.oidc.type === 'web' ? 'Shown once when it’s made' : 'None: signs in with PKCE',
+        label: t('ownApp.details.clientSecret'),
+        value: a.oidc.type === 'web' ? t('ownApp.details.shownOnce') : t('ownApp.details.pkce'),
       },
-      { label: 'Issuer', value: a.oidc.issuer },
-      { label: 'Discovery URL', value: a.oidc.discoveryUrl },
-      { label: 'Scopes', value: a.oidc.scopes.join(' ') },
+      { label: t('ownApp.details.issuer'), value: a.oidc.issuer, copyable: true },
+      { label: t('ownApp.details.discoveryUrl'), value: a.oidc.discoveryUrl, copyable: true },
+      { label: t('ownApp.details.scopes'), value: a.oidc.scopes.join(' ') },
     ]
   }
   const idp = a.saml!.idp
   return [
-    { label: 'IdP metadata URL', value: idp.metadataUrl, description: 'Most apps only need this.' },
-    { label: 'IdP entity ID (issuer)', value: idp.entityId },
-    { label: 'Sign-in URL (SSO URL)', value: idp.ssoUrl, description: 'HTTP-Redirect or HTTP-POST.' },
-    { label: 'Start sign-in from Keston', value: idp.startUrl, description: 'IdP-initiated sign-in: a link straight to the app.' },
-    { label: 'NameID', value: 'Email address', description: idp.nameIdFormat },
-    { label: 'Attributes', value: idp.attributes.join(', ') },
+    { label: t('ownApp.details.metadataUrl'), value: idp.metadataUrl, description: t('ownApp.details.metadataUrlDescription'), copyable: true },
+    { label: t('ownApp.details.entityId'), value: idp.entityId, copyable: true },
+    { label: t('ownApp.details.ssoUrl'), value: idp.ssoUrl, description: t('ownApp.details.ssoUrlDescription'), copyable: true },
+    { label: t('ownApp.details.startUrl'), value: idp.startUrl, description: t('ownApp.details.startUrlDescription'), copyable: true },
+    { label: t('ownApp.details.nameId'), value: t('common.email'), description: idp.nameIdFormat },
+    { label: t('ownApp.details.attributes'), value: idp.attributes.join(', ') },
   ]
 })
-const copyable = new Set(['Client ID', 'Issuer', 'Discovery URL', 'IdP metadata URL', 'IdP entity ID (issuer)', 'Sign-in URL (SSO URL)', 'Start sign-in from Keston'])
 
 async function copy(text: string, what: string) {
   try {
     await navigator.clipboard.writeText(text)
-    notify({ type: 'success', title: `${what} copied` })
+    notify({ type: 'success', title: t('ownApp.copied', { what }) })
   } catch {
-    notify({ type: 'error', title: 'Couldn’t copy it', description: 'Select it and copy it yourself.' })
+    notify({ type: 'error', title: t('ownApp.couldntCopy'), description: t('ownApp.couldntCopyDescription') })
   }
 }
 
@@ -108,7 +110,7 @@ async function newSecret() {
     secret.value = res.clientSecret
     rotating.value = false
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t make a new secret', description: message(e) })
+    notify({ type: 'error', title: t('ownApp.couldntMakeSecret'), description: message(e) })
   } finally {
     rotateStatus.value = 'idle'
   }
@@ -121,11 +123,11 @@ async function remove() {
   deleteStatus.value = 'loading'
   try {
     await ownApps.remove(orgId, appId)
-    notify({ type: 'success', title: `${app.value!.name} deleted`, description: 'Your users can no longer sign in to it.' })
+    notify({ type: 'success', title: t('groupDetail.deleted', { name: app.value!.name }), description: t('ownApp.deletedDescription') })
     router.push(`/organisations/${orgId}/apps`)
   } catch (e) {
     deleteStatus.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t delete it', description: message(e) })
+    notify({ type: 'error', title: t('groupDetail.couldntDelete'), description: message(e) })
   }
 }
 </script>
@@ -133,83 +135,84 @@ async function remove() {
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the app" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('ownApp.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!app" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!app" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <Breadcrumb :items="trail" :link-component="RouterLink" />
-      <PageHeader :title="app.name" description="Only your organisation’s users can sign in to it.">
+      <PageHeader :title="app.name" :description="t('ownApp.onlyYourUsers')">
         <template #badge>
           <Badge color="basic">{{ app.protocol === 'saml' ? 'SAML' : 'OpenID Connect' }}</Badge>
         </template>
         <template #actions>
           <Button variant="danger" @click="deleting = true">
             <template #leading><Trash2 /></template>
-            Delete
+            {{ t('common.delete') }}
           </Button>
         </template>
       </PageHeader>
 
-      <Card v-if="secret" title="Client secret" description="Copy it into the app now. You won’t be able to see it again.">
+      <Card v-if="secret" :title="t('ownApp.details.clientSecret')" :description="t('ownApp.secretDescription')">
         <div class="flex items-center gap-2">
           <code class="min-w-0 flex-1 truncate rounded border border-black/15 bg-black/5 px-3 py-2 font-mono text-sm">{{ secret }}</code>
-          <Button @click="copy(secret!, 'Secret')">
+          <Button @click="copy(secret!, t('ownApp.secret'))">
             <template #leading><Copy /></template>
-            Copy
+            {{ t('common.copy') }}
           </Button>
         </div>
       </Card>
 
-      <Card title="For the app’s SSO settings" :description="`Put these in ${app.name}’s single sign-on settings.`">
+      <Card :title="t('ownApp.ssoTitle')" :description="t('ownApp.ssoDescription', { name: app.name })">
         <SummaryList :items="details">
           <template #action="{ item }">
-            <Button v-if="copyable.has(item.label)" size="sm" variant="ghost" @click="copy(String(item.value), item.label)">
+            <Button v-if="item.copyable" size="sm" variant="ghost" @click="copy(String(item.value), item.label)">
               <template #leading><Copy /></template>
-              Copy<span class="sr-only"> {{ item.label }}</span>
+              {{ t('common.copy') }}<span class="sr-only"> {{ item.label }}</span>
             </Button>
           </template>
         </SummaryList>
         <template v-if="app.saml || app.oidc?.type === 'web'" #footer>
           <Button v-if="app.saml" @click="downloadCertificate">
             <template #leading><Download /></template>
-            Download the signing certificate
+            {{ t('ownApp.downloadCertificate') }}
           </Button>
           <Button v-else @click="rotating = true">
             <template #leading><KeyRound /></template>
-            Generate a new secret
+            {{ t('ownApp.newSecret') }}
           </Button>
         </template>
       </Card>
 
-      <Card title="Settings">
-        <OwnAppForm :protocol="app.protocol" :app="app" submit-label="Save changes" :save="save" />
+      <Card :title="t('settings.title')">
+        <OwnAppForm :protocol="app.protocol" :app="app" :submit-label="t('ownApp.saveChanges')" :save="save" />
       </Card>
 
       <p class="text-sm text-black/65">
-        Choose who has it (Forced, Enabled or Disabled) on the
-        <Link :as="RouterLink" :to="`/organisations/${orgId}/apps`">Apps page</Link>.
+        <I18nT keypath="ownApp.chooseWho" scope="global">
+          <template #link><Link :as="RouterLink" :to="`/organisations/${orgId}/apps`">{{ t('ownApp.appsPage') }}</Link></template>
+        </I18nT>
       </p>
     </template>
 
     <Slideover
       v-model:open="rotating"
-      title="Generate a new secret?"
-      description="The current secret stops working straight away, so the app can’t sign anyone in until you give it the new one."
+      :title="t('ownApp.newSecretQ')"
+      :description="t('ownApp.newSecretDescription')"
     >
       <template #footer="{ close }">
-        <Button :disabled="rotateStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="rotateStatus" loading-text="Generating" @click="newSecret">Generate a new secret</Button>
+        <Button :disabled="rotateStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="rotateStatus" :loading-text="t('ownApp.generating')" @click="newSecret">{{ t('ownApp.newSecret') }}</Button>
       </template>
     </Slideover>
 
     <Slideover
       v-model:open="deleting"
-      :title="app ? `Delete ${app.name}?` : 'Delete app?'"
-      description="Your users can no longer sign in to it, and its access settings are removed. This can’t be undone."
+      :title="app ? t('groupDetail.deleteTitle', { name: app.name }) : t('ownApp.deleteApp')"
+      :description="t('ownApp.deleteDescription')"
     >
       <template #footer="{ close }">
-        <Button :disabled="deleteStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="danger" :status="deleteStatus" loading-text="Deleting" @click="remove">Delete app</Button>
+        <Button :disabled="deleteStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="danger" :status="deleteStatus" :loading-text="t('common.deleting')" @click="remove">{{ t('ownApp.deleteApp') }}</Button>
       </template>
     </Slideover>
   </div>

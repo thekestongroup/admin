@@ -3,6 +3,9 @@ import { Button, type ButtonStatus, Card, Slideover, useNotifications } from '@t
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, type User } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /** Deleting one user, from their page: kept 30 days in Deleted users. */
 const props = defineProps<{ orgId: string; user: User }>()
@@ -18,31 +21,31 @@ async function remove() {
     await api.deleteUser(props.orgId, props.user.id)
     notify({
       type: 'success',
-      title: 'User deleted',
-      description: `${props.user.name} has been signed out everywhere. You can restore them from Deleted users for 30 days.`,
+      title: t('deleteUser.deleted'),
+      description: t('deleteUser.deletedDescription', { name: props.user.name }),
     })
     await router.push(`/organisations/${props.orgId}/users`)
   } catch (e) {
     status.value = 'idle'
     asking.value = false
-    notify({ type: 'error', title: 'Couldn’t delete the user', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('deleteUser.couldntDelete'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 </script>
 
 <template>
-  <Card title="Delete" description="Signs them out everywhere. For 30 days you can restore them, with their groups, from Deleted users.">
-    <div><Button variant="danger" @click="asking = true">Delete user</Button></div>
+  <Card :title="t('common.delete')" :description="t('deleteUser.cardDescription')">
+    <div><Button variant="danger" @click="asking = true">{{ t('deleteUser.button') }}</Button></div>
   </Card>
 
   <Slideover
     v-model:open="asking"
-    :title="`Delete ${user.name}?`"
-    description="They’re signed out of Keston and every app, and can’t sign in. For 30 days you can restore them, with their groups, from Deleted users; then they’re removed for good."
+    :title="t('deleteUser.title', { name: user.name })"
+    :description="t('deleteUser.description')"
   >
     <template #footer="{ close }">
-      <Button :disabled="status !== 'idle'" @click="close">Cancel</Button>
-      <Button variant="danger" :status="status" loading-text="Deleting" @click="remove">Delete user</Button>
+      <Button :disabled="status !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+      <Button variant="danger" :status="status" :loading-text="t('common.deleting')" @click="remove">{{ t('deleteUser.button') }}</Button>
     </template>
   </Slideover>
 </template>

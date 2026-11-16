@@ -6,7 +6,7 @@ import {
   Button,
   type ButtonStatus,
   Card,
-  Checkbox,
+  CheckboxGroup,
   EmptyState,
   Input,
   PageHeader,
@@ -18,6 +18,9 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, api, type Group, type Permission, type PermissionId, type User } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /** One group: its users (add and remove), its permissions in Keston Admin, rename, delete. */
 const route = useRoute()
@@ -66,9 +69,9 @@ const canAssign = computed(() => has('permissions.assign') && coversGroup.value)
 // Permissions.
 const chosen = ref<PermissionId[]>([])
 const permStatus = ref<ButtonStatus>('idle')
-function toggle(p: PermissionId, on: boolean) {
-  chosen.value = on ? [...chosen.value, p] : chosen.value.filter((x) => x !== p)
-}
+const permissionOptions = computed(() =>
+  catalog.value.map((p) => ({ label: p.label, value: p.id, description: p.description, disabled: !canAssign.value || !has(p.id) })),
+)
 const changed = computed(() => [...chosen.value].sort().join() !== [...(group.value?.permissions ?? [])].sort().join())
 async function savePermissions() {
   permStatus.value = 'loading'
@@ -78,13 +81,13 @@ async function savePermissions() {
     permStatus.value = 'success'
   } catch (e) {
     permStatus.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t save the permissions', description: message(e) })
+    notify({ type: 'error', title: t('groupDetail.couldntSavePermissions'), description: message(e) })
   }
 }
 
 const trail = computed(() => [
-  { label: 'Groups', to: `/organisations/${orgId}/groups` },
-  { label: group.value?.name ?? 'Group' },
+  { label: t('groups.title'), to: `/organisations/${orgId}/groups` },
+  { label: group.value?.name ?? t('titles.group') },
 ])
 
 // Adding a user.
@@ -103,7 +106,7 @@ async function add() {
     choice.value = undefined
     await load()
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t add them', description: message(e) })
+    notify({ type: 'error', title: t('groupDetail.couldntAdd'), description: message(e) })
   } finally {
     adding.value = false
   }
@@ -116,7 +119,7 @@ async function remove(u: User) {
     await api.removeMember(orgId, groupId, u.id)
     await load()
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t remove them', description: message(e) })
+    notify({ type: 'error', title: t('groupDetail.couldntRemove'), description: message(e) })
   } finally {
     removing.value = undefined
   }
@@ -142,7 +145,7 @@ async function rename() {
   } catch (e) {
     renameStatus.value = 'idle'
     if (e instanceof ApiError && e.field === 'name') nameError.value = e.message
-    else notify({ type: 'error', title: 'Couldn’t rename it', description: message(e) })
+    else notify({ type: 'error', title: t('groupDetail.couldntRename'), description: message(e) })
   }
 }
 
@@ -153,11 +156,11 @@ async function deleteGroup() {
   deleteStatus.value = 'loading'
   try {
     await api.deleteGroup(orgId, groupId)
-    notify({ type: 'success', title: `${group.value!.name} deleted`, description: 'Its users keep their accounts.' })
+    notify({ type: 'success', title: t('groupDetail.deleted', { name: group.value!.name }), description: t('groupDetail.deletedDescription') })
     router.push(`/organisations/${orgId}/groups`)
   } catch (e) {
     deleteStatus.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t delete it', description: message(e) })
+    notify({ type: 'error', title: t('groupDetail.couldntDelete'), description: message(e) })
   }
 }
 </script>
@@ -165,38 +168,38 @@ async function deleteGroup() {
 <template>
   <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the group" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('groupDetail.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!group" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!group" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <Breadcrumb :items="trail" :link-component="RouterLink" />
       <PageHeader :title="group.name">
         <template v-if="has('groups.manage')" #actions>
           <Button @click="startRename">
             <template #leading><Pencil /></template>
-            Rename
+            {{ t('groupDetail.rename') }}
           </Button>
           <Button v-if="canChangeMembers" variant="danger" @click="deleting = true">
             <template #leading><Trash2 /></template>
-            Delete
+            {{ t('common.delete') }}
           </Button>
         </template>
       </PageHeader>
 
-      <Card title="Users" :description="`App access set for ${group.name} applies to these users.`">
+      <Card :title="t('groups.columns.users')" :description="t('groupDetail.usersDescription', { name: group.name })">
         <div class="flex flex-col gap-4">
           <div v-if="canChangeMembers" class="flex items-start gap-2">
-            <Select v-model="choice" label="Add a user" :options="options" placeholder="Choose a user" class="flex-1" />
-            <Button class="mt-6.5 shrink-0" :disabled="!choice" :status="adding ? 'loading' : 'idle'" loading-text="Adding" @click="add">
+            <Select v-model="choice" :label="t('groupDetail.addUser')" :options="options" :placeholder="t('groupDetail.chooseUser')" class="flex-1" />
+            <Button class="mt-6.5 shrink-0" :disabled="!choice" :status="adding ? 'loading' : 'idle'" :loading-text="t('addUser.adding')" @click="add">
               <template #leading><Plus /></template>
-              Add
+              {{ t('common.add') }}
             </Button>
           </div>
           <EmptyState
             v-if="!members.length"
             size="sm"
             :icon="UsersRound"
-            title="No users in this group"
+            :title="t('groupDetail.noUsers')"
             class="p-0"
           />
           <ul v-else class="flex flex-col divide-y divide-black/10">
@@ -207,7 +210,7 @@ async function deleteGroup() {
                 <span class="truncate text-xs text-black/65">{{ m.email }}</span>
               </span>
               <Button v-if="canChangeMembers" size="sm" variant="ghost" :status="removing === m.id ? 'loading' : 'idle'" @click="remove(m)">
-                Remove<span class="sr-only"> {{ m.name }}</span>
+                {{ t('common.remove') }}<span class="sr-only"> {{ m.name }}</span>
               </Button>
             </li>
           </ul>
@@ -215,61 +218,53 @@ async function deleteGroup() {
       </Card>
 
       <Card
-        title="Permissions"
-        :description="`What ${group.name}’s users can do in Keston Admin, for users with the same permissions or fewer.`"
+        :title="t('groupDetail.permissions')"
+        :description="t('groupDetail.permissionsDescription', { name: group.name })"
       >
         <div class="flex flex-col gap-4">
           <p v-if="!has('permissions.assign')" class="text-sm text-black/65">
-            You need the Give permissions permission to change these.
+            {{ t('groupDetail.needGive') }}
           </p>
           <p v-else-if="!coversGroup" class="text-sm text-black/65">
-            This group gives permissions you don’t have, so only someone with all of them can change it.
+            {{ t('groupDetail.cantCover') }}
           </p>
-          <Checkbox
-            v-for="p in catalog"
-            :key="p.id"
-            :model-value="chosen.includes(p.id)"
-            :label="p.label"
-            :description="p.description"
-            :disabled="!canAssign || !has(p.id)"
-            @update:model-value="toggle(p.id, $event === true)"
-          />
+          <CheckboxGroup v-model="chosen" :label="t('groupDetail.permissions')" hide-label :options="permissionOptions" />
         </div>
         <template v-if="canAssign" #footer>
           <Button
             variant="primary"
             v-model:status="permStatus"
             :disabled="!changed && permStatus === 'idle'"
-            loading-text="Saving"
-            success-text="Saved"
+            :loading-text="t('common.saving')"
+            :success-text="t('common.saved')"
             @click="savePermissions"
           >
-            Save permissions
+            {{ t('groupDetail.savePermissions') }}
           </Button>
         </template>
       </Card>
     </template>
 
-    <Slideover v-model:open="renaming" title="Rename group" initial-focus="auto">
+    <Slideover v-model:open="renaming" :title="t('groupDetail.renameGroup')" initial-focus="auto">
       <template #body>
         <form novalidate @submit.prevent="rename">
-          <Input v-model="newName" label="Name" :error-text="nameError" />
+          <Input v-model="newName" :label="t('common.name')" :error-text="nameError" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="renameStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="renameStatus" loading-text="Saving" @click="rename">Save</Button>
+        <Button :disabled="renameStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="renameStatus" :loading-text="t('common.saving')" @click="rename">{{ t('common.save') }}</Button>
       </template>
     </Slideover>
 
     <Slideover
       v-model:open="deleting"
-      :title="group ? `Delete ${group.name}?` : 'Delete group?'"
-      description="Its users keep their accounts. App access set for this group stops applying, so they get the default."
+      :title="group ? t('groupDetail.deleteTitle', { name: group.name }) : t('groupDetail.deleteGroupQ')"
+      :description="t('groupDetail.deleteDescription')"
     >
       <template #footer="{ close }">
-        <Button :disabled="deleteStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="danger" :status="deleteStatus" loading-text="Deleting" @click="deleteGroup">Delete group</Button>
+        <Button :disabled="deleteStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="danger" :status="deleteStatus" :loading-text="t('common.deleting')" @click="deleteGroup">{{ t('groupDetail.deleteGroup') }}</Button>
       </template>
     </Slideover>
   </div>

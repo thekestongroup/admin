@@ -2,7 +2,10 @@
 import { Badge, Card, Link, RelativeTime, Spinner } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { type AuditEntry, type SignInEntry, actionLabel, logsApi, methodLabels, reasonLabel } from '../lib/logs'
+import { type AuditEntry, type SignInEntry, actionLabel, logsApi, methodLabel, reasonLabel } from '../lib/logs'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * A user's recent activity, on their page: their latest sign-ins and admin
@@ -21,7 +24,7 @@ const fromAction = (a: AuditEntry): Item => ({
   at: a.createdAt,
   title: actionLabel(a.action),
   detail: [
-    a.actorId === props.userId ? (a.targetType === 'user' && a.targetId !== props.userId ? a.targetName : '') : `By ${a.actorName}`,
+    a.actorId === props.userId ? (a.targetType === 'user' && a.targetId !== props.userId ? a.targetName : '') : t('recentActivity.by', { name: a.actorName }),
     a.summary,
   ]
     .filter(Boolean)
@@ -30,7 +33,7 @@ const fromAction = (a: AuditEntry): Item => ({
 const fromSignIn = (s: SignInEntry): Item => ({
   key: `s${s.id}`,
   at: s.createdAt,
-  title: s.method === 'app' ? `Signed in to ${s.clientName ?? 'an app'}` : `Sign-in: ${methodLabels[s.method] ?? s.method}`,
+  title: s.method === 'app' ? t('recentActivity.signedInTo', { app: s.clientName ?? t('recentActivity.anApp') }) : t('recentActivity.signIn', { method: methodLabel(s.method) }),
   detail: s.ip,
   failed: s.success ? undefined : reasonLabel(s.reason),
 })
@@ -55,10 +58,10 @@ const all = computed(() => ({ path: `/organisations/${props.orgId}/logs`, query:
 </script>
 
 <template>
-  <Card title="Recent activity" description="Their sign-ins, and what admins did to their account or with it.">
-    <Spinner v-if="loading" label="Loading" />
-    <p v-else-if="error" class="text-sm text-black/65">Couldn’t load their activity.</p>
-    <p v-else-if="!items.length" class="text-sm text-black/65">Nothing in the last year.</p>
+  <Card :title="t('recentActivity.title')" :description="t('recentActivity.description')">
+    <Spinner v-if="loading" :label="t('common.loading')" />
+    <p v-else-if="error" class="text-sm text-black/65">{{ t('recentActivity.couldntLoad') }}</p>
+    <p v-else-if="!items.length" class="text-sm text-black/65">{{ t('recentActivity.nothing') }}</p>
     <ul v-else class="flex flex-col divide-y divide-black/10">
       <li v-for="i in items" :key="i.key" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-sm">
         <span class="font-bold">{{ i.title }}</span>
@@ -68,7 +71,7 @@ const all = computed(() => ({ path: `/organisations/${props.orgId}/logs`, query:
       </li>
     </ul>
     <div class="mt-4">
-      <Link :as="RouterLink" :to="all">See all in Logs</Link>
+      <Link :as="RouterLink" :to="all">{{ t('recentActivity.seeAll') }}</Link>
     </div>
   </Card>
 </template>

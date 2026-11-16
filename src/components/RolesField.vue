@@ -2,6 +2,9 @@
 import { RadioGroup, Select } from '@thekestongroup/ui'
 import { computed } from 'vue'
 import type { AdminRole, PermissionId } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Whether someone uses the admin centre, and with which admin roles: User
@@ -26,10 +29,10 @@ const props = defineProps<{
 }>()
 const model = defineModel<Roles>({ required: true })
 
-const accessOptions = [
-  { label: 'User', value: 'user', description: 'No admin centre access.' },
-  { label: 'Admin roles', value: 'admin', description: 'Give the user access to the admin centre.' },
-]
+const accessOptions = computed(() => [
+  { label: t('roles.user'), value: 'user', description: t('roles.userDescription') },
+  { label: t('roles.adminRoles'), value: 'admin', description: t('roles.adminRolesDescription') },
+])
 const access = computed({
   get: () => (model.value.admin ? 'admin' : 'user'),
   set: (v) => (model.value = { ...model.value, admin: v === 'admin' }),
@@ -38,7 +41,7 @@ const access = computed({
 const GLOBAL = 'global_admin'
 const canGive = (r: AdminRole) => props.iAmGlobalAdmin || r.permissions.every((p) => props.myPermissions.includes(p))
 const options = computed(() => [
-  { label: 'Global admin', value: GLOBAL, description: 'Can do everything, including making other global admins.', disabled: !props.iAmGlobalAdmin },
+  { label: t('users.globalAdmin'), value: GLOBAL, description: t('roles.globalAdminDescription'), disabled: !props.iAmGlobalAdmin },
   ...props.catalogue.map((r) => ({ label: r.label, value: r.id, description: r.description, disabled: !canGive(r) })),
 ])
 const chosen = computed({
@@ -52,13 +55,13 @@ const chosen = computed({
 
 <template>
   <div class="flex flex-col gap-4">
-    <RadioGroup v-model="access" label="Admin centre access" :options="accessOptions" />
+    <RadioGroup v-model="access" :label="t('roles.access')" :options="accessOptions" />
     <Select
       v-if="model.admin"
       v-model="chosen"
-      label="Roles"
-      helper="Global admin can do everything; the others, just their part."
-      placeholder="Search roles…"
+      :label="t('roles.roles')"
+      :helper="t('roles.helper')"
+      :placeholder="t('roles.search')"
       :options="options"
       :error-text="errorText"
       multiple

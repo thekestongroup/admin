@@ -32,6 +32,9 @@ import RecentActivity from '../components/RecentActivity.vue'
 import SignInCard from '../components/SignInCard.vue'
 import RemovePasskeysSlideover from '../components/RemovePasskeysSlideover.vue'
 import { ApiError, api, loadMe, type Group, type Organisation, type Permission, type PermissionId, type User, type UserDetail } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * One user: their profile (admins can always change it, whatever the
@@ -80,10 +83,10 @@ onMounted(async () => {
 const isMe = computed(() => user.value?.id === myId.value)
 
 // The open tab, kept in the URL (?tab=licences) so it survives a reload.
-const tabs = [
-  { value: 'account', label: 'Account', icon: UserRound },
-  { value: 'licences', label: 'Licences & Apps', icon: AppWindow },
-]
+const tabs = computed(() => [
+  { value: 'account', label: t('userDetail.tabs.account'), icon: UserRound },
+  { value: 'licences', label: t('userDetail.tabs.licences'), icon: AppWindow },
+])
 const tab = computed({
   get: () => (route.query.tab === 'licences' ? 'licences' : 'account'),
   set: (v: string | undefined) => router.replace({ query: { ...route.query, tab: v === 'licences' ? 'licences' : undefined } }),
@@ -96,18 +99,18 @@ async function reload() {
 const details = computed(() =>
   user.value
     ? [
-        { label: 'Name', value: user.value.name },
-        { label: 'Email', value: user.value.email, description: 'They sign in with this.' },
-        { label: 'Role', value: user.value.role === 'global_admin' ? 'Global admin' : user.value.roles.length ? 'Admin' : 'User' },
-        { label: 'Password changed', value: formatDate(user.value.passwordChangedAt) },
-        { label: 'User ID', value: user.value.id },
+        { label: t('common.name'), value: user.value.name },
+        { label: t('common.email'), value: user.value.email, description: t('userDetail.signInWithThis') },
+        { label: t('users.columns.role'), value: user.value.role === 'global_admin' ? t('users.globalAdmin') : user.value.roles.length ? t('userDetail.roleAdmin') : t('users.roleUser') },
+        { label: t('userDetail.passwordChanged'), value: formatDate(user.value.passwordChangedAt) },
+        { label: t('userDetail.userId'), value: user.value.id },
       ]
     : [],
 )
 const trail = computed(() => [
-  { label: org.value?.name ?? 'Organisation', to: `/organisations/${orgId}` },
-  { label: 'Users', to: `/organisations/${orgId}/users` },
-  { label: user.value?.name ?? 'User' },
+  { label: org.value?.name ?? t('nav.organisation'), to: `/organisations/${orgId}` },
+  { label: t('users.title'), to: `/organisations/${orgId}/users` },
+  { label: user.value?.name ?? t('titles.user') },
 ])
 
 // ── Groups ──────────────────────────────────────────────────────────────────
@@ -127,7 +130,7 @@ const groupOptions = computed(() =>
     .map((g) => ({
       label: g.name,
       value: g.id,
-      description: g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : undefined,
+      description: g.permissions.length ? t('userDetail.gives', g.permissions.length) : undefined,
     })),
 )
 const groupChoice = ref<string>()
@@ -140,7 +143,7 @@ async function addToGroup() {
     groupChoice.value = undefined
     user.value = await api.user(orgId, userId)
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t add them to the group', description: message(e) })
+    notify({ type: 'error', title: t('userDetail.couldntAddToGroup'), description: message(e) })
   } finally {
     groupBusy.value = undefined
   }
@@ -151,7 +154,7 @@ async function removeFromGroup(g: Group) {
     await api.removeMember(orgId, g.id, userId)
     user.value = await api.user(orgId, userId)
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t remove them from the group', description: message(e) })
+    notify({ type: 'error', title: t('userDetail.couldntRemoveFromGroup'), description: message(e) })
   } finally {
     groupBusy.value = undefined
   }
@@ -189,11 +192,11 @@ async function save() {
   try {
     merge(await api.updateUser(orgId, userId, changes))
     editing.value = false
-    notify({ type: 'success', title: 'User updated' })
+    notify({ type: 'success', title: t('userDetail.updated') })
   } catch (e) {
     saveStatus.value = 'idle'
     if (e instanceof ApiError && e.field) formErrors[e.field] = e.message
-    else notify({ type: 'error', title: 'Couldn’t update the user', description: message(e) })
+    else notify({ type: 'error', title: t('userDetail.couldntUpdate'), description: message(e) })
   }
 }
 
@@ -242,7 +245,7 @@ function startReset() {
 }
 
 async function reset() {
-  resetError.value = resetValid.value ? undefined : newPassword.value ? 'The password doesn’t meet every rule yet' : 'Enter a new password'
+  resetError.value = resetValid.value ? undefined : newPassword.value ? t('password.notYetValid') : t('userDetail.enterNew')
   if (resetError.value) return
   resetStatus.value = 'loading'
   try {
@@ -250,7 +253,7 @@ async function reset() {
     signInCard.value?.reload()
     user.value = await api.user(orgId, userId)
     resetting.value = false
-    notify({ type: 'success', title: 'Password reset', description: `${user.value.name} has been signed out everywhere.` })
+    notify({ type: 'success', title: t('userDetail.passwordReset'), description: t('userDetail.passwordResetDescription', { name: user.value.name }) })
   } catch (e) {
     resetStatus.value = 'idle'
     resetError.value = message(e)
@@ -272,17 +275,17 @@ const toolbar = computed<PageHeaderAction[]>(() => {
   const u = user.value
   if (!u || u.support) return []
   const out: PageHeaderAction[] = []
-  if (can('users.reset_password')) out.push({ label: 'Reset password', icon: KeyRound, onSelect: () => onAccountTab(startReset) })
+  if (can('users.reset_password')) out.push({ label: t('users.resetPassword'), icon: KeyRound, onSelect: () => onAccountTab(startReset) })
   if (can('users.mfa') && (u.mfa || u.passkeys > 0))
-    out.push({ label: 'Reset MFA', icon: ShieldOff, onSelect: () => onAccountTab(() => (confirmMfaOff.value = true)) })
+    out.push({ label: t('userDetail.resetMfa'), icon: ShieldOff, onSelect: () => onAccountTab(() => (confirmMfaOff.value = true)) })
   if (can('users.reset_password'))
     out.push(
       signInCard.value?.passwordChangeRequired
-        ? { label: 'Don’t require password change', icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(false)) }
-        : { label: 'Require password change', icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(true)) },
+        ? { label: t('signInCard.dontRequire'), icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(false)) }
+        : { label: t('signInCard.requireChange'), icon: RectangleEllipsis, onSelect: () => onAccountTab(() => signInCard.value?.setPasswordChange(true)) },
     )
   if (can('users.access_pass') && u.status === 'active')
-    out.push({ label: 'Issue access pass', icon: Ticket, onSelect: () => onAccountTab(() => signInCard.value?.startIssue()) })
+    out.push({ label: t('signInCard.issue'), icon: Ticket, onSelect: () => onAccountTab(() => signInCard.value?.startIssue()) })
   return out
 })
 const confirmMfaOff = ref(false)
@@ -294,21 +297,18 @@ async function turnOffMfa() {
     confirmMfaOff.value = false
     notify({
       type: 'success',
-      title: 'MFA turned off',
-      description: `${user.value!.name} can sign in with their password now, and set MFA up again in their Keston account.`,
+      title: t('userDetail.mfaOff'),
+      description: t('userDetail.mfaOffDescription', { name: user.value!.name }),
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t turn off MFA', description: message(e) })
+    notify({ type: 'error', title: t('userDetail.couldntTurnOffMfa'), description: message(e) })
   } finally {
     mfaStatus.value = 'idle'
   }
 }
 
 const removingPasskeys = ref(false)
-const passkeyCount = computed(() => {
-  const n = user.value?.passkeys ?? 0
-  return n === 1 ? '1 passkey' : `${n} passkeys`
-})
+const passkeyCount = computed(() => t('userDetail.passkeyCount', user.value?.passkeys ?? 0))
 
 // ── Disable / enable ────────────────────────────────────────────────────────
 
@@ -322,11 +322,11 @@ async function toggle() {
     user.value = await api.user(orgId, userId)
     notify({
       type: 'success',
-      title: status === 'disabled' ? 'User disabled' : 'User enabled',
-      description: status === 'disabled' ? `${a.name} has been signed out and can’t sign in.` : `${a.name} can sign in again.`,
+      title: status === 'disabled' ? t('userDetail.disabled') : t('userDetail.enabled'),
+      description: status === 'disabled' ? t('users.signInBlockedDescription', { name: a.name }) : t('users.signInUnblockedDescription', { name: a.name }),
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change the user', description: message(e) })
+    notify({ type: 'error', title: t('users.couldntChange'), description: message(e) })
   } finally {
     toggling.value = false
   }
@@ -336,42 +336,39 @@ async function toggle() {
 <template>
   <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the user" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('userDetail.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!user" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!user" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <Breadcrumb :items="trail" :link-component="RouterLink" />
       <PageHeader :title="user.name" :description="user.email" :toolbar="toolbar">
         <template #badge>
-          <Badge v-if="user.status === 'disabled'" color="basic">Disabled</Badge>
-          <Badge v-else-if="user.locked" color="yellow">Locked</Badge>
-          <Badge v-else color="green">Active</Badge>
+          <Badge v-if="user.status === 'disabled'" color="basic">{{ t('users.status.disabled') }}</Badge>
+          <Badge v-else-if="user.locked" color="yellow">{{ t('users.status.locked') }}</Badge>
+          <Badge v-else color="green">{{ t('users.status.active') }}</Badge>
         </template>
       </PageHeader>
 
       <Card v-if="user.support">
         <p class="text-sm">
-          This is a temporary Keston support account, there while {{ org?.name }} allows Keston support access (until
-          {{ formatDate(user.expiresAt!) }}). It has no password, and it’s removed when access ends. End it on the
-          organisation’s Overview.
+          {{ t('userDetail.supportAccount', { org: org?.name, date: formatDate(user.expiresAt!) }) }}
         </p>
       </Card>
 
       <Card v-else-if="!user.canChange">
         <p class="text-sm">
-          {{ user.name }} has permissions you don’t, so you can see them but not change them. Ask one of your global
-          admins if something needs changing.
+          {{ t('userDetail.cantChange', { name: user.name }) }}
         </p>
       </Card>
 
-      <Tabs v-model="tab" :tabs="tabs" label="User details">
+      <Tabs v-model="tab" :tabs="tabs" :label="t('userDetail.label')">
         <template #account>
           <div class="flex flex-col gap-6">
-              <Card title="Profile">
+              <Card :title="t('userDetail.profile')">
                 <template v-if="can('users.edit')" #actions>
                   <Button size="sm" @click="startEdit">
                     <template #leading><Pencil /></template>
-                    Edit
+                    {{ t('userDetail.edit') }}
                   </Button>
                 </template>
                 <div class="flex flex-col gap-4 @sm:flex-row @sm:items-start @sm:gap-6">
@@ -380,28 +377,26 @@ async function toggle() {
                 </div>
               </Card>
 
-              <Card v-if="can('users.reset_password')" title="Password" description="A reset signs them out everywhere, and unlocks them if they were locked out.">
-                <div><Button @click="startReset">Reset password</Button></div>
+              <Card v-if="can('users.reset_password')" :title="t('password.label')" :description="t('userDetail.passwordDescription')">
+                <div><Button @click="startReset">{{ t('users.resetPassword') }}</Button></div>
               </Card>
 
-              <Card v-if="!user.support" title="Multi-factor authentication (MFA)">
+              <Card v-if="!user.support" :title="t('userDetail.mfaTitle')">
                 <template #actions>
-                  <Badge v-if="user.mfa" color="green">On</Badge>
-                  <Badge v-else color="yellow">Off</Badge>
+                  <Badge v-if="user.mfa" color="green">{{ t('userDetail.on') }}</Badge>
+                  <Badge v-else color="yellow">{{ t('userDetail.off') }}</Badge>
                 </template>
                 <div class="flex flex-col gap-3">
                   <p v-if="user.mfa" class="text-sm text-black/65">
-                    They sign in with their password and then
-                    <template v-if="user.passkeys">a passkey or security key ({{ passkeyCount }})</template>
-                    <template v-else>a code from their authenticator app</template>, unless they sign in with a passkey alone.
-                    If they’ve lost what they use, turn MFA off so they can sign in with their password, then set it up again.
+                    {{ user.passkeys ? t('userDetail.mfaWithPasskey', { count: passkeyCount }) : t('userDetail.mfaWithApp') }}
+                    {{ t('userDetail.mfaLost') }}
                   </p>
                   <p v-else class="text-sm text-black/65">
-                    They sign in with their password only. They can turn MFA on in their Keston account.
+                    {{ t('userDetail.mfaPasswordOnly') }}
                   </p>
                   <div v-if="user.mfa && can('users.mfa')" class="flex flex-wrap gap-2">
-                    <Button variant="danger" @click="confirmMfaOff = true">Turn off MFA</Button>
-                    <Button v-if="user.passkeys" @click="removingPasskeys = true">Remove passkeys</Button>
+                    <Button variant="danger" @click="confirmMfaOff = true">{{ t('userDetail.turnOffMfa') }}</Button>
+                    <Button v-if="user.passkeys" @click="removingPasskeys = true">{{ t('passkeys.remove') }}</Button>
                   </div>
                 </div>
               </Card>
@@ -426,25 +421,25 @@ async function toggle() {
 
               <Card
                 v-if="!user.support"
-                title="Groups and permissions"
-                description="Their groups set their app access, and what they can do in Keston Admin."
+                :title="t('userDetail.groupsAndPermissions')"
+                :description="t('userDetail.groupsDescription')"
               >
                 <div class="flex flex-col gap-4">
-                  <p v-if="user.role === 'global_admin'" class="text-sm">As a global admin, they can do everything.</p>
-                  <ul v-else-if="user.permissions.length" class="flex flex-wrap gap-2" aria-label="Permissions">
+                  <p v-if="user.role === 'global_admin'" class="text-sm">{{ t('userDetail.globalAdminCan') }}</p>
+                  <ul v-else-if="user.permissions.length" class="flex flex-wrap gap-2" :aria-label="t('groupDetail.permissions')">
                     <li v-for="p in catalog.filter((c) => user!.permissions.includes(c.id))" :key="p.id">
                       <Badge size="sm" color="primary">{{ p.label }}</Badge>
                     </li>
                   </ul>
-                  <p v-else class="text-sm text-black/65">None. They can’t use Keston Admin.</p>
+                  <p v-else class="text-sm text-black/65">{{ t('userDetail.noPermissions') }}</p>
                   <div class="flex flex-col gap-3">
-                    <p class="text-sm font-bold">Groups</p>
+                    <p class="text-sm font-bold">{{ t('nav.groups') }}</p>
                     <ul v-if="user.groups.length" class="flex flex-col divide-y divide-black/10">
                       <li v-for="g in user.groups" :key="g.id" class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                         <span class="flex min-w-0 flex-1 flex-col">
                           <Link :as="RouterLink" :to="`/organisations/${orgId}/groups/${g.id}`" class="truncate text-sm">{{ g.name }}</Link>
                           <span class="text-xs text-black/65">
-                            {{ g.permissions.length ? `Gives ${g.permissions.length} ${g.permissions.length === 1 ? 'permission' : 'permissions'}` : 'App access only' }}
+                            {{ g.permissions.length ? t('userDetail.gives', g.permissions.length) : t('userDetail.appAccessOnly') }}
                           </span>
                         </span>
                         <Button
@@ -454,32 +449,32 @@ async function toggle() {
                           :status="groupBusy === g.id ? 'loading' : 'idle'"
                           @click="removeFromGroup(g)"
                         >
-                          Remove<span class="sr-only"> from {{ g.name }}</span>
+                          {{ t('common.remove') }}<span class="sr-only"> {{ t('userDetail.fromGroup', { name: g.name }) }}</span>
                         </Button>
                       </li>
                     </ul>
-                    <p v-else class="text-sm text-black/65">Not in any groups.</p>
+                    <p v-else class="text-sm text-black/65">{{ t('userDetail.noGroups') }}</p>
                     <div v-if="groupOptions.length" class="flex items-start gap-2">
-                      <Select v-model="groupChoice" label="Add to a group" :options="groupOptions" placeholder="Choose a group" class="flex-1" />
+                      <Select v-model="groupChoice" :label="t('userDetail.addToGroup')" :options="groupOptions" :placeholder="t('userDetail.chooseGroup')" class="flex-1" />
                       <Button
                         class="mt-6.5 shrink-0"
                         :disabled="!groupChoice"
                         :status="groupBusy === 'add' ? 'loading' : 'idle'"
-                        loading-text="Adding"
+                        :loading-text="t('addUser.adding')"
                         @click="addToGroup"
                       >
                         <template #leading><Plus /></template>
-                        Add
+                        {{ t('common.add') }}
                       </Button>
                     </div>
                   </div>
                 </div>
               </Card>
 
-              <Card v-if="!isMe && can('users.status')" title="Access" :description="user.status === 'active' ? 'Disabling signs them out of Keston and every app.' : 'They can’t sign in.'">
+              <Card v-if="!isMe && can('users.status')" :title="t('userDetail.access')" :description="user.status === 'active' ? t('userDetail.disablingSignsOut') : t('userDetail.cantSignIn')">
                 <div>
                   <Button :variant="user.status === 'active' ? 'danger' : 'primary'" :status="toggling ? 'loading' : 'idle'" @click="toggle">
-                    {{ user.status === 'active' ? 'Disable user' : 'Enable user' }}
+                    {{ user.status === 'active' ? t('userDetail.disableUser') : t('userDetail.enableUser') }}
                   </Button>
                 </div>
               </Card>
@@ -504,37 +499,37 @@ async function toggle() {
       </Tabs>
     </template>
 
-    <Slideover v-model:open="editing" title="Edit user" initial-focus="auto">
+    <Slideover v-model:open="editing" :title="t('userDetail.editUser')" initial-focus="auto">
       <template #body>
         <form v-if="user" class="flex flex-col gap-6" novalidate @submit.prevent="save">
           <div class="flex flex-col gap-3">
-            <p class="text-sm font-bold">Profile picture</p>
+            <p class="text-sm font-bold">{{ t('settings.fields.picture') }}</p>
             <div class="flex items-center gap-4">
               <Avatar :user="{ name: user.name, avatar: user.avatar }" size="xl" decorative />
               <div class="flex flex-wrap gap-2">
-                <Button size="sm" :status="pictureBusy ? 'loading' : 'idle'" loading-text="Uploading" @click="fileInput?.click()">
+                <Button size="sm" :status="pictureBusy ? 'loading' : 'idle'" :loading-text="t('userDetail.uploading')" @click="fileInput?.click()">
                   <template #leading><ImageUp /></template>
-                  {{ user.avatar ? 'Change picture' : 'Add a picture' }}
+                  {{ user.avatar ? t('userDetail.changePicture') : t('userDetail.addPicture') }}
                 </Button>
                 <Button v-if="user.avatar" size="sm" variant="ghost" :disabled="pictureBusy" @click="removePicture">
                   <template #leading><Trash2 /></template>
-                  Remove
+                  {{ t('common.remove') }}
                 </Button>
               </div>
               <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/gif" class="sr-only" tabindex="-1" aria-hidden="true" @change="upload" />
             </div>
             <p v-if="pictureError" class="text-sm text-red" role="alert">{{ pictureError }}</p>
           </div>
-          <Input v-model="form.name" label="Name" autocomplete="off" :error-text="formErrors.name" />
-          <Input v-model="form.username" label="Email" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
+          <Input v-model="form.name" :label="t('common.name')" autocomplete="off" :error-text="formErrors.name" />
+          <Input v-model="form.username" :label="t('common.email')" autocapitalize="off" spellcheck="false" autocomplete="off" :error-text="formErrors.username">
             <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="saveStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="saveStatus" loading-text="Saving" @click="save">Save</Button>
+        <Button :disabled="saveStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="saveStatus" :loading-text="t('common.saving')" @click="save">{{ t('common.save') }}</Button>
       </template>
     </Slideover>
 
@@ -542,31 +537,31 @@ async function toggle() {
 
     <Slideover
       v-model:open="confirmMfaOff"
-      :title="user ? `Turn off ${user.name}’s MFA?` : 'Turn off MFA?'"
-      description="Only do this once you’re sure it’s really them asking, e.g. they’ve lost their phone. Their authenticator app, backup codes, passkeys and security keys all stop working, and until they set MFA up again their password alone signs them in."
+      :title="user ? t('userDetail.turnOffNamed', { name: user.name }) : t('userDetail.turnOffQ')"
+      :description="t('userDetail.turnOffDescription')"
     >
       <template #footer="{ close }">
-        <Button :disabled="mfaStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="danger" :status="mfaStatus" loading-text="Turning off" @click="turnOffMfa">Turn off MFA</Button>
+        <Button :disabled="mfaStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="danger" :status="mfaStatus" :loading-text="t('userDetail.turningOff')" @click="turnOffMfa">{{ t('userDetail.turnOffMfa') }}</Button>
       </template>
     </Slideover>
 
     <Slideover
       v-model:open="resetting"
-      :title="user ? `Reset ${user.name}’s password` : 'Reset password'"
-      description="They’ll be signed out everywhere, and unlocked if they were locked out. Give them the new password securely."
+      :title="user ? t('userDetail.resetNamed', { name: user.name }) : t('users.resetPassword')"
+      :description="t('userDetail.resetDescription')"
       initial-focus="auto"
     >
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="reset">
-          <PasswordField v-model="newPassword" v-model:valid="resetValid" label="New password" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
-          <Checkbox v-model="resetRequireChange" label="Ask them to choose a new password when they next sign in" description="Recommended, so only they know their password." />
+          <PasswordField v-model="newPassword" v-model:valid="resetValid" :label="t('userDetail.newPassword')" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
+          <Checkbox v-model="resetRequireChange" :label="t('userDetail.askChoose')" :description="t('password.requireChangeDescription')" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="resetStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="resetStatus" loading-text="Resetting" @click="reset">Reset password</Button>
+        <Button :disabled="resetStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="resetStatus" :loading-text="t('bulk.resetPassword.loading')" @click="reset">{{ t('users.resetPassword') }}</Button>
       </template>
     </Slideover>
   </div>

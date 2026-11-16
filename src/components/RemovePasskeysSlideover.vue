@@ -2,6 +2,9 @@
 import { Button, type ButtonStatus, Slideover, useNotifications } from '@thekestongroup/ui'
 import { ref } from 'vue'
 import { api, type User } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Removing all of a user's passkeys and security keys, e.g. when one's been
@@ -21,13 +24,13 @@ async function remove() {
     open.value = false
     notify({
       type: 'success',
-      title: 'Passkeys removed',
+      title: t('passkeys.removed'),
       description: updated.mfa
-        ? `${props.user.name} uses their authenticator app after their password now.`
-        : `${props.user.name} can sign in with their password now, and add passkeys again in their Keston account.`,
+        ? t('passkeys.removedWithApp', { name: props.user.name })
+        : t('passkeys.removedNoApp', { name: props.user.name }),
     })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t remove their passkeys', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('passkeys.couldntRemove'), description: e instanceof Error ? e.message : String(e) })
   } finally {
     status.value = 'idle'
   }
@@ -37,12 +40,12 @@ async function remove() {
 <template>
   <Slideover
     v-model:open="open"
-    :title="`Remove ${user.name}’s passkeys?`"
-    :description="`All ${user.passkeys === 1 ? '1 passkey' : `${user.passkeys} passkeys`} and security keys on their account stop working. Only do this once you’re sure it’s really them asking, e.g. they’ve lost a device.`"
+    :title="t('passkeys.title', { name: user.name })"
+    :description="t('passkeys.description', user.passkeys)"
   >
     <template #footer="{ close }">
-      <Button :disabled="status !== 'idle'" @click="close">Cancel</Button>
-      <Button variant="danger" :status="status" loading-text="Removing" @click="remove">Remove passkeys</Button>
+      <Button :disabled="status !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+      <Button variant="danger" :status="status" :loading-text="t('passkeys.removing')" @click="remove">{{ t('passkeys.remove') }}</Button>
     </template>
   </Slideover>
 </template>

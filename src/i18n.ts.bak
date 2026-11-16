@@ -1,0 +1,20 @@
+import { createKestonI18n } from '@thekestongroup/ui'
+import en from './locales/en.json'
+
+/**
+ * Keston UI's words plus ours (src/locales/<language>.json). Add a language by
+ * adding its file and listing it here. Components use `useI18n()`; code that
+ * isn't a component (the router, the API client) imports `t` from here.
+ */
+export const i18n = createKestonI18n({ messages: { en } })
+
+// Simple types for the plain-TypeScript callers: vue-i18n's own are very deep.
+const global = i18n.global as unknown as {
+  t: (key: string, named?: Record<string, unknown> | number, plural?: number) => string
+  te: (key: string) => boolean
+  locale: { value: string }
+}
+export const t = global.t.bind(global)
+/** Whether there's a message for this key (in the current language, or English). */
+export const te = (key: string) => global.te(key) || global.te(key, 'en' as never)
+export const currentLocale = () => global.locale.value

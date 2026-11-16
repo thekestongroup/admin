@@ -4,11 +4,12 @@ import {
   Button,
   type ButtonStatus,
   Checkbox,
+  CheckboxGroup,
   EmptyState,
   Input,
-  Progress,
   Slideover,
   Spinner,
+  Steps,
   SummaryList,
   useNotifications,
 } from '@thekestongroup/ui'
@@ -17,6 +18,9 @@ import PasswordField from './PasswordField.vue'
 import RolesField, { type Roles } from './RolesField.vue'
 import { suggestUsername } from '../lib/usernames'
 import { ApiError, api, type AdminRole, type Organisation, type PermissionId, type Product } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Adding a user, in steps: User info, then Licences (for admins who can
@@ -39,7 +43,7 @@ const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ added: [] }>()
 const { notify } = useNotifications()
 
-const steps = computed(() => (props.canAssignLicences ? ['User info', 'Licences'] : ['User info']))
+const steps = computed(() => (props.canAssignLicences ? [t('addUser.steps.userInfo'), t('addUser.steps.licences')] : [t('addUser.steps.userInfo')]))
 const step = ref(0)
 const last = computed(() => step.value === steps.value.length - 1)
 
@@ -111,12 +115,12 @@ async function focusHeading() {
 
 function checkUserInfo() {
   for (const k of Object.keys(errors)) errors[k] = undefined
-  if (!form.first.trim()) errors.first = 'Enter their first name'
+  if (!form.first.trim()) errors.first = t('addUser.errors.firstName')
   if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(username.value))
-    errors.username = 'Use lowercase letters, numbers, dots, dashes or underscores, like j.smith'
+    errors.username = t('addUser.errors.username')
   if (!form.autoPassword && !passwordValid.value)
-    errors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
-  if (form.access.admin && !form.access.global && !form.access.roles.length) errors.roles = 'Choose at least one role'
+    errors.password = form.password ? t('password.notYetValid') : t('password.enter')
+  if (form.access.admin && !form.access.global && !form.access.roles.length) errors.roles = t('roles.chooseOne')
   return !errors.first && !errors.username && !errors.password && !errors.roles
 }
 
@@ -133,10 +137,6 @@ function next() {
 function previous() {
   step.value--
   focusHeading()
-}
-
-function toggleLicence(id: string, on: boolean) {
-  form.licences = on ? [...form.licences, id] : form.licences.filter((l) => l !== id)
 }
 
 async function add() {
@@ -173,7 +173,7 @@ async function add() {
         focusHeading()
       }
     } else {
-      notify({ type: 'error', title: 'Couldn’t add the user', description: e instanceof Error ? e.message : String(e) })
+      notify({ type: 'error', title: t('addUser.couldntAdd'), description: e instanceof Error ? e.message : String(e) })
     }
   }
 }
@@ -181,19 +181,19 @@ async function add() {
 const productName = (id: string) => products.value?.find((p) => p.id === id)?.name ?? id
 const summary = computed(() => {
   const a = added.value!
-  const items = [{ label: 'Email', value: a.email }]
-  if (a.password) items.push({ label: 'Password', value: a.password })
+  const items = [{ label: t('common.email'), value: a.email }]
+  if (a.password) items.push({ label: t('password.label'), value: a.password })
   if (props.canAssignLicences)
-    items.push({ label: 'Licences', value: a.licences.length ? a.licences.map(productName).join(', ') : 'None' })
+    items.push({ label: t('licences.title'), value: a.licences.length ? a.licences.map(productName).join(', ') : t('common.none') })
   return items
 })
 
 async function copyPassword(password: string) {
   try {
     await navigator.clipboard.writeText(password)
-    notify({ type: 'success', title: 'Password copied' })
+    notify({ type: 'success', title: t('addUser.passwordCopied') })
   } catch {
-    notify({ type: 'error', title: 'Couldn’t copy', description: 'Select the password and copy it instead.' })
+    notify({ type: 'error', title: t('addUser.couldntCopy'), description: t('addUser.couldntCopyDescription') })
   }
 }
 </script>
@@ -201,8 +201,8 @@ async function copyPassword(password: string) {
 <template>
   <Slideover
     v-model:open="open"
-    title="Add a user"
-    :description="added ? undefined : org ? `They’ll sign in as username@${org.domain}.` : undefined"
+    :title="t('addUser.title')"
+    :description="added ? undefined : org ? t('addUser.signInAs', { email: `username@${org.domain}` }) : undefined"
     initial-focus="auto"
   >
     <!-- Done -->
@@ -210,46 +210,41 @@ async function copyPassword(password: string) {
       <div class="flex flex-col gap-6">
         <div class="flex flex-col items-center gap-2 text-center">
           <CircleCheck class="size-10 text-green" aria-hidden="true" />
-          <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">{{ added.name }} has been added</h2>
+          <h2 ref="heading" tabindex="-1" class="text-xl font-bold outline-none">{{ t('addUser.added', { name: added.name }) }}</h2>
           <p class="text-sm text-black/65">
-            <template v-if="added.password">Give them these details securely. The password is shown only once: once you close this, it’s gone.</template>
-            <template v-else>They can sign in with the password you set.</template>
+            <template v-if="added.password">{{ t('addUser.giveDetails') }}</template>
+            <template v-else>{{ t('addUser.signInWithSet') }}</template>
           </p>
         </div>
         <SummaryList :items="summary" layout="stacked">
           <template #value="{ item }">
-            <span :class="item.label === 'Password' && 'font-mono select-all'">{{ item.value }}</span>
+            <span :class="item.label === t('password.label') && 'font-mono select-all'">{{ item.value }}</span>
           </template>
         </SummaryList>
         <div v-if="added.password">
           <Button @click="copyPassword(added.password)">
             <template #leading><Copy /></template>
-            Copy password
+            {{ t('addUser.copyPassword') }}
           </Button>
         </div>
-        <p v-if="added.mustChange" class="text-sm text-black/65">They’ll choose their own password when they first sign in.</p>
+        <p v-if="added.mustChange" class="text-sm text-black/65">{{ t('addUser.willChoose') }}</p>
       </div>
     </template>
 
     <template v-else #body>
       <form class="flex flex-col gap-6" novalidate @submit.prevent="next">
-        <div v-if="steps.length > 1" class="flex flex-col gap-3">
-          <Progress label="Add a user" segments :value="step + 1" :max="steps.length" />
-          <p class="text-sm text-black/65">
-            Step {{ step + 1 }} of {{ steps.length }}: <span class="text-black">{{ steps[step] }}</span>
-          </p>
-        </div>
+        <Steps v-if="steps.length > 1" :steps="steps" :step="step" :label="t('addUser.title')" />
 
         <!-- User info -->
         <div v-if="step === 0" class="flex flex-col gap-4">
-          <h2 ref="heading" tabindex="-1" class="sr-only outline-none">User info</h2>
+          <h2 ref="heading" tabindex="-1" class="sr-only outline-none">{{ t('addUser.steps.userInfo') }}</h2>
           <div class="grid gap-4 sm:grid-cols-2">
-            <Input v-model="form.first" label="First name" autocomplete="off" :error-text="errors.first" @update:model-value="suggest" />
-            <Input v-model="form.last" label="Last name" autocomplete="off" @update:model-value="suggest" />
+            <Input v-model="form.first" :label="t('addUser.firstName')" autocomplete="off" :error-text="errors.first" @update:model-value="suggest" />
+            <Input v-model="form.last" :label="t('addUser.lastName')" autocomplete="off" @update:model-value="suggest" />
           </div>
           <Input
             :model-value="form.username"
-            label="Username"
+            :label="t('addUser.username')"
             autocapitalize="off"
             spellcheck="false"
             autocomplete="off"
@@ -266,7 +261,7 @@ async function copyPassword(password: string) {
             :my-permissions="myPermissions"
             :error-text="errors.roles"
           />
-          <Checkbox v-model="form.autoPassword" label="Automatically create a password" description="Shown once after you add them." />
+          <Checkbox v-model="form.autoPassword" :label="t('password.auto')" :description="t('addUser.autoDescription')" />
           <PasswordField
             v-if="!form.autoPassword"
             v-model="form.password"
@@ -277,31 +272,27 @@ async function copyPassword(password: string) {
           />
           <Checkbox
             v-model="form.requirePasswordChange"
-            label="Require this user to change their password on sign in"
-            description="Recommended, so only they know their password."
+            :label="t('addUser.requireChange')"
+            :description="t('password.requireChangeDescription')"
           />
         </div>
 
         <!-- Licences -->
         <div v-else class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
-            <h2 ref="heading" tabindex="-1" class="font-bold outline-none">Licences</h2>
-            <p class="text-sm text-black/65">The Keston products {{ fullName || 'they' }} can use. Without a licence, they can’t sign in to it.</p>
+            <h2 ref="heading" tabindex="-1" class="font-bold outline-none">{{ t('licences.title') }}</h2>
+            <p class="text-sm text-black/65">{{ t('licences.cardDescription', { name: fullName || t('addUser.they') }) }}</p>
           </div>
-          <EmptyState v-if="productsError" size="sm" title="Couldn’t load the products" :description="productsError" class="p-0" />
-          <div v-else-if="!products" class="flex justify-center py-6"><Spinner label="Loading" /></div>
-          <EmptyState v-else-if="!products.length" size="sm" title="No products yet" class="p-0" />
-          <fieldset v-else class="flex flex-col gap-3">
-            <legend class="sr-only">Licences</legend>
-            <Checkbox
-              v-for="p in products"
-              :key="p.id"
-              :model-value="form.licences.includes(p.id)"
-              :label="p.name"
-              :description="`By ${p.publisher}. ${p.assigned === 1 ? '1 user has' : `${p.assigned} users have`} a licence.`"
-              @update:model-value="toggleLicence(p.id, !!$event)"
-            />
-          </fieldset>
+          <EmptyState v-if="productsError" size="sm" :title="t('licences.couldntLoad')" :description="productsError" class="p-0" />
+          <div v-else-if="!products" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
+          <EmptyState v-else-if="!products.length" size="sm" :title="t('licences.none')" class="p-0" />
+          <CheckboxGroup
+            v-else
+            v-model="form.licences"
+            :label="t('licences.title')"
+            hide-label
+            :options="products.map((p) => ({ label: p.name, value: p.id, description: t('addUser.licenceDescription', { publisher: p.publisher }, p.assigned) }))"
+          />
           <p v-if="errors.licences" class="text-sm text-red">{{ errors.licences }}</p>
         </div>
 
@@ -310,15 +301,15 @@ async function copyPassword(password: string) {
     </template>
 
     <template #footer="{ close }">
-      <Button v-if="added" variant="primary" @click="close">Done</Button>
+      <Button v-if="added" variant="primary" @click="close">{{ t('common.done') }}</Button>
       <template v-else>
         <Button v-if="step > 0" :disabled="status !== 'idle'" @click="previous">
           <template #leading><ArrowLeft /></template>
-          Previous
+          {{ t('common.previous') }}
         </Button>
-        <Button v-else :disabled="status !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="primary" :status="status" loading-text="Adding" @click="next">
-          {{ last ? 'Add user' : 'Next' }}
+        <Button v-else :disabled="status !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="status" :loading-text="t('addUser.adding')" @click="next">
+          {{ last ? t('addUser.addUser') : t('common.next') }}
           <template v-if="!last" #trailing><ArrowRight /></template>
         </Button>
       </template>

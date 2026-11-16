@@ -19,6 +19,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { checkFormula, suggestUsername } from '../lib/usernames'
 import { ApiError, api, loadMe, type Me, type Organisation, type ProfileEditing } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Organisation settings. Which profile fields people can change themselves
@@ -54,11 +57,11 @@ onMounted(async () => {
   }
 })
 
-const fields: { key: keyof ProfileEditing; label: string; description: string }[] = [
-  { key: 'name', label: 'Name', description: 'How they’re shown in every Keston app.' },
-  { key: 'email', label: 'Email', description: 'The part before the @ (the domain stays yours). They sign in with it.' },
-  { key: 'picture', label: 'Profile picture', description: 'Shown next to their name in Keston apps.' },
-]
+const fields = computed<{ key: keyof ProfileEditing; label: string; description: string }[]>(() => [
+  { key: 'name', label: t('settings.fields.name'), description: t('settings.fields.nameDescription') },
+  { key: 'email', label: t('common.email'), description: t('settings.fields.emailDescription') },
+  { key: 'picture', label: t('settings.fields.picture'), description: t('settings.fields.pictureDescription') },
+])
 
 // ── Username format ─────────────────────────────────────────────────────────
 
@@ -82,15 +85,15 @@ function editFormat(value: string) {
   formatTimer = setTimeout(saveFormat, 800)
 }
 async function saveFormat() {
-  formatState.value = { status: 'loading', text: 'Saving…' }
+  formatState.value = { status: 'loading', text: t('settings.saving') }
   try {
     savedFormat.value = (await api.saveUsernameFormat(orgId, usernameFormat.value.trim())).usernameFormat
-    formatState.value = { status: 'success', text: 'Saved' }
+    formatState.value = { status: 'success', text: t('common.saved') }
     setTimeout(() => {
       if (formatState.value.status === 'success') formatState.value = {}
     }, 2000)
   } catch (e) {
-    formatState.value = { status: 'error', text: e instanceof Error ? e.message : 'Couldn’t save. Try again.' }
+    formatState.value = { status: 'error', text: e instanceof Error ? e.message : t('settings.couldntSave') }
   }
 }
 
@@ -120,43 +123,43 @@ async function scheduleDeletion() {
     deleting.value = false
     notify({
       type: 'success',
-      title: `${org.value!.name} will be deleted on ${formatDate(res.deleteAfter)}`,
-      description: 'A global admin signing in before then cancels it.',
+      title: t('settings.deleteScheduled', { name: org.value!.name, date: formatDate(res.deleteAfter) }),
+      description: t('settings.deleteScheduledDescription'),
     })
     router.push(`/organisations/${orgId}`)
   } catch (e) {
     deleteStatus.value = 'idle'
     if (e instanceof ApiError && e.field === 'confirm') confirmError.value = e.message
-    else notify({ type: 'error', title: 'Couldn’t schedule the deletion', description: e instanceof Error ? e.message : String(e) })
+    else notify({ type: 'error', title: t('settings.couldntSchedule'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 
 async function save(key: keyof ProfileEditing, on: boolean) {
-  state[key] = { status: 'loading', text: 'Saving…' }
+  state[key] = { status: 'loading', text: t('settings.saving') }
   try {
     Object.assign(editing, (await api.saveSettings(orgId, { ...editing, [key]: on })).profileEditing)
-    state[key] = { status: 'success', text: 'Saved' }
+    state[key] = { status: 'success', text: t('common.saved') }
     setTimeout(() => {
       if (state[key].status === 'success') state[key] = {}
     }, 2000)
   } catch {
     editing[key] = !on
-    state[key] = { status: 'error', text: 'Couldn’t save. Try again.' }
+    state[key] = { status: 'error', text: t('settings.couldntSave') }
   }
 }
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Settings" />
+    <PageHeader :title="t('settings.title')" />
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the settings" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('settings.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!loaded" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!loaded" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <Card
       v-else
-      title="What people can change themselves"
-      description="In their Keston account. Anything off says “Your organisation has restricted changing these”. You can always change them here."
+      :title="t('settings.profile.title')"
+      :description="t('settings.profile.description')"
     >
       <div class="flex flex-col gap-4">
         <Switch
@@ -174,20 +177,20 @@ async function save(key: keyof ProfileEditing, on: boolean) {
 
     <Card
       v-if="loaded"
-      title="New users"
-      description="When you add users, their username is filled in from their name this way. You can still change it."
+      :title="t('settings.newUsers.title')"
+      :description="t('settings.newUsers.description')"
     >
       <div class="flex flex-col gap-2">
         <Input
           :model-value="usernameFormat"
-          label="Username format"
-          helper="{first} and {last} are their names. {first:1} is the first character of their first name; {last:-2} the last 2 of their last name. Dots, dashes and underscores stay as they are."
+          :label="t('settings.newUsers.format')"
+          :helper="t('settings.newUsers.formatHelper')"
           autocapitalize="off"
           spellcheck="false"
           autocomplete="off"
           :error-text="formatError"
           :status="formatState.status"
-          :status-text="formatState.text || (preview ? `e.g. ${preview}` : undefined)"
+          :status-text="formatState.text || (preview ? t('settings.newUsers.example', { example: preview }) : undefined)"
           class="max-w-xl"
           @update:model-value="editFormat(String($event ?? ''))"
         />
@@ -196,28 +199,28 @@ async function save(key: keyof ProfileEditing, on: boolean) {
 
     <Card
       v-if="loaded && canDelete && !org?.deleteAfter"
-      title="Delete organisation"
-      description="Deletes the organisation and every one of its users after 14 days. If any global admin signs in before then, it’s cancelled."
+      :title="t('settings.delete.title')"
+      :description="t('settings.delete.description')"
     >
-      <div><Button variant="danger" @click="startDelete">Delete organisation</Button></div>
+      <div><Button variant="danger" @click="startDelete">{{ t('settings.delete.title') }}</Button></div>
     </Card>
 
     <Slideover
       v-model:open="deleting"
-      :title="org ? `Delete ${org.name}?` : 'Delete organisation?'"
-      description="In 14 days, it and all its users are deleted, and can’t be brought back. Everyone is told, and a global admin signing in before then cancels it."
+      :title="org ? t('settings.delete.askNamed', { name: org.name }) : t('settings.delete.ask')"
+      :description="t('settings.delete.askDescription')"
       initial-focus="auto"
     >
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="scheduleDeletion">
-          <Input v-model="confirmName" :label="`Type ${org?.name} to confirm`" autocomplete="off" :error-text="confirmError" />
+          <Input v-model="confirmName" :label="t('settings.delete.typeName', { name: org?.name })" autocomplete="off" :error-text="confirmError" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="deleteStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button variant="danger" :disabled="confirmName.trim() !== org?.name" :status="deleteStatus" loading-text="Scheduling" @click="scheduleDeletion">
-          Delete in 14 days
+        <Button :disabled="deleteStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="danger" :disabled="confirmName.trim() !== org?.name" :status="deleteStatus" :loading-text="t('settings.delete.scheduling')" @click="scheduleDeletion">
+          {{ t('settings.delete.confirm') }}
         </Button>
       </template>
     </Slideover>

@@ -17,6 +17,9 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { api, type MfaRule, type MfaRuleOptions } from '../lib/api'
 import MfaRuleSlideover from './MfaRuleSlideover.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * MFA custom rules: tried from the top; the first turned-on rule whose
@@ -40,34 +43,34 @@ async function load() {
 onMounted(load)
 
 // What a rule applies to, in words.
-const nameOf = (list: { id: string; name: string }[], id: string) => list.find((x) => x.id === id)?.name ?? 'Unknown'
+const nameOf = (list: { id: string; name: string }[], id: string) => list.find((x) => x.id === id)?.name ?? t('mfa.rules.unknown')
 function appliesTo(r: MfaRule): string {
   const parts = [
-    r.users.length ? `Users: ${r.users.map((id) => nameOf(props.options.users, id)).join(', ')}` : '',
-    r.groups.length ? `Groups: ${r.groups.map((id) => nameOf(props.options.groups, id)).join(', ')}` : '',
-    r.apps.length ? `Apps: ${r.apps.map((id) => nameOf(props.options.apps, id)).join(', ')}` : '',
-    r.ipRanges.length ? `IP addresses: ${r.ipRanges.join(', ')}` : '',
+    r.users.length ? t('mfa.rules.users', { names: r.users.map((id) => nameOf(props.options.users, id)).join(', ') }) : '',
+    r.groups.length ? t('mfa.rules.groups', { names: r.groups.map((id) => nameOf(props.options.groups, id)).join(', ') }) : '',
+    r.apps.length ? t('mfa.rules.apps', { names: r.apps.map((id) => nameOf(props.options.apps, id)).join(', ') }) : '',
+    r.ipRanges.length ? t('mfa.rules.ipAddresses', { names: r.ipRanges.join(', ') }) : '',
   ].filter(Boolean)
-  return parts.length ? parts.join(' · ') : 'Everyone, everywhere'
+  return parts.length ? parts.join(' · ') : t('mfa.rules.everyone')
 }
 
-const columns: TableColumn<MfaRule>[] = [
-  { key: 'name', label: 'Rule', rowHeader: true },
-  { key: 'applies', label: 'Applies to', nowrap: false },
-  { key: 'require', label: 'MFA' },
-  { key: 'actions', label: 'Actions', hideLabel: true, align: 'end' },
-]
+const columns = computed<TableColumn<MfaRule>[]>(() => [
+  { key: 'name', label: t('mfa.rules.columns.rule'), rowHeader: true },
+  { key: 'applies', label: t('mfa.rules.columns.appliesTo'), nowrap: false },
+  { key: 'require', label: t('mfa.rules.columns.mfa') },
+  { key: 'actions', label: t('common.actions'), hideLabel: true, align: 'end' },
+])
 
 function menu(r: MfaRule, i: number): MenuItem[] {
   const last = (rules.value?.length ?? 0) - 1
   return [
-    { label: 'Change', icon: Pencil, onSelect: () => edit(r) },
-    { label: 'Move up', icon: ArrowUp, disabled: i === 0, onSelect: () => move(i, -1) },
-    { label: 'Move down', icon: ArrowDown, disabled: i === last, onSelect: () => move(i, 1) },
+    { label: t('common.change'), icon: Pencil, onSelect: () => edit(r) },
+    { label: t('mfa.rules.moveUp'), icon: ArrowUp, disabled: i === 0, onSelect: () => move(i, -1) },
+    { label: t('mfa.rules.moveDown'), icon: ArrowDown, disabled: i === last, onSelect: () => move(i, 1) },
     r.enabled
-      ? { label: 'Turn off', icon: PowerOff, onSelect: () => toggle(r) }
-      : { label: 'Turn on', icon: Power, onSelect: () => toggle(r) },
-    { label: 'Delete', icon: Trash2, onSelect: () => (deleting.value = r) },
+      ? { label: t('mfa.rules.turnOff'), icon: PowerOff, onSelect: () => toggle(r) }
+      : { label: t('mfa.rules.turnOn'), icon: Power, onSelect: () => toggle(r) },
+    { label: t('common.delete'), icon: Trash2, onSelect: () => (deleting.value = r) },
   ]
 }
 
@@ -83,9 +86,9 @@ async function toggle(r: MfaRule) {
   try {
     await api.saveMfaRule(props.orgId, { ...r, enabled: !r.enabled })
     await load()
-    notify({ type: 'success', title: r.enabled ? `${r.name} turned off` : `${r.name} turned on` })
+    notify({ type: 'success', title: r.enabled ? t('mfa.rules.turnedOff', { name: r.name }) : t('mfa.rules.turnedOn', { name: r.name }) })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t change the rule', description: message(e) })
+    notify({ type: 'error', title: t('mfa.rules.couldntChange'), description: message(e) })
   }
 }
 
@@ -95,7 +98,7 @@ async function move(i: number, by: number) {
   try {
     rules.value = await api.orderMfaRules(props.orgId, ids)
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t move the rule', description: message(e) })
+    notify({ type: 'error', title: t('mfa.rules.couldntMove'), description: message(e) })
   }
 }
 
@@ -110,9 +113,9 @@ async function remove() {
     await api.deleteMfaRule(props.orgId, r.id)
     deleting.value = undefined
     await load()
-    notify({ type: 'success', title: 'Rule deleted', description: `${r.name} no longer applies.` })
+    notify({ type: 'success', title: t('mfa.rules.deleted'), description: t('mfa.rules.deletedDescription', { name: r.name }) })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t delete the rule', description: message(e) })
+    notify({ type: 'error', title: t('mfa.rules.couldntDelete'), description: message(e) })
   } finally {
     deleteStatus.value = 'idle'
   }
@@ -121,42 +124,42 @@ async function remove() {
 
 <template>
   <Card
-    title="Custom rules"
-    description="Checked from the top: the first rule that matches decides. A rule matches when everything it names does: users, groups, apps and IP addresses (devices will join them)."
+    :title="t('mfa.rules.title')"
+    :description="t('mfa.rules.description')"
     padding="none"
   >
     <template #actions>
       <Button variant="primary" size="sm" @click="edit()">
         <template #leading><Plus /></template>
-        Add rule
+        {{ t('mfa.rules.add') }}
       </Button>
     </template>
-    <EmptyState v-if="error" size="sm" title="Couldn’t load the rules" :description="error" />
-    <div v-else-if="!rules" class="flex justify-center py-6"><Spinner label="Loading" /></div>
-    <Table v-else :columns="columns" :rows="rules" row-key="id" caption="MFA custom rules">
+    <EmptyState v-if="error" size="sm" :title="t('mfa.rules.couldntLoad')" :description="error" />
+    <div v-else-if="!rules" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
+    <Table v-else :columns="columns" :rows="rules" row-key="id" :caption="t('mfa.rules.caption')">
       <template #cell-name="{ row, index }">
         <span class="text-black/65">{{ index + 1 }}.</span> {{ row.name }}
-        <Badge v-if="!row.enabled" size="sm" class="ml-1">Turned off</Badge>
+        <Badge v-if="!row.enabled" size="sm" class="ml-1">{{ t('mfa.rules.turnedOffBadge') }}</Badge>
       </template>
       <template #cell-applies="{ row }">{{ appliesTo(row) }}</template>
       <template #cell-require="{ row }">
-        <Badge size="sm" :color="row.require ? 'green' : 'basic'">{{ row.require ? 'Required' : 'Not required' }}</Badge>
+        <Badge size="sm" :color="row.require ? 'green' : 'basic'">{{ row.require ? t('mfa.rules.required') : t('mfa.rules.notRequired') }}</Badge>
       </template>
       <template #cell-actions="{ row, index }">
-        <Menu :items="menu(row, index)" :label="`Actions for ${row.name}`" size="sm" />
+        <Menu :items="menu(row, index)" :label="t('common.actionsFor', { name: row.name })" size="sm" />
       </template>
       <template #empty>
-        <EmptyState size="sm" title="No rules yet" description="Add one to require (or skip) MFA for particular people, apps or places." class="p-0" />
+        <EmptyState size="sm" :title="t('mfa.rules.none')" :description="t('mfa.rules.noneDescription')" class="p-0" />
       </template>
     </Table>
   </Card>
 
   <MfaRuleSlideover v-model:open="editing" :org-id="orgId" :options="options" :rule="current" @saved="load" />
 
-  <Slideover v-model:open="deleteOpen" :title="deleting ? `Delete ${deleting.name}?` : 'Delete rule'" description="It stops applying straight away. Anyone it covered is then covered by the rules below it, or Everyone else.">
+  <Slideover v-model:open="deleteOpen" :title="deleting ? t('mfa.rules.deleteTitle', { name: deleting.name }) : t('mfa.rules.deleteRule')" :description="t('mfa.rules.deleteDescription')">
     <template #footer="{ close }">
-      <Button :disabled="deleteStatus !== 'idle'" @click="close">Cancel</Button>
-      <Button variant="danger" :status="deleteStatus" loading-text="Deleting" @click="remove">Delete rule</Button>
+      <Button :disabled="deleteStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+      <Button variant="danger" :status="deleteStatus" :loading-text="t('common.deleting')" @click="remove">{{ t('mfa.rules.deleteRule') }}</Button>
     </template>
   </Slideover>
 </template>

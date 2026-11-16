@@ -3,6 +3,9 @@ import { Button, type ButtonStatus, Card, useNotifications } from '@thekestongro
 import { computed, onMounted, ref, watch } from 'vue'
 import { ApiError, api, type AdminRole, type PermissionId, type UserDetail } from '../lib/api'
 import RolesField, { type Roles } from './RolesField.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * A user's admin centre access, on their page: User, or admin roles (Global
@@ -44,7 +47,7 @@ const changed = computed(() => {
 async function save() {
   error.value = undefined
   if (access.value.admin && !access.value.global && !access.value.roles.length) {
-    error.value = 'Choose at least one role'
+    error.value = t('roles.chooseOne')
     return
   }
   status.value = 'loading'
@@ -58,13 +61,13 @@ async function save() {
   } catch (e) {
     status.value = 'idle'
     if (e instanceof ApiError && e.field) error.value = e.message
-    else notify({ type: 'error', title: 'Couldn’t save the roles', description: e instanceof Error ? e.message : String(e) })
+    else notify({ type: 'error', title: t('roles.couldntSave'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 </script>
 
 <template>
-  <Card title="Admin roles" description="What they can do in the admin centre. Their groups can give them permissions too.">
+  <Card :title="t('roles.cardTitle')" :description="t('roles.cardDescription')">
     <RolesField
       v-model="access"
       :catalogue="catalogue"
@@ -77,11 +80,11 @@ async function save() {
         variant="primary"
         v-model:status="status"
         :disabled="!changed && status === 'idle'"
-        loading-text="Saving"
-        success-text="Saved"
+        :loading-text="t('common.saving')"
+        :success-text="t('common.saved')"
         @click="save"
       >
-        Save roles
+        {{ t('roles.save') }}
       </Button>
     </template>
   </Card>

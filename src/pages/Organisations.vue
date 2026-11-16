@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { Building2, Plus, TriangleAlert } from '@lucide/vue'
 import { Button, Card, EmptyState, PageHeader, Table, type TableColumn, formatDate } from '@thekestongroup/ui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, type Organisation } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /** Every organisation on Keston (platform admins). */
 const orgs = ref<Organisation[]>([])
@@ -20,30 +23,30 @@ onMounted(async () => {
   }
 })
 
-const columns: TableColumn<Organisation>[] = [
-  { key: 'name', label: 'Organisation', rowHeader: true, sortable: true },
-  { key: 'domain', label: 'Domain', sortable: true },
-  { key: 'userCount', label: 'Users', align: 'end', sortable: true },
-  { key: 'createdAt', label: 'Created', sortable: true, nowrap: true },
-]
+const columns = computed<TableColumn<Organisation>[]>(() => [
+  { key: 'name', label: t('organisations.columns.organisation'), rowHeader: true, sortable: true },
+  { key: 'domain', label: t('organisations.columns.domain'), sortable: true },
+  { key: 'userCount', label: t('organisations.columns.users'), align: 'end', sortable: true },
+  { key: 'createdAt', label: t('organisations.columns.created'), sortable: true, nowrap: true },
+])
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
     <PageHeader
-      title="Organisations"
-      description="Every school and organisation on Keston. Their users need support access, approved by one of their global admins."
+      :title="t('nav.organisations')"
+      :description="t('organisations.description')"
     >
       <template #actions>
         <Button variant="primary" :as="RouterLink" to="/create-organisation">
           <template #leading><Plus /></template>
-          New organisation
+          {{ t('organisations.new') }}
         </Button>
       </template>
     </PageHeader>
 
     <Card v-if="loadError">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the organisations" :description="loadError" />
+      <EmptyState :icon="TriangleAlert" :title="t('organisations.couldntLoad')" :description="loadError" />
     </Card>
     <Card v-else padding="none">
       <Table
@@ -51,7 +54,7 @@ const columns: TableColumn<Organisation>[] = [
         :rows="orgs"
         row-key="id"
         :loading="loading"
-        caption="Organisations"
+        :caption="t('nav.organisations')"
         :row-link="(row: Organisation) => `/organisations/${row.id}`"
         :link-component="RouterLink"
       >
@@ -60,8 +63,8 @@ const columns: TableColumn<Organisation>[] = [
           <EmptyState
             size="sm"
             :icon="Building2"
-            title="No organisations yet"
-            description="Create one to give a school or organisation its users on Keston."
+            :title="t('organisations.none')"
+            :description="t('organisations.noneDescription')"
             class="p-0"
           />
         </template>

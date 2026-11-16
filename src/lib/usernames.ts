@@ -7,6 +7,8 @@
  *   {last:-3}        its last 3 characters
  * with letters, numbers, dots, dashes and underscores as they are.
  */
+import { t } from '../i18n'
+
 export const DEFAULT_FORMULA = '{first}.{last}'
 
 const token = /\{(first|last)(?::(-?[1-9][0-9]?))?\}/g
@@ -35,10 +37,10 @@ export function suggestUsername(formula: string | undefined, first: string, last
 
 /** What's wrong with a formula, or undefined if it's usable (as Keston ID checks it). */
 export function checkFormula(f: string): string | undefined {
-  if (!f.trim() || f.length > 100) return 'Enter a formula, e.g. {first}.{last}'
-  if (!new RegExp(token.source).test(f)) return 'Use {first} or {last} at least once'
+  if (!f.trim() || f.length > 100) return t('usernames.enter')
+  if (!new RegExp(token.source).test(f)) return t('usernames.useToken')
   const rest = f.replace(token, '')
-  if (/[{}]/.test(rest)) return 'Use {first}, {last}, {first:2} (first 2 characters) or {last:-2} (last 2)'
-  if (!/^[a-z0-9._-]*$/.test(rest)) return 'Between them, use only lowercase letters, numbers, dots, dashes or underscores'
+  if (/[{}]/.test(rest)) return t('usernames.tokens')
+  if (!/^[a-z0-9._-]*$/.test(rest)) return t('usernames.between')
   return undefined
 }

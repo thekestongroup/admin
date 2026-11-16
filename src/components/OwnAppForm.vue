@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { Button, type ButtonStatus, Checkbox, Input, RadioGroup, type RadioOption } from '@thekestongroup/ui'
+import { Button, type ButtonStatus, CheckboxGroup, Input, InputTextArea, RadioGroup, type RadioOption } from '@thekestongroup/ui'
 import { computed, reactive, ref } from 'vue'
 import { ApiError, type OwnApp, type OwnAppChanges, type OwnAppType } from '../lib/api'
-import TextAreaField from './TextAreaField.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Adding or changing one of the organisation's own apps: OpenID Connect
@@ -39,36 +41,29 @@ const fields = reactive({
 /** SAML: where its details come from. */
 const source = ref<'url' | 'xml' | 'manual'>(props.app?.saml && !props.app.saml.metadataUrl ? 'manual' : 'url')
 
-const types: RadioOption[] = [
-  { label: 'Web app', value: 'web', description: 'Runs on a server, which keeps a client secret.' },
-  {
-    label: 'Single-page or mobile app',
-    value: 'native',
-    description: 'Runs in the browser or on a device, so it can’t keep a secret. Signs in with PKCE.',
-  },
-]
-const scopeOptions = [
-  { id: 'profile', label: 'Name and profile picture' },
-  { id: 'email', label: 'Email address' },
-  { id: 'offline_access', label: 'Stay signed in (refresh tokens)' },
-]
-const sources: RadioOption[] = [
-  { label: 'Metadata URL', value: 'url', description: 'Keston ID downloads the app’s SAML metadata.' },
-  { label: 'Paste the metadata', value: 'xml', description: 'The XML from the app’s SAML settings.' },
-  { label: 'Entity ID and ACS URL', value: 'manual', description: 'If the app doesn’t give you metadata.' },
-]
+const types = computed<RadioOption[]>(() => [
+  { label: t('ownApp.type.web'), value: 'web', description: t('ownApp.type.webDescription') },
+  { label: t('ownApp.type.native'), value: 'native', description: t('ownApp.type.nativeDescription') },
+])
+const scopeOptions = computed(() => [
+  { value: 'profile', label: t('ownApp.scopes.profile'), description: 'profile' },
+  { value: 'email', label: t('ownApp.scopes.email'), description: 'email' },
+  { value: 'offline_access', label: t('ownApp.scopes.offline'), description: 'offline_access' },
+])
+const sources = computed<RadioOption[]>(() => [
+  { label: t('ownApp.source.url'), value: 'url', description: t('ownApp.source.urlDescription') },
+  { label: t('ownApp.source.xml'), value: 'xml', description: t('ownApp.source.xmlDescription') },
+  { label: t('ownApp.source.manual'), value: 'manual', description: t('ownApp.source.manualDescription') },
+])
 
 const isOIDC = props.protocol === 'oidc'
-const sourceLabel = adding ? 'The app’s SAML details' : 'Update its SAML details from'
+const sourceLabel = computed(() => (adding ? t('ownApp.samlDetails') : t('ownApp.updateSamlDetails')))
 const redirectHelp = computed(() =>
   fields.type === 'native'
-    ? 'Where Keston ID sends people back to after signing in, one per line: https:// or your app’s own scheme (e.g. com.example.app:/callback).'
-    : 'Where Keston ID sends people back to after signing in, one per line (https://).',
+    ? t('ownApp.redirectHelpNative')
+    : t('ownApp.redirectHelp'),
 )
 
-function toggleScope(id: string, on: boolean) {
-  fields.scopes = on ? [...fields.scopes, id] : fields.scopes.filter((s) => s !== id)
-}
 
 const errors = ref<Record<string, string>>({})
 const status = ref<ButtonStatus>('idle')
@@ -95,7 +90,7 @@ function body(): OwnAppChanges {
 async function submit() {
   errors.value = {}
   if (!fields.name.trim()) {
-    errors.value = { name: 'Enter the app’s name' }
+    errors.value = { name: t('ownApp.enterName') }
     return
   }
   status.value = 'loading'
@@ -112,36 +107,29 @@ async function submit() {
 
 <template>
   <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
-    <Input v-model="fields.name" label="Name" helper="What your users see, e.g. on their Connected apps page." :error-text="errors.name" />
+    <Input v-model="fields.name" :label="t('common.name')" :helper="t('ownApp.nameHelper')" :error-text="errors.name" />
 
     <template v-if="protocol === 'oidc'">
-      <RadioGroup v-if="adding" v-model="fields.type" label="Type of app" :options="types" :error-text="errors.type" />
-      <TextAreaField
+      <RadioGroup v-if="adding" v-model="fields.type" :label="t('ownApp.typeOfApp')" :options="types" :error-text="errors.type" />
+      <InputTextArea
         v-model="fields.redirectUris"
-        label="Redirect URIs"
+        :label="t('ownApp.redirectUris')"
         :helper="redirectHelp"
         :error-text="errors.redirectUris"
       />
-      <TextAreaField
+      <InputTextArea
         v-model="fields.postLogoutRedirectUris"
-        label="Sign-out URIs (optional)"
-        helper="Where the app may send people after they sign out, one per line."
-        :rows="2"
+        :label="t('ownApp.signOutUris')"
+        :helper="t('ownApp.signOutHelper')"
         :error-text="errors.postLogoutRedirectUris"
       />
-      <fieldset class="flex flex-col gap-2">
-        <legend class="mb-1 text-sm">What the app gets</legend>
-        <p class="text-xs text-black/65">It always gets a user ID. Your users aren’t asked to allow it, as your organisation set it up.</p>
-        <Checkbox
-          v-for="s in scopeOptions"
-          :key="s.id"
-          :model-value="fields.scopes.includes(s.id)"
-          :label="s.label"
-          :description="s.id"
-          @update:model-value="toggleScope(s.id, $event === true)"
-        />
-        <p v-if="errors.scopes" class="text-xs text-red" role="alert">{{ errors.scopes }}</p>
-      </fieldset>
+      <CheckboxGroup
+        v-model="fields.scopes"
+        :label="t('ownApp.scopes.label')"
+        :helper="t('ownApp.scopes.helper')"
+        :options="scopeOptions"
+        :error-text="errors.scopes"
+      />
     </template>
 
     <template v-if="!isOIDC">
@@ -149,22 +137,21 @@ async function submit() {
       <Input
         v-if="source === 'url'"
         v-model="fields.metadataUrl"
-        label="Metadata URL"
+        :label="t('ownApp.metadataUrl')"
         :error-text="errors.metadataUrl"
       />
-      <TextAreaField
+      <InputTextArea
         v-else-if="source === 'xml'"
         v-model="fields.metadataXml"
-        label="Metadata"
-        :rows="8"
+        :label="t('ownApp.metadata')"
         :error-text="errors.metadataXml"
       />
       <template v-else>
-        <Input v-model="fields.entityId" label="Entity ID" helper="Also called the audience or SP entity ID." :error-text="errors.entityId" />
+        <Input v-model="fields.entityId" :label="t('ownApp.entityId')" :helper="t('ownApp.entityIdHelper')" :error-text="errors.entityId" />
         <Input
           v-model="fields.acsUrl"
-          label="ACS URL"
-          helper="Assertion consumer service: where Keston ID sends the sign-in response."
+          :label="t('ownApp.acsUrl')"
+          :helper="t('ownApp.acsUrlHelper')"
           :error-text="errors.acsUrl"
         />
       </template>
@@ -173,15 +160,15 @@ async function submit() {
       </p>
     </template>
 
-    <Input v-model="fields.logoUrl" label="Logo URL (optional)" :error-text="errors.logoUrl" />
+    <Input v-model="fields.logoUrl" :label="t('ownApp.logoUrl')" :error-text="errors.logoUrl" />
     <template v-if="protocol === 'oidc'">
-      <Input v-model="fields.privacyUrl" label="Privacy policy URL (optional)" :error-text="errors.privacyUrl" />
-      <Input v-model="fields.termsUrl" label="Terms URL (optional)" :error-text="errors.termsUrl" />
+      <Input v-model="fields.privacyUrl" :label="t('ownApp.privacyUrl')" :error-text="errors.privacyUrl" />
+      <Input v-model="fields.termsUrl" :label="t('ownApp.termsUrl')" :error-text="errors.termsUrl" />
     </template>
 
     <p v-if="errors.form" class="text-sm text-red" role="alert">{{ errors.form }}</p>
     <div>
-      <Button type="submit" variant="primary" v-model:status="status" loading-text="Saving" success-text="Saved">
+      <Button type="submit" variant="primary" v-model:status="status" :loading-text="t('common.saving')" :success-text="t('common.saved')">
         {{ submitLabel }}
       </Button>
     </div>

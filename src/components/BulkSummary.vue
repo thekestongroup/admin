@@ -3,6 +3,9 @@ import { Button, Card, Slideover, Table, type TableColumn } from '@thekestongrou
 import { computed } from 'vue'
 import type { BulkResult } from '../lib/api'
 import UserDetailsTable from './UserDetailsTable.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * What a bulk action did: how many users it was done for, who was skipped
@@ -19,17 +22,16 @@ const done = computed(() => props.results.filter((r) => r.result === 'done'))
 const skipped = computed(() => props.results.filter((r) => r.result === 'skipped'))
 const withPasswords = computed(() => done.value.filter((r) => r.password))
 
-const plural = (n: number) => `${n} ${n === 1 ? 'user' : 'users'}`
 const description = computed(() =>
-  [`Done for ${plural(done.value.length)}.`, skipped.value.length ? `${plural(skipped.value.length)} skipped.` : '']
+  [t('bulkSummary.doneFor', done.value.length), skipped.value.length ? t('bulkSummary.skipped', skipped.value.length) : '']
     .filter(Boolean)
     .join(' '),
 )
 
-const skippedColumns: TableColumn<BulkResult>[] = [
-  { key: 'name', label: 'Name', rowHeader: true },
-  { key: 'reason', label: 'Why', nowrap: false },
-]
+const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
+  { key: 'name', label: t('common.name'), rowHeader: true },
+  { key: 'reason', label: t('bulkSummary.why'), nowrap: false },
+])
 </script>
 
 <template>
@@ -38,23 +40,22 @@ const skippedColumns: TableColumn<BulkResult>[] = [
       <div class="flex flex-col gap-6">
         <div v-if="withPasswords.length" class="flex flex-col gap-3">
           <p class="text-sm">
-            Give each person their new password securely: print or download them now. They’re shown only once: once you
-            close this, they’re gone.
+            {{ t('bulkSummary.passwordsOnce') }}
           </p>
-          <UserDetailsTable :results="withPasswords" title="New passwords" />
+          <UserDetailsTable :results="withPasswords" :title="t('bulkSummary.newPasswords')" />
         </div>
         <div v-if="skipped.length" class="flex flex-col gap-3">
-          <p class="text-sm font-bold">Skipped</p>
+          <p class="text-sm font-bold">{{ t('bulkSummary.skippedHeading') }}</p>
           <Card padding="none">
-            <Table :columns="skippedColumns" :rows="skipped" row-key="id" size="sm" caption="Skipped users">
-              <template #cell-name="{ row }">{{ row.name || 'Unknown user' }}</template>
+            <Table :columns="skippedColumns" :rows="skipped" row-key="id" size="sm" :caption="t('bulkSummary.skippedUsers')">
+              <template #cell-name="{ row }">{{ row.name || t('bulkSummary.unknownUser') }}</template>
             </Table>
           </Card>
         </div>
       </div>
     </template>
     <template #footer="{ close }">
-      <Button variant="primary" @click="close">Done</Button>
+      <Button variant="primary" @click="close">{{ t('common.done') }}</Button>
     </template>
   </Slideover>
 </template>

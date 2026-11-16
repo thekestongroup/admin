@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { Breadcrumb, Card, PageHeader, RadioGroup } from '@thekestongroup/ui'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import OwnAppForm from '../components/OwnAppForm.vue'
 import { type OwnApp, type OwnAppChanges, ownApps } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /** Add an app: your own SSO app, with OpenID Connect or SAML. */
 const route = useRoute()
@@ -11,11 +14,11 @@ const router = useRouter()
 const orgId = route.params.orgId as string
 
 const protocol = ref<OwnApp['protocol']>('oidc')
-const protocols = [
-  { label: 'OpenID Connect', value: 'oidc', description: 'Most modern apps, and apps you build yourself (OAuth 2.0).' },
-  { label: 'SAML 2.0', value: 'saml', description: 'Many business apps, e.g. ones that ask for an IdP metadata URL.' },
-]
-const trail = [{ label: 'Apps', to: `/organisations/${orgId}/apps` }, { label: 'Add an app' }]
+const protocols = computed(() => [
+  { label: 'OpenID Connect', value: 'oidc', description: t('ownAppNew.oidcDescription') },
+  { label: 'SAML 2.0', value: 'saml', description: t('ownAppNew.samlDescription') },
+])
+const trail = computed(() => [{ label: t('nav.apps'), to: `/organisations/${orgId}/apps` }, { label: t('apps.addApp') }])
 
 async function save(body: OwnAppChanges) {
   const res = await ownApps.create(orgId, protocol.value, body)
@@ -31,14 +34,14 @@ async function save(body: OwnAppChanges) {
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
     <Breadcrumb :items="trail" :link-component="RouterLink" />
     <PageHeader
-      title="Add an app"
-      description="An app your organisation uses that signs people in with their Keston account. Only your users can sign in to it."
+      :title="t('apps.addApp')"
+      :description="t('ownAppNew.description')"
     />
     <Card>
-      <RadioGroup v-model="protocol" label="How it signs people in" helper="The app’s single sign-on (SSO) settings say which it supports." :options="protocols" />
+      <RadioGroup v-model="protocol" :label="t('ownAppNew.how')" :helper="t('ownAppNew.howHelper')" :options="protocols" />
     </Card>
     <Card>
-      <OwnAppForm :key="protocol" :protocol="protocol" submit-label="Add app" :save="save" />
+      <OwnAppForm :key="protocol" :protocol="protocol" :submit-label="t('ownAppNew.submit')" :save="save" />
     </Card>
   </div>
 </template>

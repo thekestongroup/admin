@@ -1,3 +1,4 @@
+import { t, te } from '../i18n'
 import { request } from './api'
 
 /**
@@ -76,102 +77,23 @@ export const logsApi = {
 // ── Labels ─────────────────────────────────────────────────────────────────
 
 /** Admin actions, grouped as the filter shows them. */
-export const actionGroups: { label: string; actions: Record<string, string> }[] = [
-  {
-    label: 'Users',
-    actions: {
-      'user.created': 'User added',
-      'user.updated': 'User edited',
-      'user.picture_changed': 'Profile picture changed',
-      'user.picture_removed': 'Profile picture removed',
-      'user.password_reset': 'Password reset',
-      'user.disabled': 'User disabled',
-      'user.enabled': 'User enabled',
-      'user.mfa_disabled': 'MFA turned off',
-      'user.passkeys_removed': 'Passkeys removed',
-      'user.password_change_required': 'Password change at next sign-in',
-      'user.access_pass_issued': 'Access pass issued',
-      'user.access_pass_revoked': 'Access pass revoked',
-      'user.deleted': 'User deleted',
-      'user.restored': 'User restored',
-      'user.licences_changed': 'Licences changed',
-      'user.roles_changed': 'Admin roles changed',
-    },
-  },
-  {
-    label: 'Groups',
-    actions: {
-      'group.created': 'Group created',
-      'group.renamed': 'Group renamed',
-      'group.deleted': 'Group deleted',
-      'group.member_added': 'Added to a group',
-      'group.member_removed': 'Removed from a group',
-      'group.permissions_changed': 'Group permissions changed',
-    },
-  },
-  {
-    label: 'Organisation',
-    actions: {
-      'organisation.created': 'Organisation created',
-      'app.access_changed': 'App access changed',
-      'settings.changed': 'Settings changed',
-      'password_policy.changed': 'Password policy changed',
-      'mfa_policy.changed': 'MFA requirement changed',
-      'deletion.scheduled': 'Deletion scheduled',
-      'deletion.cancelled': 'Deletion cancelled',
-    },
-  },
-  {
-    label: 'Your apps',
-    actions: {
-      'own_app.created': 'App added',
-      'own_app.updated': 'App changed',
-      'own_app.deleted': 'App deleted',
-      'own_app.secret_changed': 'App secret changed',
-    },
-  },
-  {
-    label: 'Keston support',
-    actions: {
-      'support.requested': 'Support access requested',
-      'support.allowed': 'Support access allowed',
-      'support.declined': 'Support access declined',
-      'support.ended': 'Support access ended',
-      'support.opened': 'Support account opened',
-      'lockout.started': 'Lockout procedure started',
-      'lockout.denied': 'Lockout procedure denied',
-      'lockout.cancelled': 'Lockout procedure cancelled',
-      'lockout.completed': 'Lockout procedure went through',
-    },
-  },
-]
+const actionKeys: Record<string, string[]> = {'users': ['user.created', 'user.updated', 'user.picture_changed', 'user.picture_removed', 'user.password_reset', 'user.disabled', 'user.enabled', 'user.mfa_disabled', 'user.passkeys_removed', 'user.password_change_required', 'user.access_pass_issued', 'user.access_pass_revoked', 'user.deleted', 'user.restored', 'user.licences_changed', 'user.roles_changed'], 'groups': ['group.created', 'group.renamed', 'group.deleted', 'group.member_added', 'group.member_removed', 'group.permissions_changed'], 'organisation': ['organisation.created', 'app.access_changed', 'settings.changed', 'password_policy.changed', 'mfa_policy.changed', 'deletion.scheduled', 'deletion.cancelled'], 'ownApps': ['own_app.created', 'own_app.updated', 'own_app.deleted', 'own_app.secret_changed'], 'support': ['support.requested', 'support.allowed', 'support.declined', 'support.ended', 'support.opened', 'lockout.started', 'lockout.denied', 'lockout.cancelled', 'lockout.completed']}
 
-const actionLabels: Record<string, string> = Object.assign({}, ...actionGroups.map((g) => g.actions))
-export const actionLabel = (a: string) => actionLabels[a] ?? a
+export const actionGroups = (): { label: string; actions: Record<string, string> }[] =>
+  Object.entries(actionKeys).map(([group, actions]) => ({
+    label: t(`logs.groups.${group}`),
+    actions: Object.fromEntries(actions.map((a) => [a, t(`logs.actions.${a}`)])),
+  }))
 
-export const methodLabels: Record<SignInMethod, string> = {
-  password: 'Password',
-  mfa: 'MFA code',
-  backup_code: 'Backup code',
-  passkey: 'Passkey',
-  access_pass: 'Access pass',
-  support: 'Support account',
-  app: 'App',
-}
+/** What an action is called; the action itself if it isn't known. */
+export const actionLabel = (a: string) => (te(`logs.actions.${a}`) ? t(`logs.actions.${a}`) : a)
 
-export const reasonLabels: Record<string, string> = {
-  unknown_user: 'No such user',
-  wrong_password: 'Wrong password',
-  locked: 'Locked out',
-  disabled: 'User disabled',
-  expired: 'Support access ended',
-  support_account: 'Support account (no password)',
-  mfa_failed: 'Wrong code',
-  wrong_access_pass: 'Wrong or expired access pass',
-  app_disabled: 'App turned off for them',
-  no_licence: 'No licence for the app',
-}
-export const reasonLabel = (r: string) => reasonLabels[r] ?? r
+export const methodLabel = (m: string) => (te(`logs.methods.${m}`) ? t(`logs.methods.${m}`) : m)
+
+const reasons = ['unknown_user', 'wrong_password', 'locked', 'disabled', 'expired', 'support_account', 'mfa_failed', 'wrong_access_pass', 'app_disabled', 'no_licence']
+/** Why a sign-in failed, for the filter. */
+export const reasonOptions = () => reasons.map((r) => ({ label: t(`logs.reasons.${r}`), value: r }))
+export const reasonLabel = (r: string) => (te(`logs.reasons.${r}`) ? t(`logs.reasons.${r}`) : r)
 
 /** "Chrome on macOS", from a user agent; "" if unknown. */
 export function device(ua: string): string {
@@ -197,5 +119,5 @@ export function device(ua: string): string {
             : /Linux/.test(ua)
               ? 'Linux'
               : ''
-  return [browser, os].filter(Boolean).join(' on ')
+  return browser && os ? t('logs.device', { browser, os }) : browser || os
 }

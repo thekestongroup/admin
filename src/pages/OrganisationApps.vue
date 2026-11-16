@@ -4,6 +4,9 @@ import { Button, Card, EmptyState, Link, PageHeader, Select, type SelectProps, S
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { api, type AppAccess, type AppInfo, type AppMode } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * App access, for everyone (the default, which new users get too) or per
@@ -37,16 +40,16 @@ onMounted(async () => {
 })
 
 const scopes = computed(() => [
-  { label: 'Everyone (default)', value: EVERYONE, description: 'Also what new users get' },
-  ...(data.value?.groups ?? []).map((g) => ({ label: g.name, value: g.id, description: g.memberCount === 1 ? '1 user' : `${g.memberCount} users` })),
+  { label: t('apps.everyone'), value: EVERYONE, description: t('apps.everyoneDescription') },
+  ...(data.value?.groups ?? []).map((g) => ({ label: g.name, value: g.id, description: t('bulk.groups.members', g.memberCount) })),
 ])
 
-const words: Record<AppMode, string> = { forced: 'Forced', enabled: 'Enabled', disabled: 'Disabled' }
-const modeOptions = [
-  { label: 'Forced', value: 'forced', description: 'On, and they can’t turn it off' },
-  { label: 'Enabled', value: 'enabled', description: 'On, and each person can turn it off' },
-  { label: 'Disabled', value: 'disabled', description: 'Off, and they can’t use it' },
-]
+const words = computed<Record<AppMode, string>>(() => ({ forced: t('apps.mode.forced'), enabled: t('apps.mode.enabled'), disabled: t('apps.mode.disabled') }))
+const modeOptions = computed(() => [
+  { label: t('apps.mode.forced'), value: 'forced', description: t('apps.mode.forcedDescription') },
+  { label: t('apps.mode.enabled'), value: 'enabled', description: t('apps.mode.enabledDescription') },
+  { label: t('apps.mode.disabled'), value: 'disabled', description: t('apps.mode.disabledDescription') },
+])
 
 function defaultMode(app: AppInfo): AppMode | undefined {
   return data.value?.policies.default[app.id] ?? (app.builtin ? 'forced' : undefined)
@@ -56,11 +59,11 @@ function defaultMode(app: AppInfo): AppMode | undefined {
 function options(app: AppInfo) {
   if (group.value) {
     const d = defaultMode(app)
-    return [{ label: `Use the default (${d ? words[d] : 'people choose'})`, value: UNSET }, ...modeOptions]
+    return [{ label: t('apps.useDefault', { mode: d ? words.value[d] : t('apps.peopleChoose') }), value: UNSET }, ...modeOptions.value]
   }
   return [
-    { label: app.builtin ? 'Forced (Keston’s default)' : 'Not set: people choose', value: UNSET },
-    ...modeOptions,
+    { label: app.builtin ? t('apps.kestonDefault') : t('apps.notSet'), value: UNSET },
+    ...modeOptions.value,
   ]
 }
 
@@ -72,71 +75,75 @@ function current(app: AppInfo): string {
 async function change(app: AppInfo, value: string) {
   const mode = value === UNSET ? '' : (value as AppMode)
   const key = app.id
-  saving[key] = { status: 'loading', text: 'Saving…' }
+  saving[key] = { status: 'loading', text: t('settings.saving') }
   try {
     await api.setAppAccess(orgId, app.id, mode, group.value)
     const p = data.value!.policies
     const target = group.value ? (p.groups[group.value] ??= {}) : p.default
     if (mode) target[app.id] = mode
     else delete target[app.id]
-    saving[key] = { status: 'success', text: 'Saved' }
+    saving[key] = { status: 'success', text: t('common.saved') }
     setTimeout(() => {
       if (saving[key]?.status === 'success') saving[key] = {}
     }, 2000)
   } catch (e) {
-    saving[key] = { status: 'error', text: 'Couldn’t save. Try again.' }
-    notify({ type: 'error', title: 'Couldn’t save', description: e instanceof Error ? e.message : String(e) })
+    saving[key] = { status: 'error', text: t('settings.couldntSave') }
+    notify({ type: 'error', title: t('mfa.everyoneElse.couldntSaveTitle'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 
 const builtin = computed(() => data.value?.apps.filter((a) => a.builtin) ?? [])
 const own = computed(() => data.value?.apps.filter((a) => a.own) ?? [])
 const others = computed(() => data.value?.apps.filter((a) => !a.builtin && !a.own) ?? [])
+const sections = computed(() => [
+  { key: 'builtin', title: t('apps.sections.keston'), apps: builtin.value },
+  { key: 'own', title: t('apps.sections.own'), apps: own.value },
+  { key: 'other', title: t('apps.sections.other'), apps: others.value },
+])
 </script>
 
 <template>
   <div class="flex max-w-3xl flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Apps" description="Which apps your users have, shown under Connected apps in their Keston account.">
+    <PageHeader :title="t('nav.apps')" :description="t('apps.description')">
       <template #actions>
         <Button :as="RouterLink" :to="`/organisations/${orgId}/apps/new`">
           <template #leading><Plus /></template>
-          Add an app
+          {{ t('apps.addApp') }}
         </Button>
       </template>
     </PageHeader>
 
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the apps" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('apps.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!data" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!data" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <Card>
         <div class="flex flex-col gap-2">
-          <Select v-model="scope" label="Applies to" :options="scopes" class="max-w-sm" />
+          <Select v-model="scope" :label="t('apps.appliesTo')" :options="scopes" class="max-w-sm" />
           <p class="text-sm text-black/65">
-            <template v-if="!group">The default, for everyone not covered by a group’s setting.</template>
-            <template v-else>Overrides the default for this group’s users.</template>
-            If someone’s groups disagree, Disabled wins, then Forced, then Enabled.
-            <Link :as="RouterLink" :to="`/organisations/${orgId}/groups`">Manage groups</Link>
+            {{ group ? t('apps.scopeGroup') : t('apps.scopeDefault') }}
+            {{ t('apps.disagree') }}
+            <Link :as="RouterLink" :to="`/organisations/${orgId}/groups`">{{ t('apps.manageGroups') }}</Link>
           </p>
         </div>
       </Card>
 
-      <Card v-for="section in [{ title: 'Keston apps', apps: builtin }, { title: 'Your organisation’s apps', apps: own }, { title: 'Other apps', apps: others }]" :key="section.title" :title="section.title">
-        <EmptyState v-if="!section.apps.length" size="sm" title="No apps" class="p-0" />
+      <Card v-for="section in sections" :key="section.key" :title="section.title">
+        <EmptyState v-if="!section.apps.length" size="sm" :title="t('userApps.none')" class="p-0" />
         <div v-else class="flex flex-col gap-4">
           <div v-for="app in section.apps" :key="app.id + scope" class="flex flex-col gap-1">
           <Select
             :model-value="current(app)"
             :label="app.name"
-            :helper="app.own ? 'Added by your organisation' : `By ${app.publisher}`"
+            :helper="app.own ? t('apps.addedByOrg') : t('licences.by', { publisher: app.publisher })"
             :options="options(app)"
             :status="saving[app.id]?.status"
             :status-text="saving[app.id]?.text"
             @update:model-value="change(app, String($event ?? UNSET))"
           />
             <Link v-if="app.own" :as="RouterLink" :to="`/organisations/${orgId}/apps/own/${app.id}`" class="self-start text-sm">
-              {{ app.protocol === 'saml' ? 'SAML' : 'OpenID Connect' }} settings<span class="sr-only"> for {{ app.name }}</span>
+              {{ t('apps.protocolSettings', { protocol: app.protocol === 'saml' ? 'SAML' : 'OpenID Connect' }) }}<span class="sr-only"> {{ t('apps.forApp', { name: app.name }) }}</span>
             </Link>
           </div>
         </div>

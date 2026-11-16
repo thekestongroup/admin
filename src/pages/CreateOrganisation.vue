@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ArrowLeft, ArrowRight, CircleCheck } from '@lucide/vue'
-import { Button, type ButtonStatus, Card, Input, Link, Progress, SummaryList, useNotifications } from '@thekestongroup/ui'
+import { Button, type ButtonStatus, Card, Input, Link, Steps, SummaryList, useNotifications } from '@thekestongroup/ui'
 import { computed, nextTick, reactive, ref } from 'vue'
 import PasswordField from '../components/PasswordField.vue'
 import { ApiError, publicApi, type Organisation } from '../lib/api'
 import { signIn } from '../lib/auth'
+import { I18nT, useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * Self-service sign-up at /create-organisation, no sign-in needed: a wizard
@@ -15,7 +18,7 @@ import { signIn } from '../lib/auth'
  */
 const { notify } = useNotifications()
 
-const steps = ['Organisation', 'Domain', 'Global admin', 'Password']
+const steps = computed(() => [t('createOrg.steps.organisation'), t('createOrg.steps.domain'), t('createOrg.steps.globalAdmin'), t('createOrg.steps.password')])
 const step = ref(0)
 const form = reactive({ name: '', domain: '', adminName: '', adminUsername: '', password: '' })
 const errors = reactive<Record<string, string | undefined>>({})
@@ -27,7 +30,7 @@ const domain = computed(() =>
   form.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^@/, '').replace(/\/$/, ''),
 )
 const username = computed(() => form.adminUsername.trim().toLowerCase())
-const last = computed(() => step.value === steps.length - 1)
+const last = computed(() => step.value === steps.value.length - 1)
 
 function clearErrors() {
   for (const key of Object.keys(errors)) errors[key] = undefined
@@ -38,11 +41,11 @@ async function validate(): Promise<boolean> {
   clearErrors()
   switch (step.value) {
     case 0:
-      if (!form.name.trim()) errors.name = 'Enter the organisation’s name'
+      if (!form.name.trim()) errors.name = t('createOrg.errors.name')
       return !errors.name
     case 1: {
       if (!domain.value) {
-        errors.domain = 'Enter the organisation’s domain'
+        errors.domain = t('createOrg.errors.domain')
         return false
       }
       // Valid, and not already another organisation's (Keston ID checks).
@@ -51,12 +54,12 @@ async function validate(): Promise<boolean> {
       return !errors.domain
     }
     case 2:
-      if (!form.adminName.trim()) errors.adminName = 'Enter their name'
+      if (!form.adminName.trim()) errors.adminName = t('createOrg.errors.adminName')
       if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(username.value))
-        errors.adminUsername = 'Use lowercase letters, numbers, dots, dashes or underscores, like j.smith'
+        errors.adminUsername = t('addUser.errors.username')
       return !errors.adminName && !errors.adminUsername
     case 3:
-      if (!passwordValid.value) errors.password = form.password ? 'The password doesn’t meet every rule yet' : 'Enter a password'
+      if (!passwordValid.value) errors.password = form.password ? t('password.notYetValid') : t('password.enter')
       return !errors.password
   }
   return true
@@ -76,7 +79,7 @@ async function next() {
     step.value++
     focusStep()
   } catch (e) {
-    notify({ type: 'error', title: 'Something went wrong', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('createOrg.somethingWrong'), description: e instanceof Error ? e.message : String(e) })
   } finally {
     if (status.value === 'loading') status.value = 'idle'
   }
@@ -102,7 +105,7 @@ async function create() {
     })
     created.value = res.organisation
     status.value = 'success'
-    notify({ type: 'success', title: `${res.organisation.name} is set up`, description: `Sign in as ${res.admin.email} to finish setting it up.` })
+    notify({ type: 'success', title: t('createOrg.isSetUp', { name: res.organisation.name }), description: t('createOrg.signInAs', { email: res.admin.email }) })
     await nextTick()
     document.querySelector<HTMLElement>('#wizard-done h1')?.focus()
   } catch (e) {
@@ -117,9 +120,9 @@ async function create() {
 }
 
 const summary = computed(() => [
-  { label: 'Organisation', value: created.value?.name },
-  { label: 'Domain', value: created.value?.domain },
-  { label: 'Global admin', value: `${form.adminName.trim()} (${username.value}@${domain.value})` },
+  { label: t('createOrg.steps.organisation'), value: created.value?.name },
+  { label: t('createOrg.steps.domain'), value: created.value?.domain },
+  { label: t('createOrg.steps.globalAdmin'), value: `${form.adminName.trim()} (${username.value}@${domain.value})` },
 ])
 </script>
 
@@ -128,41 +131,32 @@ const summary = computed(() => [
   <div class="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background p-4 sm:p-6">
     <div class="flex items-center gap-2 text-primary">
       <span class="flex size-8 items-center justify-center rounded bg-primary text-xs font-bold text-white" aria-hidden="true">K</span>
-      <span class="text-lg font-bold">Keston</span>
+      <span class="text-lg font-bold">{{ t('createOrg.keston') }}</span>
     </div>
     <Card v-if="!created" class="w-full max-w-lg">
       <form class="flex flex-col gap-6" novalidate @submit.prevent="next">
-        <div class="flex flex-col gap-3">
-          <Progress label="New organisation" segments :value="step + 1" :max="steps.length" />
-          <p class="text-sm text-black/65">
-            Step {{ step + 1 }} of {{ steps.length }}: <span class="text-black">{{ steps[step] }}</span>
-          </p>
-        </div>
+        <Steps :steps="steps" :step="step" :label="t('createOrg.newOrganisation')" />
 
         <div id="wizard-step" class="flex flex-col gap-4">
           <template v-if="step === 0">
             <div class="flex flex-col gap-1">
-              <h1 tabindex="-1" class="text-xl font-bold outline-none">What's the organisation called?</h1>
-              <p class="text-sm text-black/65">
-                Set up your school or organisation on Keston. As people there would recognise it, e.g. Greenfield
-                Primary School.
-              </p>
+              <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.name.title') }}</h1>
+              <p class="text-sm text-black/65">{{ t('createOrg.name.description') }}</p>
             </div>
-            <Input v-model="form.name" label="Organisation name" :error-text="errors.name" />
+            <Input v-model="form.name" :label="t('createOrg.name.label')" :error-text="errors.name" />
           </template>
 
           <template v-else-if="step === 1">
             <div class="flex flex-col gap-1">
-              <h1 tabindex="-1" class="text-xl font-bold outline-none">What's its domain?</h1>
-              <p class="text-sm text-black/65">
-                Its users will sign in as <span class="font-bold text-black">name@{{ domain || 'domain' }}</span>. Each
-                organisation needs its own.
-              </p>
+              <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.domain.title') }}</h1>
+              <I18nT keypath="createOrg.domain.description" tag="p" scope="global" class="text-sm text-black/65">
+                <template #email><span class="font-bold text-black">name@{{ domain || t('createOrg.domain.fallback') }}</span></template>
+              </I18nT>
             </div>
             <Input
               v-model="form.domain"
-              label="Domain"
-              placeholder="greenfield.sch.uk"
+              :label="t('organisations.columns.domain')"
+              :placeholder="t('createOrg.domain.placeholder')"
               autocapitalize="off"
               spellcheck="false"
               :error-text="errors.domain"
@@ -171,16 +165,13 @@ const summary = computed(() => [
 
           <template v-else-if="step === 2">
             <div class="flex flex-col gap-1">
-              <h1 tabindex="-1" class="text-xl font-bold outline-none">Who's the first global admin?</h1>
-              <p class="text-sm text-black/65">
-                Probably you. They manage {{ form.name.trim() }}'s users and password policy, and can add more
-                admins.
-              </p>
+              <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.admin.title') }}</h1>
+              <p class="text-sm text-black/65">{{ t('createOrg.admin.description', { name: form.name.trim() }) }}</p>
             </div>
-            <Input v-model="form.adminName" label="Their name" autocomplete="off" :error-text="errors.adminName" />
+            <Input v-model="form.adminName" :label="t('createOrg.admin.theirName')" autocomplete="off" :error-text="errors.adminName" />
             <Input
               v-model="form.adminUsername"
-              label="Username"
+              :label="t('addUser.username')"
               autocapitalize="off"
               spellcheck="false"
               autocomplete="off"
@@ -192,10 +183,8 @@ const summary = computed(() => [
 
           <template v-else>
             <div class="flex flex-col gap-1">
-              <h1 tabindex="-1" class="text-xl font-bold outline-none">Set their password</h1>
-              <p class="text-sm text-black/65">
-                For {{ username }}@{{ domain }}. It can be changed later in their Keston account.
-              </p>
+              <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.password.title') }}</h1>
+              <p class="text-sm text-black/65">{{ t('createOrg.password.description', { email: `${username}@${domain}` }) }}</p>
             </div>
             <PasswordField v-model="form.password" v-model:valid="passwordValid" :username="username" public :error-text="errors.password" />
           </template>
@@ -204,17 +193,17 @@ const summary = computed(() => [
         <div class="flex items-center justify-between gap-2">
           <Button v-if="step > 0" :disabled="status !== 'idle'" @click="previous">
             <template #leading><ArrowLeft /></template>
-            Previous
+            {{ t('common.previous') }}
           </Button>
-          <Link v-else as="button" class="text-sm" @click="signIn('/')">Already on Keston? Sign in</Link>
+          <Link v-else as="button" class="text-sm" @click="signIn('/')">{{ t('createOrg.alreadyOnKeston') }}</Link>
           <Button
             type="submit"
             variant="primary"
             :status="status"
-            :loading-text="last ? 'Creating' : 'Checking'"
-            success-text="Created"
+            :loading-text="last ? t('groups.creating') : t('createOrg.checking')"
+            :success-text="t('createOrg.created')"
           >
-            {{ last ? 'Create organisation' : 'Next' }}
+            {{ last ? t('createOrg.create') : t('common.next') }}
             <template v-if="!last" #trailing><ArrowRight /></template>
           </Button>
         </div>
@@ -226,14 +215,12 @@ const summary = computed(() => [
       <div class="flex flex-col gap-6">
         <div class="flex flex-col items-center gap-2 text-center">
           <CircleCheck class="size-10 text-green" aria-hidden="true" />
-          <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ created.name }} is set up</h1>
-          <p class="text-sm text-black/65">
-            Sign in as {{ username }}@{{ created.domain }} to add your people and set your password policy.
-          </p>
+          <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.isSetUp', { name: created.name }) }}</h1>
+          <p class="text-sm text-black/65">{{ t('createOrg.done', { email: `${username}@${created.domain}` }) }}</p>
         </div>
         <SummaryList :items="summary" />
         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="primary" @click="signIn(`/organisations/${created.id}`)">Sign in to Keston Admin</Button>
+          <Button variant="primary" @click="signIn(`/organisations/${created.id}`)">{{ t('createOrg.signInToAdmin') }}</Button>
         </div>
       </div>
     </Card>

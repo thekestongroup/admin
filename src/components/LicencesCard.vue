@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { Button, type ButtonStatus, Card, Checkbox, EmptyState, Spinner, useNotifications } from '@thekestongroup/ui'
+import { Button, type ButtonStatus, Card, CheckboxGroup, EmptyState, Spinner, useNotifications } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type Product } from '../lib/api'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * The Keston products someone has a licence for, on their page. Without
@@ -27,9 +30,6 @@ watch(licences, (v) => (chosen.value = [...v]))
 
 const changed = computed(() => [...chosen.value].sort().join() !== [...licences.value].sort().join())
 
-function toggle(id: string, on: boolean) {
-  chosen.value = on ? [...chosen.value, id] : chosen.value.filter((l) => l !== id)
-}
 
 async function save() {
   status.value = 'loading'
@@ -38,38 +38,34 @@ async function save() {
     status.value = 'success'
   } catch (e) {
     status.value = 'idle'
-    notify({ type: 'error', title: 'Couldn’t save the licences', description: e instanceof Error ? e.message : String(e) })
+    notify({ type: 'error', title: t('licences.couldntSave'), description: e instanceof Error ? e.message : String(e) })
   }
 }
 </script>
 
 <template>
-  <Card title="Licences" :description="`The Keston products ${name} can use. Without a licence, they can’t sign in to it.`">
-    <EmptyState v-if="loadError" size="sm" title="Couldn’t load the products" :description="loadError" class="p-0" />
-    <div v-else-if="!products" class="flex justify-center py-6"><Spinner label="Loading" /></div>
-    <EmptyState v-else-if="!products.length" size="sm" title="No products yet" class="p-0" />
-    <fieldset v-else class="flex flex-col gap-3">
-      <legend class="sr-only">Licences</legend>
-      <Checkbox
-        v-for="p in products"
-        :key="p.id"
-        :model-value="chosen.includes(p.id)"
-        :label="p.name"
-        :description="`By ${p.publisher}`"
-        :disabled="!canEdit"
-        @update:model-value="toggle(p.id, !!$event)"
-      />
-    </fieldset>
+  <Card :title="t('licences.title')" :description="t('licences.cardDescription', { name })">
+    <EmptyState v-if="loadError" size="sm" :title="t('licences.couldntLoad')" :description="loadError" class="p-0" />
+    <div v-else-if="!products" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
+    <EmptyState v-else-if="!products.length" size="sm" :title="t('licences.none')" class="p-0" />
+    <CheckboxGroup
+      v-else
+      v-model="chosen"
+      :label="t('licences.title')"
+      hide-label
+      :options="products.map((p) => ({ label: p.name, value: p.id, description: t('licences.by', { publisher: p.publisher }) }))"
+      :disabled="!canEdit"
+    />
     <template v-if="canEdit && products?.length" #footer>
       <Button
         variant="primary"
         v-model:status="status"
         :disabled="!changed && status === 'idle'"
-        loading-text="Saving"
-        success-text="Saved"
+        :loading-text="t('common.saving')"
+        :success-text="t('common.saved')"
         @click="save"
       >
-        Save licences
+        {{ t('licences.save') }}
       </Button>
     </template>
   </Card>

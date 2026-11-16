@@ -18,6 +18,9 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ApiError, api, loadMe, type Me, type Organisation, type Support } from '../lib/api'
+import { I18nT, useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * An organisation: its details, Keston support access, and (for Keston
@@ -62,15 +65,15 @@ const isStaff = computed(() => !!me.value?.platformAdmin && me.value.organisatio
 const pendingRequests = computed(() => support.value?.requests.filter((r) => r.status === 'pending') ?? [])
 const pendingLockout = computed(() => support.value?.lockouts.find((l) => l.status === 'pending'))
 const history = computed(() => (support.value?.requests ?? []).filter((r) => r.status !== 'pending').slice(0, 5))
-const statusWords: Record<string, string> = { approved: 'allowed', denied: 'declined', revoked: 'ended' }
+const statusWord = (s: string) => (['approved', 'denied', 'revoked'].includes(s) ? t(`overview.status.${s}`) : s)
 
 const details = computed(() =>
   org.value
     ? [
-        { label: 'Name', value: org.value.name },
-        { label: 'Domain', value: org.value.domain },
-        { label: 'Users', value: org.value.userCount },
-        { label: 'Created', value: formatDate(org.value.createdAt) },
+        { label: t('common.name'), value: org.value.name },
+        { label: t('organisations.columns.domain'), value: org.value.domain },
+        { label: t('organisations.columns.users'), value: org.value.userCount },
+        { label: t('organisations.columns.created'), value: formatDate(org.value.createdAt) },
       ]
     : [],
 )
@@ -92,7 +95,7 @@ function ask(kind: 'support' | 'lockout') {
 
 async function send() {
   if (!reason.value.trim()) {
-    reasonError.value = 'Say why, so the organisation’s admins can decide'
+    reasonError.value = t('overview.sayWhy')
     return
   }
   askStatus.value = 'loading'
@@ -104,15 +107,13 @@ async function send() {
     await load()
     notify({
       type: 'success',
-      title: lockout ? 'Lockout procedure started' : 'Support access requested',
-      description: lockout
-        ? 'Every global admin has been told. Unless one declines it, you’ll get a support account in 3 days.'
-        : 'Its global admins have been asked.',
+      title: lockout ? t('overview.lockoutStarted') : t('overview.supportRequested'),
+      description: lockout ? t('overview.lockoutStartedDescription') : t('overview.supportRequestedDescription'),
     })
   } catch (e) {
     askStatus.value = 'idle'
     if (e instanceof ApiError && e.field === 'reason') reasonError.value = e.message
-    else notify({ type: 'error', title: 'Couldn’t send it', description: message(e) })
+    else notify({ type: 'error', title: t('overview.couldntSend'), description: message(e) })
   }
 }
 
@@ -124,7 +125,7 @@ async function openSupportAccount() {
     window.location.assign((await api.openSupportAccount(orgId)).url)
   } catch (e) {
     opening.value = false
-    notify({ type: 'error', title: 'Couldn’t open the support account', description: message(e) })
+    notify({ type: 'error', title: t('overview.couldntOpen'), description: message(e) })
   }
 }
 
@@ -138,7 +139,7 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
     await load()
     notify({ type: 'success', title })
   } catch (e) {
-    notify({ type: 'error', title: 'Couldn’t do that', description: message(e) })
+    notify({ type: 'error', title: t('bulk.couldntDoThat'), description: message(e) })
   } finally {
     busy.value = undefined
   }
@@ -148,12 +149,12 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
 <template>
   <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
     <Card v-if="error">
-      <EmptyState :icon="ShieldAlert" title="Couldn’t load the organisation" :description="error" />
+      <EmptyState :icon="ShieldAlert" :title="t('overview.couldntLoad')" :description="error" />
     </Card>
-    <div v-else-if="!org || !support" class="flex justify-center py-12"><Spinner label="Loading" /></div>
+    <div v-else-if="!org || !support" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <PageHeader :title="org.name" :description="org.domain">
-        <template v-if="org.isPlatform" #badge><Badge color="primary">Official TKG</Badge></template>
+        <template v-if="org.isPlatform" #badge><Badge color="primary">{{ t('overview.officialTkg') }}</Badge></template>
       </PageHeader>
 
       <!-- Scheduled for deletion. -->
@@ -161,17 +162,17 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <div class="flex flex-col gap-3" role="status">
           <div class="flex items-center gap-2">
             <CalendarX class="size-5 text-black/65" aria-hidden="true" />
-            <h2 class="text-base font-bold">{{ org.name }} will be deleted on {{ formatDate(org.deleteAfter) }}</h2>
+            <h2 class="text-base font-bold">{{ t('settings.deleteScheduled', { name: org.name, date: formatDate(org.deleteAfter) }) }}</h2>
           </div>
           <p class="text-sm">
-            With all its users. A global admin signing in to Keston before then cancels it, or cancel it here.
+            {{ t('overview.deletionExplanation') }}
           </p>
           <div v-if="decides">
             <Button
               :status="busy === 'undelete' ? 'loading' : 'idle'"
-              @click="act('undelete', () => api.cancelDeletion(orgId), 'Deletion cancelled')"
+              @click="act('undelete', () => api.cancelDeletion(orgId), t('overview.deletionCancelled'))"
             >
-              Cancel deletion
+              {{ t('overview.cancelDeletion') }}
             </Button>
           </div>
         </div>
@@ -182,80 +183,79 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <div class="flex flex-col gap-3" role="alert">
           <div class="flex items-center gap-2">
             <ShieldAlert class="size-5 text-red" aria-hidden="true" />
-            <h2 class="text-base font-bold">An organisation lockout request has been made</h2>
+            <h2 class="text-base font-bold">{{ t('overview.lockoutMade') }}</h2>
           </div>
           <p class="text-sm">
-            {{ pendingLockout.requester ?? 'Keston support' }} was told nobody at {{ org.name }} can sign in:
-            “{{ pendingLockout.reason }}”.
+            {{ t('overview.lockoutTold', { who: pendingLockout.requester ?? t('overview.kestonSupport'), org: org.name, reason: pendingLockout.reason }) }}
           </p>
-          <p class="text-sm">
-            Unless a global admin declines it by <span class="font-bold">{{ formatDateTime(pendingLockout.effectiveAt) }}</span>,
-            Keston support gets a support account here for 7 days, to restore access.
-          </p>
+          <I18nT keypath="overview.lockoutUnless" tag="p" scope="global" class="text-sm">
+            <template #date><span class="font-bold">{{ formatDateTime(pendingLockout.effectiveAt) }}</span></template>
+          </I18nT>
           <div class="flex gap-2">
             <Button
               v-if="decides"
               variant="danger"
               :status="busy === 'lockout' ? 'loading' : 'idle'"
-              @click="act('lockout', () => api.decideLockout(orgId, pendingLockout!.id, 'deny'), 'Lockout request declined')"
+              @click="act('lockout', () => api.decideLockout(orgId, pendingLockout!.id, 'deny'), t('overview.lockoutDeclined'))"
             >
-              Decline the request
+              {{ t('overview.declineRequest') }}
             </Button>
             <Button
               v-if="isStaff"
               :status="busy === 'cancel' ? 'loading' : 'idle'"
-              @click="act('cancel', () => api.decideLockout(orgId, pendingLockout!.id, 'cancel'), 'Lockout request cancelled')"
+              @click="act('cancel', () => api.decideLockout(orgId, pendingLockout!.id, 'cancel'), t('overview.lockoutCancelled'))"
             >
-              Cancel it
+              {{ t('overview.cancelIt') }}
             </Button>
           </div>
         </div>
       </Card>
 
-      <Card title="Details">
+      <Card :title="t('overview.details')">
         <SummaryList :items="details" />
       </Card>
 
       <Card
         v-if="!org.isPlatform"
-        title="Keston support access"
-        description="Let Keston support sign in to help with your users. You choose when, and can end it whenever you like."
+        :title="t('overview.support.title')"
+        :description="t('overview.support.description')"
       >
         <template #actions>
-          <Badge v-if="support.access.active" color="blue">Allowed until {{ formatDate(support.access.until!) }}</Badge>
-          <Badge v-else>Not allowed</Badge>
+          <Badge v-if="support.access.active" color="blue">{{ t('overview.support.allowedUntil', { date: formatDate(support.access.until!) }) }}</Badge>
+          <Badge v-else>{{ t('overview.support.notAllowed') }}</Badge>
         </template>
         <div class="flex flex-col gap-4">
           <!-- Requests waiting for a decision. -->
           <ul v-if="pendingRequests.length" class="flex flex-col gap-3">
             <li v-for="req in pendingRequests" :key="req.id" class="flex flex-col gap-2 rounded border border-black/15 p-3">
-              <p class="text-sm">
-                <span class="font-bold">{{ req.requester ?? 'Keston support' }}</span> asked on
-                {{ formatDateTime(req.createdAt) }}: “{{ req.reason }}”
-              </p>
+              <I18nT keypath="overview.support.asked" tag="p" scope="global" class="text-sm">
+                <template #who><span class="font-bold">{{ req.requester ?? t('overview.kestonSupport') }}</span></template>
+                <template #date>{{ formatDateTime(req.createdAt) }}</template>
+                <template #reason>{{ req.reason }}</template>
+              </I18nT>
               <div v-if="decides" class="flex gap-2">
                 <Button
                   size="sm"
                   variant="primary"
                   :status="busy === req.id + 'a' ? 'loading' : 'idle'"
-                  @click="act(req.id + 'a', () => api.decideSupport(orgId, req.id, 'approve', 7), 'Support access allowed for 7 days')"
+                  @click="act(req.id + 'a', () => api.decideSupport(orgId, req.id, 'approve', 7), t('overview.support.allowedFor7'))"
                 >
-                  Allow for 7 days
+                  {{ t('overview.support.allowFor7') }}
                 </Button>
                 <Button
                   size="sm"
                   :status="busy === req.id + 'd' ? 'loading' : 'idle'"
-                  @click="act(req.id + 'd', () => api.decideSupport(orgId, req.id, 'deny'), 'Support access declined')"
+                  @click="act(req.id + 'd', () => api.decideSupport(orgId, req.id, 'deny'), t('overview.support.declined'))"
                 >
-                  Decline
+                  {{ t('overview.support.decline') }}
                 </Button>
               </div>
-              <p v-else class="text-xs text-black/65">Waiting for one of its global admins.</p>
+              <p v-else class="text-xs text-black/65">{{ t('overview.support.waiting') }}</p>
             </li>
           </ul>
 
           <p v-if="support.access.active && decides" class="text-sm text-black/65">
-            Keston support has a support account in your users while access lasts. It’s removed when access ends.
+            {{ t('overview.support.hasAccount') }}
           </p>
 
           <div class="flex flex-wrap gap-2">
@@ -263,9 +263,9 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
               v-if="decides && support.access.active"
               size="sm"
               :status="busy === 'revoke' ? 'loading' : 'idle'"
-              @click="act('revoke', () => api.revokeSupport(orgId), 'Support access ended')"
+              @click="act('revoke', () => api.revokeSupport(orgId), t('overview.support.ended'))"
             >
-              End support access
+              {{ t('overview.support.end') }}
             </Button>
             <template v-if="isStaff">
               <Button
@@ -273,35 +273,34 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
                 size="sm"
                 variant="primary"
                 :status="opening ? 'loading' : 'idle'"
-                loading-text="Opening"
+                :loading-text="t('overview.support.opening')"
                 @click="openSupportAccount"
               >
                 <template #leading><LogIn /></template>
-                Open support account
+                {{ t('overview.support.openAccount') }}
               </Button>
               <template v-else>
                 <Button size="sm" variant="primary" :disabled="pendingRequests.length > 0" @click="ask('support')">
                   <template #leading><LifeBuoy /></template>
-                  Ask for support access
+                  {{ t('overview.support.ask') }}
                 </Button>
                 <Button size="sm" :disabled="!!pendingLockout" @click="ask('lockout')">
                   <template #leading><ShieldAlert /></template>
-                  Start lockout procedure
+                  {{ t('overview.support.startLockout') }}
                 </Button>
               </template>
             </template>
           </div>
           <p v-if="isStaff && support.supportAccount" class="text-xs text-black/65">
-            Signs you in to {{ org.name }} as {{ support.supportAccount.email }}, until
-            {{ formatDateTime(support.supportAccount.expiresAt) }}. Switch account to come back.
+            {{ t('overview.support.signsYouIn', { org: org.name, email: support.supportAccount.email, until: formatDateTime(support.supportAccount.expiresAt) }) }}
           </p>
 
           <div v-if="history.length" class="flex flex-col gap-1">
-            <p class="text-sm font-bold">Recently</p>
+            <p class="text-sm font-bold">{{ t('overview.support.recently') }}</p>
             <ul class="flex flex-col gap-1 text-xs text-black/65">
               <li v-for="req in history" :key="req.id">
-                {{ formatDate(req.createdAt) }}: {{ req.via === 'lockout' ? 'Lockout procedure' : 'Request' }}
-                {{ statusWords[req.status] ?? req.status }}<template v-if="req.requester"> ({{ req.requester }})</template>
+                {{ formatDate(req.createdAt) }}: {{ req.via === 'lockout' ? t('overview.support.lockoutProcedure') : t('overview.support.request') }}
+                {{ statusWord(req.status) }}<template v-if="req.requester"> ({{ req.requester }})</template>
               </li>
             </ul>
           </div>
@@ -311,29 +310,25 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
 
     <Slideover
       v-model:open="askOpen"
-      :title="asking === 'lockout' ? 'Start the organisation lockout procedure' : 'Ask for support access'"
-      :description="
-        asking === 'lockout'
-          ? 'Only when nobody at the organisation can sign in. Every global admin is told, and it goes through in 3 days unless one declines it.'
-          : 'Its global admins are asked. Once they allow it, you get a support account in the organisation.'
-      "
+      :title="asking === 'lockout' ? t('overview.ask.lockoutTitle') : t('overview.support.ask')"
+      :description="asking === 'lockout' ? t('overview.ask.lockoutDescription') : t('overview.ask.supportDescription')"
       initial-focus="auto"
     >
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="send">
           <Input
             v-model="reason"
-            label="Why"
-            :helper="asking === 'lockout' ? 'e.g. Their only global admin has left, and nobody can reset passwords.' : 'e.g. Their office asked us to check why a teacher can’t sign in.'"
+            :label="t('overview.ask.why')"
+            :helper="asking === 'lockout' ? t('overview.ask.lockoutHelper') : t('overview.ask.supportHelper')"
             :error-text="reasonError"
           />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
       <template #footer="{ close }">
-        <Button :disabled="askStatus !== 'idle'" @click="close">Cancel</Button>
-        <Button :variant="asking === 'lockout' ? 'danger' : 'primary'" :status="askStatus" loading-text="Sending" @click="send">
-          {{ asking === 'lockout' ? 'Start the procedure' : 'Send request' }}
+        <Button :disabled="askStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button :variant="asking === 'lockout' ? 'danger' : 'primary'" :status="askStatus" :loading-text="t('overview.ask.sending')" @click="send">
+          {{ asking === 'lockout' ? t('overview.ask.startProcedure') : t('overview.ask.send') }}
         </Button>
       </template>
     </Slideover>

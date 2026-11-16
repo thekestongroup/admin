@@ -15,6 +15,9 @@ import { computed, ref } from 'vue'
 import { ApiError, api, type BulkResult, type Group, type PermissionId, type User } from '../lib/api'
 import BulkSummary from './BulkSummary.vue'
 import PasswordField from './PasswordField.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 /**
  * The Users page's toolbar actions (PageHeader shows them) and the panels
@@ -36,14 +39,14 @@ const { notify } = useNotifications()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 type Kind = 'reset-password' | 'sign-in' | 'groups' | 'delete'
-const titles: Record<Kind, string> = {
-  'reset-password': 'Reset password',
-  'sign-in': 'Change sign-in status',
-  groups: 'Manage group memberships',
-  delete: 'Delete users',
-}
+const titles = computed<Record<Kind, string>>(() => ({
+  'reset-password': t('bulk.resetPassword.title'),
+  'sign-in': t('bulk.signIn.title'),
+  groups: t('bulk.groups.title'),
+  delete: t('bulk.delete.title'),
+}))
 
-const count = computed(() => `${props.selected.length} ${props.selected.length === 1 ? 'user' : 'users'} selected`)
+const count = computed(() => t('bulk.selected', props.selected.length))
 
 /** Who the open panel acts on: one user from a row's menu, or everyone ticked. */
 const only = ref<User>()
@@ -56,20 +59,20 @@ const actions = computed<PageHeaderAction[]>(() => {
     return [
       ...(props.can('users.create')
         ? [
-            { label: 'Add user', icon: UserPlus, onSelect: () => emit('add') },
-            { label: 'Add multiple users', icon: Users, to: `/organisations/${props.orgId}/users/add` },
+            { label: t('bulk.addUser'), icon: UserPlus, onSelect: () => emit('add') },
+            { label: t('bulk.addMultiple'), icon: Users, to: `/organisations/${props.orgId}/users/add` },
           ]
         : []),
-      { label: 'Deleted users', icon: ArchiveRestore, to: `/organisations/${props.orgId}/users/deleted` },
+      { label: t('bulk.deletedUsers'), icon: ArchiveRestore, to: `/organisations/${props.orgId}/users/deleted` },
     ]
   }
   const out: PageHeaderAction[] = []
-  if (props.can('users.reset_password')) out.push({ label: titles['reset-password'], icon: KeyRound, onSelect: () => ask('reset-password') })
-  if (props.can('users.status')) out.push({ label: titles['sign-in'], icon: Ban, onSelect: () => ask('sign-in') })
+  if (props.can('users.reset_password')) out.push({ label: titles.value['reset-password'], icon: KeyRound, onSelect: () => ask('reset-password') })
+  if (props.can('users.status')) out.push({ label: titles.value['sign-in'], icon: Ban, onSelect: () => ask('sign-in') })
   if (props.can('groups.manage') || props.can('permissions.assign'))
-    out.push({ label: titles.groups, icon: UsersRound, onSelect: () => ask('groups') })
-  if (props.can('users.delete')) out.push({ label: titles.delete, icon: Trash2, onSelect: () => ask('delete') })
-  out.push({ label: 'Clear selection', icon: X, onSelect: () => emit('clear') })
+    out.push({ label: titles.value.groups, icon: UsersRound, onSelect: () => ask('groups') })
+  if (props.can('users.delete')) out.push({ label: titles.value.delete, icon: Trash2, onSelect: () => ask('delete') })
+  out.push({ label: t('bulk.clearSelection'), icon: X, onSelect: () => emit('clear') })
   return out
 })
 
@@ -88,16 +91,16 @@ const requireChange = ref(true)
 
 // Change sign-in status
 const signIn = ref<'block' | 'allow'>('block')
-const signInOptions = [
-  { label: 'Block users from signing in', value: 'block', description: 'They’re signed out of Keston and every app straight away.' },
-  { label: 'Allow users to sign in', value: 'allow', description: 'They can sign in again, as before.' },
-]
+const signInOptions = computed(() => [
+  { label: t('bulk.signIn.blockLabel'), value: 'block', description: t('bulk.signIn.blockDescription') },
+  { label: t('bulk.signIn.allowLabel'), value: 'allow', description: t('bulk.signIn.allowDescription') },
+])
 
 // Manage group memberships
 const addTo = ref<string[]>([])
 const removeFrom = ref<string[]>([])
 const groupOptions = computed(() =>
-  props.groups.map((g) => ({ label: g.name, value: g.id, description: g.memberCount === 1 ? '1 user' : `${g.memberCount} users` })),
+  props.groups.map((g) => ({ label: g.name, value: g.id, description: t('bulk.groups.members', g.memberCount) })),
 )
 
 function ask(k: Kind, user?: User) {
@@ -116,15 +119,15 @@ function ask(k: Kind, user?: User) {
 const confirm = computed(() => {
   switch (kind.value) {
     case 'reset-password':
-      return { label: 'Reset passwords', loading: 'Resetting', danger: false }
+      return { label: t('bulk.resetPassword.confirm'), loading: t('bulk.resetPassword.loading'), danger: false }
     case 'sign-in':
       return signIn.value === 'block'
-        ? { label: 'Block sign-in', loading: 'Blocking', danger: true }
-        : { label: 'Allow sign-in', loading: 'Allowing', danger: false }
+        ? { label: t('bulk.signIn.blockConfirm'), loading: t('bulk.signIn.blocking'), danger: true }
+        : { label: t('bulk.signIn.allowConfirm'), loading: t('bulk.signIn.allowing'), danger: false }
     case 'groups':
-      return { label: 'Save memberships', loading: 'Saving', danger: false }
+      return { label: t('bulk.groups.confirm'), loading: t('common.saving'), danger: false }
     default:
-      return { label: 'Delete users', loading: 'Deleting', danger: true }
+      return { label: t('bulk.delete.title'), loading: t('common.deleting'), danger: true }
   }
 })
 
@@ -146,11 +149,11 @@ defineExpose({
 function check(): boolean {
   errors.value = {}
   if (kind.value === 'reset-password' && !autoPassword.value && !passwordValid.value)
-    errors.value.password = password.value ? 'The password doesn’t meet every rule yet' : 'Enter a password'
+    errors.value.password = password.value ? t('password.notYetValid') : t('password.enter')
   if (kind.value === 'groups') {
-    if (!addTo.value.length && !removeFrom.value.length) errors.value.add = 'Choose at least one group'
+    if (!addTo.value.length && !removeFrom.value.length) errors.value.add = t('bulk.groups.chooseOne')
     const both = addTo.value.find((id) => removeFrom.value.includes(id))
-    if (both) errors.value.remove = `${props.groups.find((g) => g.id === both)?.name} is in both lists`
+    if (both) errors.value.remove = t('bulk.groups.inBoth', { name: props.groups.find((g) => g.id === both)?.name })
   }
   return !Object.values(errors.value).some(Boolean)
 }
@@ -171,7 +174,7 @@ async function run() {
     else if (k === 'groups') res = await api.bulkGroups(props.orgId, ids, addTo.value, removeFrom.value)
     else res = await api.bulk(props.orgId, 'delete', ids)
     results.value = res.results
-    summaryTitle.value = k === 'sign-in' ? (signIn.value === 'block' ? 'Block sign-in' : 'Allow sign-in') : titles[k]
+    summaryTitle.value = k === 'sign-in' ? (signIn.value === 'block' ? t('bulk.signIn.blockConfirm') : t('bulk.signIn.allowConfirm')) : titles.value[k]
     status.value = 'idle'
     kind.value = undefined
     summaryOpen.value = true
@@ -179,7 +182,7 @@ async function run() {
   } catch (e) {
     status.value = 'idle'
     if (e instanceof ApiError && e.field) errors.value[e.field] = e.message
-    else notify({ type: 'error', title: 'Couldn’t do that', description: message(e) })
+    else notify({ type: 'error', title: t('bulk.couldntDoThat'), description: message(e) })
   }
 }
 </script>
@@ -190,46 +193,44 @@ async function run() {
     <template #body>
       <!-- Reset password -->
       <div v-if="kind === 'reset-password'" class="flex flex-col gap-4">
-        <p class="text-sm text-black/65">They’re signed out everywhere, and unlocked if they were locked out.</p>
+        <p class="text-sm text-black/65">{{ t('bulk.resetPassword.intro') }}</p>
         <Checkbox
           v-model="autoPassword"
-          label="Automatically create a password"
-          :description="one ? 'It meets your password policy, and is shown once.' : 'Each user gets their own, which meets your password policy.'"
+          :label="t('password.auto')"
+          :description="one ? t('bulk.resetPassword.autoOne') : t('bulk.resetPassword.autoMany')"
         />
         <template v-if="!autoPassword">
           <Notification
             v-if="!one"
             type="warning"
-            title="Everyone gets the same password"
-            description="This will apply the same password for all the selected users. For security, we suggest requiring these users to change their password when they first sign in."
+            :title="t('bulk.resetPassword.sameTitle')"
+            :description="t('bulk.resetPassword.sameDescription')"
             :dismissible="false"
           />
           <PasswordField v-model="password" v-model:valid="passwordValid" :organisation-id="orgId" :error-text="errors.password" />
         </template>
         <Checkbox
           v-model="requireChange"
-          :label="one ? 'Require this user to change their password on next sign in' : 'Require these users to change their passwords on next sign in'"
-          description="Recommended, so only they know their password."
+          :label="one ? t('bulk.resetPassword.requireOne') : t('bulk.resetPassword.requireMany')"
+          :description="t('password.requireChangeDescription')"
         />
       </div>
 
       <!-- Change sign-in status -->
       <div v-else-if="kind === 'sign-in'" class="flex flex-col gap-4">
-        <RadioGroup v-model="signIn" label="Sign-in status" :options="signInOptions" />
+        <RadioGroup v-model="signIn" :label="t('bulk.signIn.label')" :options="signInOptions" />
         <p class="text-sm text-black/65">
-          Blocking someone signs them out of Keston and every app straight away, and stops them signing in until
-          they’re allowed again. Their account, groups and licences stay as they are. It’s a good idea to block an
-          account you think has been compromised, then reset its password.
+          {{ t('bulk.signIn.explanation') }}
         </p>
       </div>
 
       <!-- Manage group memberships -->
       <div v-else-if="kind === 'groups'" class="flex flex-col gap-4">
-        <p class="text-sm text-black/65">Groups give their members apps and permissions.</p>
+        <p class="text-sm text-black/65">{{ t('bulk.groups.intro') }}</p>
         <Select
           v-model="addTo"
-          label="Add to groups"
-          :helper="one ? 'They join these groups.' : 'Everyone selected joins these groups.'"
+          :label="t('bulk.groups.addTo')"
+          :helper="one ? t('bulk.groups.addOne') : t('bulk.groups.addMany')"
           :options="groupOptions"
           :error-text="errors.add"
           multiple
@@ -237,8 +238,8 @@ async function run() {
         />
         <Select
           v-model="removeFrom"
-          label="Remove from groups"
-          :helper="one ? 'They leave these groups, if they’re in them.' : 'Everyone selected leaves these groups, if they’re in them.'"
+          :label="t('bulk.groups.removeFrom')"
+          :helper="one ? t('bulk.groups.removeOne') : t('bulk.groups.removeMany')"
           :options="groupOptions"
           :error-text="errors.remove"
           multiple
@@ -248,12 +249,11 @@ async function run() {
 
       <!-- Delete -->
       <p v-else-if="kind === 'delete'" class="text-sm text-black/65">
-        They’re signed out everywhere and can’t sign in. For 30 days you can restore them, with their groups, from
-        Deleted users; then they’re removed for good.
+        {{ t('bulk.delete.explanation') }}
       </p>
     </template>
     <template #footer="{ close }">
-      <Button :disabled="status !== 'idle'" @click="close">Cancel</Button>
+      <Button :disabled="status !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
       <Button :variant="confirm.danger ? 'danger' : 'primary'" :status="status" :loading-text="confirm.loading" @click="run">
         {{ confirm.label }}
       </Button>

@@ -25,10 +25,13 @@ import {
   actionLabel,
   device,
   logsApi,
-  methodLabels,
+  methodLabel,
   reasonLabel,
-  reasonLabels,
+  reasonOptions as reasonFilterOptions,
 } from '../lib/logs'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 /**
  * Logs: what admins did here (Admin actions) and every sign-in attempt
@@ -144,42 +147,39 @@ async function more() {
 // ── Filters ─────────────────────────────────────────────────────────────
 
 const userOptions = computed<SelectOption[]>(() => [
-  { label: 'Everyone', value: ALL },
+  { label: t('logs.everyone'), value: ALL },
   ...users.value.map((u) => ({ label: u.name, value: u.id, description: u.email })),
 ])
 const actionOptions = computed(() => [
-  ...actionGroups.map((g) => ({
+  ...actionGroups().map((g) => ({
     label: g.label,
     options: Object.entries(g.actions).map(([value, label]) => ({ label, value })),
   })),
 ])
-const resultOptions: SelectOption[] = [
-  { label: 'Successful and failed', value: ALL },
-  { label: 'Successful', value: 'success' },
-  { label: 'Failed', value: 'failure' },
-]
-const reasonOptions: SelectOption[] = [
-  { label: 'Any reason', value: ALL },
-  ...Object.entries(reasonLabels).map(([value, label]) => ({ label, value })),
-]
+const resultOptions = computed<SelectOption[]>(() => [
+  { label: t('logs.result.all'), value: ALL },
+  { label: t('logs.result.success'), value: 'success' },
+  { label: t('logs.result.failure'), value: 'failure' },
+])
+const reasonOptions = computed<SelectOption[]>(() => [{ label: t('logs.anyReason'), value: ALL }, ...reasonFilterOptions()])
 
 // ── Tables ──────────────────────────────────────────────────────────────
 
-const actionColumns: TableColumn<AuditEntry>[] = [
-  { key: 'createdAt', label: 'When' },
-  { key: 'actorName', label: 'Who' },
-  { key: 'action', label: 'What', rowHeader: true },
-  { key: 'summary', label: 'Details' },
-  { key: 'ip', label: 'IP address' },
-]
-const signInColumns: TableColumn<SignInEntry>[] = [
-  { key: 'createdAt', label: 'When' },
-  { key: 'userName', label: 'User', rowHeader: true },
-  { key: 'method', label: 'How' },
-  { key: 'clientName', label: 'App' },
-  { key: 'success', label: 'Result' },
-  { key: 'ip', label: 'Where from' },
-]
+const actionColumns = computed<TableColumn<AuditEntry>[]>(() => [
+  { key: 'createdAt', label: t('logs.columns.when') },
+  { key: 'actorName', label: t('logs.columns.who') },
+  { key: 'action', label: t('logs.columns.what'), rowHeader: true },
+  { key: 'summary', label: t('logs.columns.details') },
+  { key: 'ip', label: t('logs.columns.ip') },
+])
+const signInColumns = computed<TableColumn<SignInEntry>[]>(() => [
+  { key: 'createdAt', label: t('logs.columns.when') },
+  { key: 'userName', label: t('logs.columns.user'), rowHeader: true },
+  { key: 'method', label: t('logs.columns.how') },
+  { key: 'clientName', label: t('logs.columns.app') },
+  { key: 'success', label: t('logs.columns.result') },
+  { key: 'ip', label: t('logs.columns.whereFrom') },
+])
 
 const userLink = (id: string | null) => (id && users.value.some((u) => u.id === id) ? `/organisations/${orgId}/users/${id}` : undefined)
 /** Switching tabs keeps the filters both have: user and dates. */
@@ -188,31 +188,31 @@ const tabQuery = (v: string) => {
   for (const k of ['user', 'from', 'to']) if (q(k)) keep[k] = q(k)!
   return v === 'sign-ins' ? { ...keep, view: 'sign-ins' } : keep
 }
-const tabs = [
-  { view: 'actions', label: 'Admin actions' },
-  { view: 'sign-ins', label: 'Sign-ins' },
-]
+const tabs = computed(() => [
+  { view: 'actions', label: t('logs.tabs.actions') },
+  { view: 'sign-ins', label: t('logs.tabs.signIns') },
+])
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-6">
-    <PageHeader title="Logs" description="What admins did here, and every sign-in, for the last year.">
-      <nav aria-label="Logs" class="flex gap-6 border-b border-black/15">
+    <PageHeader :title="t('logs.title')" :description="t('logs.description')">
+      <nav :aria-label="t('logs.title')" class="flex gap-6 border-b border-black/15">
         <RouterLink
-          v-for="t in tabs"
-          :key="t.view"
-          :to="{ query: tabQuery(t.view) }"
-          :aria-current="view === t.view ? 'page' : undefined"
+          v-for="tab in tabs"
+          :key="tab.view"
+          :to="{ query: tabQuery(tab.view) }"
+          :aria-current="view === tab.view ? 'page' : undefined"
           class="-mb-px border-b-2 pb-2 text-sm font-bold"
-          :class="view === t.view ? 'border-primary text-black' : 'border-transparent text-black/65 hover:text-black'"
+          :class="view === tab.view ? 'border-primary text-black' : 'border-transparent text-black/65 hover:text-black'"
         >
-          {{ t.label }}
+          {{ tab.label }}
         </RouterLink>
       </nav>
     </PageHeader>
 
     <Card v-if="error">
-      <EmptyState :icon="TriangleAlert" title="Couldn’t load the logs" :description="error" />
+      <EmptyState :icon="TriangleAlert" :title="t('logs.couldntLoad')" :description="error" />
     </Card>
     <template v-else>
       <Card>
@@ -220,7 +220,7 @@ const tabs = [
           <Select
             v-if="users.length"
             v-model="filters.user"
-            label="User"
+            :label="t('logs.columns.user')"
             searchable
             :options="userOptions"
             @update:model-value="apply({ user: String($event ?? ALL) })"
@@ -228,22 +228,22 @@ const tabs = [
           <Select
             v-if="view === 'actions'"
             v-model="filters.action"
-            label="Actions"
-            placeholder="Every action"
+            :label="t('logs.actions.label')"
+            :placeholder="t('logs.everyAction')"
             searchable
             multiple
             :groups="actionOptions"
             @update:model-value="apply({ action: (($event as string[] | undefined) ?? []).join(',') })"
           />
           <template v-else>
-            <Select v-model="filters.result" label="Result" :options="resultOptions" @update:model-value="apply({ result: String($event) })" />
-            <Select v-model="filters.reason" label="Why it failed" :options="reasonOptions" @update:model-value="apply({ reason: String($event) })" />
+            <Select v-model="filters.result" :label="t('logs.columns.result')" :options="resultOptions" @update:model-value="apply({ result: String($event) })" />
+            <Select v-model="filters.reason" :label="t('logs.whyFailed')" :options="reasonOptions" @update:model-value="apply({ reason: String($event) })" />
           </template>
-          <InputDate v-model="filters.from" label="From" prefer="past" locale="en-GB" @update:model-value="apply({ from: $event })" />
-          <InputDate v-model="filters.to" label="To" prefer="past" locale="en-GB" @update:model-value="apply({ to: $event })" />
+          <InputDate v-model="filters.from" :label="t('logs.from')" prefer="past" :locale="locale" @update:model-value="apply({ from: $event })" />
+          <InputDate v-model="filters.to" :label="t('logs.to')" prefer="past" :locale="locale" @update:model-value="apply({ to: $event })" />
         </div>
         <div v-if="filtered" class="mt-4">
-          <Button size="sm" variant="ghost" @click="clear">Clear filters</Button>
+          <Button size="sm" variant="ghost" @click="clear">{{ t('logs.clearFilters') }}</Button>
         </div>
       </Card>
 
@@ -254,14 +254,14 @@ const tabs = [
           :rows="actions"
           row-key="id"
           :loading="loading"
-          caption="Admin actions"
+          :caption="t('logs.tabs.actions')"
           size="sm"
         >
           <template #cell-createdAt="{ row }"><RelativeTime :date="row.createdAt" class="whitespace-nowrap" /></template>
           <template #cell-actorName="{ row }">
             <Link v-if="userLink(row.actorId)" :as="RouterLink" :to="userLink(row.actorId)!">{{ row.actorName }}</Link>
             <span v-else>{{ row.actorName }}</span>
-            <span v-if="row.supportStaffName" class="block text-xs text-black/65">Keston support: {{ row.supportStaffName }}</span>
+            <span v-if="row.supportStaffName" class="block text-xs text-black/65">{{ t('logs.kestonSupport', { name: row.supportStaffName }) }}</span>
           </template>
           <template #cell-action="{ row }">
             {{ actionLabel(row.action) }}
@@ -275,24 +275,24 @@ const tabs = [
             <EmptyState
               size="sm"
               :icon="ScrollText"
-              :title="filtered ? 'Nothing matches these filters' : 'No admin actions yet'"
-              description="Changes made in Keston Admin show here."
+              :title="filtered ? t('logs.noMatch') : t('logs.noActions')"
+              :description="t('logs.noActionsDescription')"
               class="p-0"
             />
           </template>
         </Table>
-        <Table v-else :columns="signInColumns" :rows="signIns" row-key="id" :loading="loading" caption="Sign-ins" size="sm">
+        <Table v-else :columns="signInColumns" :rows="signIns" row-key="id" :loading="loading" :caption="t('logs.tabs.signIns')" size="sm">
           <template #cell-createdAt="{ row }"><RelativeTime :date="row.createdAt" class="whitespace-nowrap" /></template>
           <template #cell-userName="{ row }">
             <Link v-if="userLink(row.userId)" :as="RouterLink" :to="userLink(row.userId)!">{{ row.userName }}</Link>
             <span v-else>{{ row.userName || row.email }}</span>
             <span v-if="row.userName" class="block text-xs text-black/65">{{ row.email }}</span>
-            <span v-if="row.supportStaffName" class="block text-xs text-black/65">Keston support: {{ row.supportStaffName }}</span>
+            <span v-if="row.supportStaffName" class="block text-xs text-black/65">{{ t('logs.kestonSupport', { name: row.supportStaffName }) }}</span>
           </template>
-          <template #cell-method="{ row }">{{ methodLabels[row.method] ?? row.method }}</template>
-          <template #cell-clientName="{ row }">{{ row.clientName ?? 'Keston ID' }}</template>
+          <template #cell-method="{ row }">{{ methodLabel(row.method) }}</template>
+          <template #cell-clientName="{ row }">{{ row.clientName ?? t('logs.kestonId') }}</template>
           <template #cell-success="{ row }">
-            <Badge v-if="row.success" color="green" size="sm">Signed in</Badge>
+            <Badge v-if="row.success" color="green" size="sm">{{ t('logs.signedIn') }}</Badge>
             <Badge v-else color="red" size="sm">{{ reasonLabel(row.reason) }}</Badge>
           </template>
           <template #cell-ip="{ row }">
@@ -303,8 +303,8 @@ const tabs = [
             <EmptyState
               size="sm"
               :icon="ScrollText"
-              :title="filtered ? 'Nothing matches these filters' : 'No sign-ins yet'"
-              description="Every sign-in to Keston ID and its apps shows here."
+              :title="filtered ? t('logs.noMatch') : t('logs.noSignIns')"
+              :description="t('logs.noSignInsDescription')"
               class="p-0"
             />
           </template>
@@ -312,7 +312,7 @@ const tabs = [
       </Card>
 
       <div v-if="next" class="flex justify-center">
-        <Button :status="loadingMore ? 'loading' : 'idle'" loading-text="Loading" @click="more">Show older</Button>
+        <Button :status="loadingMore ? 'loading' : 'idle'" :loading-text="t('common.loading')" @click="more">{{ t('logs.showOlder') }}</Button>
       </div>
     </template>
   </div>
