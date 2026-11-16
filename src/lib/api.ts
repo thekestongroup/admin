@@ -1,10 +1,14 @@
 import { t } from '../i18n'
-import { currentUser, signIn } from './auth'
+import { currentUser, idUrl, signIn } from './auth'
 
 /**
- * Keston ID's admin API, at /api on this origin (Caddy passes it to Keston
- * ID). Each request carries the Keston ID access token.
+ * Keston ID's API. Admin talks to Keston ID directly (VITE_ID_URL: Keston ID
+ * lists this site in KESTON_ID_API_ORIGINS). Without VITE_ID_URL (local
+ * development) it's /api on this origin, passed on by the dev server or
+ * Caddy. Each request carries the Keston ID access token.
  */
+const API = import.meta.env.VITE_ID_URL ? `${idUrl()}/v1` : '/api'
+
 
 export interface Rule {
   id: string
@@ -332,7 +336,7 @@ async function parse<T>(res: Response): Promise<T> {
 async function publicRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
   try {
-    res = await fetch(`/api/public${path}`, {
+    res = await fetch(`${API}/public${path}`, {
       method,
       headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -351,7 +355,7 @@ export async function request<T>(method: string, path: string, body?: unknown | 
   }
   let res: Response
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${user.access_token}`,

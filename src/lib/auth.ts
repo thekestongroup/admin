@@ -5,16 +5,19 @@ import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
  * Admin is the "admin" app in Keston ID; it skips the consent prompt, as one
  * of The Keston Group's own apps.
  *
- * Keston ID's address comes from this one's: admin.keston.co → id.keston.co,
- * admin.keston.localhost → id.keston.localhost.
+ * Keston ID's address is VITE_ID_URL (set when the app is built, e.g.
+ * https://id.example.com). Without it, it comes from this one's: admin.keston.co
+ * → id.keston.co, admin.keston.localhost → id.keston.localhost.
  */
-function issuer() {
+export function idUrl() {
+  const set = import.meta.env.VITE_ID_URL?.replace(/\/+$/, '')
+  if (set) return set
   const { protocol, hostname } = window.location
   return `${protocol}//${hostname.replace(/^admin\./, 'id.')}`
 }
 
 export const userManager = new UserManager({
-  authority: issuer(),
+  authority: idUrl(),
   client_id: 'admin',
   redirect_uri: `${window.location.origin}/callback`,
   post_logout_redirect_uri: `${window.location.origin}/`,
