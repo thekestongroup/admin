@@ -2,8 +2,9 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
-// Dev server: http://admin.keston.localhost:5181, with /api passed to
-// Keston ID's admin API (Docker: http://id.keston.localhost).
+// Dev server: http://admin.keston.localhost:5181, with /api passed straight
+// to Keston ID's /v1 (Docker: http://keston-id:8080). The built app has its own
+// API in front of Keston ID instead (api/), which this skips.
 //
 // In Docker (compose.dev.yaml) it runs behind Keston ID's Caddy, so:
 // - KESTON_DEV_HOST=0.0.0.0 listens for Caddy, on port 8080;
@@ -35,9 +36,9 @@ export default defineConfig({
     fs: { allow: ['.', ...(uiSrc ? [uiSrc.replace(/\/src$/, '')] : [])] },
     proxy: {
       '/api': {
-        target: process.env.KESTON_ID_URL ?? 'http://id.keston.localhost',
+        target: process.env.KESTON_ID_URL ?? 'http://keston-id:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/admin/v1'),
+        rewrite: (path) => path.replace(/^\/api/, '/v1'),
       },
     },
   },

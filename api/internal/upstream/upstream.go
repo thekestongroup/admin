@@ -66,8 +66,12 @@ func Parse(spec string) (*Registry, error) {
 				}
 			},
 			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+				label := strings.ToUpper(name[:1]) + name[1:]
+				if name == "id" {
+					label = "ID"
+				}
 				WriteError(w, http.StatusBadGateway, "service_unavailable",
-					"Keston "+strings.ToUpper(name[:1])+name[1:]+" isn't answering. Try again in a moment.")
+					"Keston "+label+" isn't answering. Try again in a moment.")
 			},
 		}
 		reg.services[name] = s

@@ -1,13 +1,12 @@
-# Keston Admin and its backend (the Admin API). They run alongside Keston ID (the id repo's
-# compose), on its "keston" network. Keston ID's Caddy serves
-# http://admin.keston.localhost (https://admin.keston.co live) from the admin
-# container, and its /api from the api container.
+# Keston Admin: the web app and its own API (/api), in one container. It runs
+# alongside Keston ID (the id repo's compose), on its "keston" network. Keston
+# ID's Caddy serves http://admin.keston.localhost (https://admin.keston.co
+# live) from it.
 #
-# The Admin API is only for the Keston Admin web app: it passes its requests
-# on to Keston ID (and, later, Keston's other apps), and splits requests that
-# touch several of them. Signing in goes straight to Keston ID, and other
-# clients (a bot, say) use the regular APIs, not this. Start the id
-# stack first, then:
+# The API is only for the Keston Admin web app: it passes its requests on to
+# Keston ID (and, later, Keston's other apps), and splits requests that touch
+# several of them. Signing in goes straight to Keston ID, and other clients (a
+# bot, say) use the regular APIs, not this. Start the id stack first, then:
 #
 #   docker compose up -d --build
 
@@ -18,25 +17,15 @@ services:
     build: .
     image: ghcr.io/thekestongroup/admin:latest
     restart: unless-stopped
-    networks:
-      keston:
-        aliases: [admin]
-    deploy:
-      resources:
-        limits: { memory: 32M }
-
-  api:
-    build: ./api
-    image: ghcr.io/thekestongroup/admin-api:latest
-    restart: unless-stopped
     environment:
       # Every service behind the API, name=address. Add each new Keston app.
       KESTON_API_SERVICES: ${KESTON_API_SERVICES:-id=http://keston-id:8080}
-      # Only when the web app calls the API on another site (api.keston.co).
-      KESTON_API_ORIGINS: ${KESTON_API_ORIGINS:-}
+      # Keston ID's public address, for signing in. Blank: worked out from the
+      # address the app is on (admin.keston.localhost → id.keston.localhost).
+      KESTON_ID_URL: ${KESTON_ID_URL:-}
     networks:
       keston:
-        aliases: [keston-api]
+        aliases: [admin]
     deploy:
       resources:
         limits: { memory: 64M }

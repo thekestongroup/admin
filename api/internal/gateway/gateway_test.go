@@ -36,18 +36,19 @@ func fakeID(t *testing.T) (*httptest.Server, *[]string) {
 	return srv, &seen
 }
 
-func gw(t *testing.T, id *httptest.Server, origins ...string) http.Handler {
+func gw(t *testing.T, id *httptest.Server) http.Handler {
 	t.Helper()
 	reg, err := upstream.Parse("id=" + id.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(reg, origins).Handler()
+	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("the app")) })
+	return New(reg, app).Handler()
 }
 
 func TestPassesRequestsOnWithTheToken(t *testing.T) {
 	id, seen := fakeID(t)
-	req := httptest.NewRequest("GET", "/v1/organisations", nil)
+	req := httptest.NewRequest("GET", "/api/organisations", nil)
 	req.Header.Set("Authorization", "Bearer abc")
 	req.Header.Set("Cookie", "session=secret")
 	rec := httptest.NewRecorder()
@@ -66,7 +67,7 @@ func TestPassesRequestsOnWithTheToken(t *testing.T) {
 
 func TestBulkUpdateSplitsAndMerges(t *testing.T) {
 	id, seen := fakeID(t)
-	req := httptest.NewRequest("POST", "/v1/organisations/o1/users/bulk-update",
+	req := httptest.NewRequest("POST", "/api/organisations/o1/users/bulk-update",
 		strings.NewReader(`{"userIds":["u1","u2"],"status":"disabled","groups":{"add":["g1"]}}`))
 	req.Header.Set("Authorization", "Bearer abc")
 	rec := httptest.NewRecorder()
@@ -101,23 +102,23 @@ func TestBulkUpdateSplitsAndMerges(t *testing.T) {
 func TestBulkUpdateNeedsAToken(t *testing.T) {
 	id, _ := fakeID(t)
 	rec := httptest.NewRecorder()
-	gw(t, id).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/organisations/o1/users/bulk-update", strings.NewReader(`{}`)))
+	gw(t, id).ServeHTTP(rec, httptest.NewRequest("POST", "/api/organisations/o1/users/bulk-update", strings.NewReader(`{}`)))
 	if rec.Code != 401 {
 		t.Errorf("got %d", rec.Code)
 	}
 }
 
-func TestCORSOnlyForListedSites(t *testing.T) {
-	id, _ := fakeID(t)
-	h := gw(t, id, "https://admin.keston.co")
-	for origin, want := range map[string]string{"https://admin.keston.co": "https://admin.keston.co", "https://evil.example": ""} {
-		req := httptest.NewRequest("OPTIONS", "/v1/me", nil)
-		req.Header.Set("Origin", origin)
-		req.Header.Set("Access-Control-Request-Method", "GET")
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req)
-		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != want {
-			t.Errorf("%s: allow-origin %q, want %q", origin, got, want)
-		}
+func TestServesTheAppAndOnlyServesTheAPIUnderAPI(t *testing.T) {
+	id, seen := fakeID(t)
+	h := gw(t, id)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/users", nil))
+	if rec.Body.String() != "the app" {
+		t.Errorf("an app route should be the app: %q", rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/organisations", nil))
+	if rec.Body.String() != "the app" || len(*seen) != 0 {
+		t.Errorf("/v1 isn't the API here: %q %v", rec.Body, *seen)
 	}
 }

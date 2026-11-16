@@ -19,10 +19,21 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# ── 2. Serve it: static files, index.html for the app's own routes ──────────
-# KESTON_ID_URL and KESTON_API_URL (set on the container) tell the app where
-# Keston ID and the Admin API are: see /config.json in the Caddyfile.
-FROM caddy:2.10-alpine
-COPY deploy/Caddyfile /etc/caddy/Caddyfile
+# ── 2. The server (Go): serves the app, and its own API at /api ─────────────
+FROM golang:1.27-alpine AS server
+WORKDIR /src
+COPY api/go.mod ./
+COPY api/cmd ./cmd
+COPY api/internal ./internal
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /keston-admin ./cmd/keston-admin
+
+# ── 3. Run it: no shell, no package manager, a non-root user ────────────────
+# KESTON_ID_URL (Keston ID's public address, for signing in) and
+# KESTON_API_SERVICES (where its services are) are set on the container.
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=server /keston-admin /keston-admin
 COPY --from=build /app/dist /srv
 EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 CMD ["/keston-admin", "healthcheck"]
+ENTRYPOINT ["/keston-admin"]
+CMD ["serve"]
