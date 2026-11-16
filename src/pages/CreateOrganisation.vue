@@ -25,6 +25,8 @@ const errors = reactive<Record<string, string | undefined>>({})
 const passwordValid = ref(false)
 const status = ref<ButtonStatus>('idle')
 const created = ref<Organisation>()
+/** Keston staff have to verify it before anyone can sign in. */
+const awaiting = ref(false)
 
 const domain = computed(() =>
   form.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^@/, '').replace(/\/$/, ''),
@@ -104,8 +106,10 @@ async function create() {
       adminPassword: form.password,
     })
     created.value = res.organisation
+    awaiting.value = res.awaitingVerification
     status.value = 'success'
-    notify({ type: 'success', title: t('createOrg.isSetUp', { name: res.organisation.name }), description: t('createOrg.signInAs', { email: res.admin.email }) })
+    if (!awaiting.value)
+      notify({ type: 'success', title: t('createOrg.isSetUp', { name: res.organisation.name }), description: t('createOrg.signInAs', { email: res.admin.email }) })
     await nextTick()
     document.querySelector<HTMLElement>('#wizard-done h1')?.focus()
   } catch (e) {
@@ -215,11 +219,17 @@ const summary = computed(() => [
       <div class="flex flex-col gap-6">
         <div class="flex flex-col items-center gap-2 text-center">
           <CircleCheck class="size-10 text-green" aria-hidden="true" />
-          <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.isSetUp', { name: created.name }) }}</h1>
-          <p class="text-sm text-black/65">{{ t('createOrg.done', { email: `${username}@${created.domain}` }) }}</p>
+          <template v-if="awaiting">
+            <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.thanks') }}</h1>
+            <p class="text-sm text-black/65">{{ t('createOrg.awaitingVerification', { name: created.name }) }}</p>
+          </template>
+          <template v-else>
+            <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.isSetUp', { name: created.name }) }}</h1>
+            <p class="text-sm text-black/65">{{ t('createOrg.done', { email: `${username}@${created.domain}` }) }}</p>
+          </template>
         </div>
         <SummaryList :items="summary" />
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div v-if="!awaiting" class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="primary" @click="signIn(`/organisations/${created.id}`)">{{ t('createOrg.signInToAdmin') }}</Button>
         </div>
       </div>

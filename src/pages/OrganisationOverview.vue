@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarX, LifeBuoy, LogIn, ShieldAlert } from '@lucide/vue'
+import { BadgeCheck, CalendarX, LifeBuoy, LogIn, ShieldAlert } from '@lucide/vue'
 import {
   Badge,
   Button,
@@ -129,6 +129,23 @@ async function openSupportAccount() {
   }
 }
 
+// ── Verifying (Keston staff) ────────────────────────────────────────────────
+
+const verifying = ref(false)
+const verifyStatus = ref<ButtonStatus>('idle')
+async function verify() {
+  verifyStatus.value = 'loading'
+  try {
+    org.value = await api.verifyOrganisation(orgId)
+    verifying.value = false
+    verifyStatus.value = 'idle'
+    notify({ type: 'success', title: t('overview.verify.done', { name: org.value.name }) })
+  } catch (e) {
+    verifyStatus.value = 'idle'
+    notify({ type: 'error', title: t('overview.verify.couldntVerify'), description: message(e) })
+  }
+}
+
 // ── Deciding (the organisation's global admins) ─────────────────────────────
 
 const busy = ref<string>()
@@ -155,7 +172,22 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
     <template v-else>
       <PageHeader :title="org.name" :description="org.domain">
         <template v-if="org.isPlatform" #badge><Badge color="primary">{{ t('overview.officialTkg') }}</Badge></template>
+        <template v-else-if="!org.verified" #badge><Badge color="yellow">{{ t('overview.verify.awaiting') }}</Badge></template>
       </PageHeader>
+
+      <!-- Not verified yet: nobody in it can sign in. Keston staff verify it. -->
+      <Card v-if="!org.verified">
+        <div class="flex flex-col gap-3" role="status">
+          <div class="flex items-center gap-2">
+            <BadgeCheck class="size-5 text-black/65" aria-hidden="true" />
+            <h2 class="text-base font-bold">{{ t('overview.verify.awaiting') }}</h2>
+          </div>
+          <p class="text-sm">{{ t('overview.verify.explanation', { name: org.name }) }}</p>
+          <div v-if="me?.platformAdmin">
+            <Button variant="primary" @click="verifying = true">{{ t('overview.verify.button') }}</Button>
+          </div>
+        </div>
+      </Card>
 
       <!-- Scheduled for deletion. -->
       <Card v-if="org.deleteAfter">
@@ -307,6 +339,19 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         </div>
       </Card>
     </template>
+
+    <Slideover
+      v-model:open="verifying"
+      :title="t('overview.verify.title', { name: org?.name })"
+      :description="t('overview.verify.description')"
+    >
+      <template #footer="{ close }">
+        <Button :disabled="verifyStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="verifyStatus" :loading-text="t('overview.verify.verifying')" @click="verify">
+          {{ t('overview.verify.confirm') }}
+        </Button>
+      </template>
+    </Slideover>
 
     <Slideover
       v-model:open="askOpen"

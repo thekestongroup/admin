@@ -461,7 +461,11 @@
         "permissions_changed": "Group permissions changed"
       },
       "organisation": {
-        "created": "Organisation created"
+        "created": "Organisation created",
+        "verified": "Organisation verified"
+      },
+      "platform_settings": {
+        "changed": "Platform settings changed"
       },
       "app": {
         "access_changed": "App access changed"
@@ -526,7 +530,8 @@
       "mfa_failed": "Wrong code",
       "wrong_access_pass": "Wrong or expired access pass",
       "app_disabled": "App turned off for them",
-      "no_licence": "No licence for the app"
+      "no_licence": "No licence for the app",
+      "organisation_unverified": "Organisation not verified yet"
     },
     "device": "{browser} on {os}",
     "title": "Logs",
@@ -803,6 +808,14 @@
     },
     "description": "Every school and organisation on Keston. Their users need support access, approved by one of their global admins.",
     "new": "New organisation",
+    "awaitingVerification": "Awaiting verification",
+    "onlyAwaiting": "Only awaiting verification",
+    "showAll": "Show all",
+    "requireVerification": {
+      "title": "Require verification for new organisations",
+      "description": "When on, organisations that sign themselves up can’t be used until Keston staff verify them. Their people can’t sign in before then. Organisations created here, and every organisation that exists now, are always verified.",
+      "couldntSave": "Couldn’t save. Try again."
+    },
     "couldntLoad": "Couldn’t load the organisations",
     "none": "No organisations yet",
     "noneDescription": "Create one to give a school or organisation its users on Keston."
@@ -889,6 +902,17 @@
     "couldntOpen": "Couldn’t open the support account",
     "couldntLoad": "Couldn’t load the organisation",
     "officialTkg": "Official TKG",
+    "verify": {
+      "awaiting": "Awaiting verification",
+      "explanation": "Nobody in {name} can sign in until it’s verified.",
+      "button": "Verify organisation",
+      "title": "Verify {name}?",
+      "description": "Its people will be able to sign in straight away. Check that it’s a real school or organisation first.",
+      "confirm": "Verify",
+      "verifying": "Verifying",
+      "done": "{name} is verified",
+      "couldntVerify": "Couldn’t verify it"
+    },
     "deletionExplanation": "With all its users. A global admin signing in to Keston before then cancels it, or cancel it here.",
     "deletionCancelled": "Deletion cancelled",
     "cancelDeletion": "Cancel deletion",
@@ -951,6 +975,8 @@
     "somethingWrong": "Something went wrong",
     "isSetUp": "{name} is set up",
     "signInAs": "Sign in as {email} to finish setting it up.",
+    "awaitingVerification": "Thanks for creating {name}. When your organisation’s verified, you’ll be able to sign in.",
+    "thanks": "Thanks",
     "keston": "Keston",
     "newOrganisation": "New organisation",
     "name": {
