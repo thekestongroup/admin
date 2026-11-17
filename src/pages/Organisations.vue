@@ -127,6 +127,7 @@ const columns = computed<TableColumn<Organisation>[]>(() => [
         <template #cell-name="{ row }">
           {{ row.name }}
           <Badge v-if="!row.verified" color="yellow" class="ms-2">{{ t('organisations.awaitingVerification') }}</Badge>
+          <Badge v-if="row.deleteAfter" color="red" class="ms-2">{{ t('organisations.scheduledForDeletion') }}</Badge>
         </template>
         <template #cell-createdAt="{ row }">{{ formatDate(row.createdAt) }}</template>
         <template #empty>
