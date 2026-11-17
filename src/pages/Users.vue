@@ -166,7 +166,8 @@ const columns = computed<TableColumn<User>[]>(() => [
 
 // ── Add a user ──────────────────────────────────────────────────────────
 
-const adding = ref(false)
+// ?add=1 (the dashboard's Add user) opens the form.
+const adding = ref(route.query.add === '1')
 const bulk = ref<InstanceType<typeof BulkActions>>()
 
 // Role names, for the Role column.

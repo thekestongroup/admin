@@ -136,6 +136,14 @@ const nav = computed<SidebarSection[]>(() => {
   return sections
 })
 
+// The "Keston Admin" title goes to the current organisation's dashboard: the
+// one in the URL, otherwise your own (also for Keston staff, who otherwise
+// land on the list of organisations).
+const homeTo = computed(() => {
+  const id = orgId.value ?? me.value?.organisation.id
+  return id ? `/organisations/${id}` : '/'
+})
+
 const user = computed(() =>
   me.value
     ? { name: me.value.user.name, email: me.value.user.email, organisation: me.value.organisation.name, avatar: me.value.user.avatar }
@@ -168,7 +176,7 @@ function accountSettings() {
   <AppShell
     v-else
     :title="t('layout.appName')"
-    title-to="/"
+    :title-to="homeTo"
     :sections="nav"
     :user="user"
     :link-component="RouterLink"
