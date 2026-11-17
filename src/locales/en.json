@@ -50,6 +50,8 @@
     "billing": "Billing",
     "licences": "Licences",
     "guestSettings": "Guests",
+    "securityDefaults": "Security defaults",
+    "securityAlerts": "Alerts",
     "settingsGeneral": "General",
     "userAttributes": "User attributes"
   },
@@ -76,6 +78,8 @@
     "addKestonApp": "Add a Keston-wide app",
     "guestSettings": "Guest settings",
     "browseOrganisations": "All organisations",
+    "securityDefaults": "Security defaults",
+    "securityAlerts": "Security alerts",
     "userAttributes": "User attributes"
   },
   "mfa": {
@@ -333,6 +337,23 @@
     }
   },
   "licences": {
+    "sources": {
+      "title": "Where licences come from",
+      "direct": "Assigned directly",
+      "fromGroup": "From group {name}",
+      "notLicensed": "Not licensed: no seats left",
+      "notLicensedHelp": "A group gives {name} this licence, but the organisation has no seats left. They can’t sign in to it until a seat is free."
+    },
+    "group": {
+      "title": "Licences",
+      "description": "Licences for Keston’s products that every member of {name} gets. Anyone who also has one assigned directly uses one seat, and a licence assigned directly stays if they leave the group.",
+      "save": "Save group licences",
+      "couldntSave": "Couldn’t save the group’s licences",
+      "couldntLoad": "Couldn’t load the group’s licences",
+      "noSeatsTitle": "Not licensed: no seats left",
+      "noSeatsDescription": "These members are in the group but have no seat for {products}. Seats go to members in the order they got the licence; add seats or free some up.",
+      "noSeatsItem": "{name}: {products}"
+    },
     "couldntSave": "Couldn’t save the licences",
     "title": "Licences",
     "cardDescription": "The Keston products {name} can use. Without a licence, they can’t sign in to it.",
@@ -358,6 +379,8 @@
       "seats": "Seats for {name}",
       "inUse": "{count} in use | {count} in use",
       "overAllocated": "Over allocation: {used} in use, but only {seats} seats.",
+      "viaGroups": "Given by groups: {groups}",
+      "noSeatsPeople": "{count} person has no seat | {count} people have no seat",
       "couldntSave": "Couldn’t save the licences",
       "saved": "Licences saved"
     }
@@ -517,7 +540,8 @@
         "deleted": "Group deleted",
         "member_added": "Added to a group",
         "member_removed": "Removed from a group",
-        "permissions_changed": "Group permissions changed"
+        "permissions_changed": "Group permissions changed",
+        "licences_changed": "Group licences changed"
       },
       "organisation": {
         "created": "Organisation created",
@@ -1496,7 +1520,8 @@
       "deletion": "This organisation is scheduled for deletion on {date}.",
       "locked": "{count} account is locked out | {count} accounts are locked out",
       "noMfa": "{count} user hasn’t set up MFA | {count} users haven’t set up MFA",
-      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password"
+      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password",
+      "notLicensed": "{count} person has a licence from a group but no seat left | {count} people have a licence from a group but no seat left"
     },
     "signInsWeek": {
       "title": "Sign-ins this week",
@@ -1519,7 +1544,9 @@
       "addUser": "Add user",
       "newGroup": "New group",
       "addApp": "Add an app"
-    }
+    },
+    "secureScore": "Secure Score",
+    "secureScoreDescription": "{done} of {total} recommendations done"
   },
   "switcher": {
     "switchOrganisation": "Switch organisation",
@@ -1643,6 +1670,102 @@
     "moreWaiting": "{count} more waiting"
   },
   "notifications": {},
+  "securityDefaults": {
+    "title": "Security defaults",
+    "description": "Recommended settings for keeping your organisation safe. Apply them here, or follow the links for the ones you set up yourself.",
+    "score": "Secure Score",
+    "scoreDescription": "{done} of {total} recommendations done",
+    "done": "Done",
+    "notDone": "Not done",
+    "points": "{count} points",
+    "apply": "Apply",
+    "applySelected": "Apply selected ({count})",
+    "select": "Select {name}",
+    "howToFix": "How to fix",
+    "markReviewed": "Mark as reviewed",
+    "missing": "{count, plural, one {1 global admin still needs this.} other {# global admins still need this.}}",
+    "applied": "{count, plural, one {Applied 1 setting} other {Applied # settings}}",
+    "someFailed": "{count, plural, one {1 setting couldn't be applied} other {# settings couldn't be applied}}",
+    "couldntApply": "Couldn't apply",
+    "couldntLoad": "Couldn't load security defaults",
+    "items": {
+      "mfa_everyone": {
+        "title": "Require MFA for everyone",
+        "why": "A stolen password alone can't sign in when everyone also needs a second step."
+      },
+      "mfa_admins": {
+        "title": "Require MFA for global admins",
+        "why": "Admins can change everything, so they're the accounts to protect first. Apply again after adding admins."
+      },
+      "password_policy": {
+        "title": "Password policy at least Recommended",
+        "why": "At least 12 characters and a number makes passwords much harder to guess."
+      },
+      "two_global_admins": {
+        "title": "Have at least 2 global admins",
+        "why": "If one admin is locked out or leaves, someone else can still manage the organisation."
+      },
+      "admins_have_mfa": {
+        "title": "Global admins have MFA set up",
+        "why": "Requiring MFA only protects admins once they've registered an app or passkey."
+      },
+      "guests_off": {
+        "title": "Turn off guests unless needed",
+        "why": "Fewer ways in. You can turn guests back on whenever you need them."
+      },
+      "sign_in_log_reviewed": {
+        "title": "Review the sign-in log",
+        "why": "Looking over recent sign-ins every month helps you spot anything unusual."
+      }
+    }
+  },
+  "securityAlerts": {
+    "title": "Security alerts",
+    "description": "Recent security events in your organisation. Global admins also get these as notifications.",
+    "kind": "Type",
+    "allKinds": "All types",
+    "severity": "Severity",
+    "allSeverities": "All severities",
+    "none": "No alerts",
+    "noneDescription": "Nothing to report with these filters.",
+    "more": "Show more",
+    "couldntLoad": "Couldn't load alerts",
+    "severities": {
+      "critical": "High",
+      "warning": "Medium",
+      "info": "Low"
+    },
+    "kinds": {
+      "admin_added": {
+        "label": "New admin",
+        "text": "{by} made {name} a global admin or TKG Admin."
+      },
+      "admin_role_granted": {
+        "label": "Admin role granted",
+        "text": "{by} gave {name} the admin role {roles}."
+      },
+      "mfa_off": {
+        "label": "MFA turned off",
+        "text": "{by} turned off multi-factor authentication."
+      },
+      "password_policy_weakened": {
+        "label": "Password policy weakened",
+        "text": "{by} made the password rules less strict."
+      },
+      "failed_sign_ins": {
+        "label": "Many failed sign-ins",
+        "text": "{count} failed sign-ins for {name} in {minutes} minutes."
+      },
+      "account_locked": {
+        "label": "Account locked",
+        "text": "{name} was locked after repeated failed sign-ins."
+      },
+      "new_country": {
+        "label": "New country",
+        "text": "{name}, a global admin, signed in from {country} for the first time."
+      }
+    }
+  },
   "profiles": {
     "fields": {
       "jobTitle": "Job title",

@@ -17,7 +17,8 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { ApiError, api, type Group, type Permission, type PermissionId, type User } from '../lib/api'
+import { ApiError, api, type Group, type LicenceIssue, type Permission, type PermissionId, type Product, type User } from '../lib/api'
+import { licenceOption } from '../lib/licences'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -49,6 +50,7 @@ async function load() {
 onMounted(async () => {
   try {
     const [, users, perms, o] = await Promise.all([load(), api.users(orgId), api.permissions(), api.organisation(orgId)])
+    loadLicences()
     everyone.value = users.filter((u) => !u.support)
     catalog.value = perms
     mine.value = o.permissions ?? []
@@ -65,6 +67,42 @@ const canChangeMembers = computed(() =>
   group.value?.permissions.length ? has('permissions.assign') && coversGroup.value : has('groups.manage') || has('permissions.assign'),
 )
 const canAssign = computed(() => has('permissions.assign') && coversGroup.value)
+
+// Licences: what every member gets. Members past the seats are listed.
+const products = ref<Product[]>([])
+const chosenLicences = ref<string[]>([])
+const given = ref<string[]>([])
+const issues = ref<LicenceIssue[]>([])
+const licenceStatus = ref<ButtonStatus>('idle')
+const licenceError = ref<string>()
+const canLicence = computed(() => has('users.licences'))
+function applyLicences(l: { products: string[]; issues: LicenceIssue[] }) {
+  given.value = l.products
+  chosenLicences.value = [...l.products]
+  issues.value = l.issues
+}
+async function loadLicences() {
+  try {
+    const [list, l] = await Promise.all([api.products(orgId), api.groupLicences(orgId, groupId)])
+    products.value = list
+    applyLicences(l)
+  } catch (e) {
+    licenceError.value = message(e)
+  }
+}
+const licencesChanged = computed(() => [...chosenLicences.value].sort().join() !== [...given.value].sort().join())
+const productName = (id: string) => products.value.find((p) => p.id === id)?.name ?? id
+async function saveLicences() {
+  licenceStatus.value = 'loading'
+  try {
+    applyLicences(await api.setGroupLicences(orgId, groupId, chosenLicences.value))
+    products.value = await api.products(orgId).catch(() => products.value)
+    licenceStatus.value = 'success'
+  } catch (e) {
+    licenceStatus.value = 'idle'
+    notify({ type: 'error', title: t('licences.group.couldntSave'), description: message(e) })
+  }
+}
 
 // Permissions.
 const chosen = ref<PermissionId[]>([])
@@ -105,6 +143,7 @@ async function add() {
     await api.addMember(orgId, groupId, choice.value)
     choice.value = undefined
     await load()
+    loadLicences()
   } catch (e) {
     notify({ type: 'error', title: t('groupDetail.couldntAdd'), description: message(e) })
   } finally {
@@ -118,6 +157,7 @@ async function remove(u: User) {
   try {
     await api.removeMember(orgId, groupId, u.id)
     await load()
+    loadLicences()
   } catch (e) {
     notify({ type: 'error', title: t('groupDetail.couldntRemove'), description: message(e) })
   } finally {
@@ -215,6 +255,43 @@ async function deleteGroup() {
             </li>
           </ul>
         </div>
+      </Card>
+
+      <Card :title="t('licences.group.title')" :description="t('licences.group.description', { name: group.name })">
+        <div class="flex flex-col gap-4">
+          <EmptyState v-if="licenceError" size="sm" :title="t('licences.group.couldntLoad')" :description="licenceError" class="p-0" />
+          <template v-else>
+            <div v-if="issues.length" class="flex flex-col gap-2 rounded-lg border border-red p-3" role="alert">
+              <span class="text-sm font-bold text-red">{{ t('licences.group.noSeatsTitle') }}</span>
+              <span class="text-sm">{{ t('licences.group.noSeatsDescription', { products: [...new Set(issues.flatMap((i) => i.products.map(productName)))].join(', ') }) }}</span>
+              <ul class="list-disc pl-5 text-sm">
+                <li v-for="i in issues" :key="i.userId">
+                  <RouterLink :to="`/organisations/${orgId}/users/${i.userId}?tab=licences`" class="underline">
+                    {{ t('licences.group.noSeatsItem', { name: i.name, products: i.products.map(productName).join(', ') }) }}
+                  </RouterLink>
+                </li>
+              </ul>
+            </div>
+            <CheckboxGroup
+              v-model="chosenLicences"
+              :label="t('licences.group.title')"
+              hide-label
+              :options="products.map((p) => ({ ...licenceOption(t, p, true), disabled: !canLicence }))"
+            />
+          </template>
+        </div>
+        <template v-if="canLicence && !licenceError" #footer>
+          <Button
+            variant="primary"
+            v-model:status="licenceStatus"
+            :disabled="!licencesChanged && licenceStatus === 'idle'"
+            :loading-text="t('common.saving')"
+            :success-text="t('common.saved')"
+            @click="saveLicences"
+          >
+            {{ t('licences.group.save') }}
+          </Button>
+        </template>
       </Card>
 
       <Card

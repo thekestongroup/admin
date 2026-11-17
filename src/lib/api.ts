@@ -102,7 +102,13 @@ export interface OrganisationSummary {
   }
   groups: number
   apps: { enabled: number; available: number }
-  licences: { inUse: number; licensedUsers: number }
+  licences: {
+    inUse: number
+    licensedUsers: number
+    /** People a group gives a licence to who have no seat left. */
+    unlicensed: number
+    unlicensedByProduct: Record<string, number>
+  }
   signIns: {
     /** The last 7 days (UTC): everything, and the failed ones. */
     total: number
@@ -405,6 +411,35 @@ export interface Product {
   available: number | null
   /** More in use than seats: nothing more can be assigned until under. */
   overAllocated: boolean
+  /** People a group gives it to who have no seat left. */
+  unlicensed: number
+  /** The groups that give it to their members. */
+  groups: { id: string; name: string }[]
+}
+
+/** Where someone's licence for a product comes from. */
+export interface LicenceSource {
+  product: string
+  name: string
+  /** Assigned to them. */
+  direct: boolean
+  /** The groups that give it to them. */
+  groups: { id: string; name: string }[]
+  /** They have a seat; false: "Not licensed: no seats left". */
+  licensed: boolean
+}
+
+/** A group member with no seat for a licence the group gives them. */
+export interface LicenceIssue {
+  userId: string
+  name: string
+  email: string
+  products: string[]
+}
+
+export interface GroupLicences {
+  products: string[]
+  issues: LicenceIssue[]
 }
 
 export interface Me {
@@ -502,7 +537,10 @@ export interface UserDetail extends User {
   groups: Group[]
   permissions: PermissionId[]
   canChange: boolean
+  /** Assigned to them directly (what Manage licences edits). */
   licences: string[]
+  /** Every licence, direct or from groups, with whether it has a seat. */
+  licenceSources: LicenceSource[]
   roles: string[]
   profile: UserProfile
   /** People who report to them. */
@@ -685,6 +723,28 @@ export const publicApi = {
     ),
 }
 
+export type SecurityItem = {
+  id: string
+  weight: number
+  done: boolean
+  canApply: boolean
+  link: string
+  detail?: Record<string, number>
+  canMark?: boolean
+}
+export type SecurityDefaults = { score: number; items: SecurityItem[]; done: number; total: number }
+export type SecurityAlert = {
+  id: string
+  kind: string
+  severity: 'info' | 'warning' | 'critical'
+  subjectId: string | null
+  subjectName: string
+  params: Record<string, string | number>
+  title: string
+  body: string
+  createdAt: string
+}
+
 export const api = {
   me: () => request<Me>('GET', '/me'),
   passwordCheck: (password: string, opts: { organisationId?: string; username?: string } = {}) =>
@@ -710,6 +770,16 @@ export const api = {
   removeGuest: (orgId: string, guestId: string) => request<void>('DELETE', `${org(orgId)}/guests/${guestId}`),
   setGuestRoles: (orgId: string, guestId: string, roles: string[]) =>
     request<Guest>('PUT', `${org(orgId)}/guests/${guestId}/roles`, { roles }),
+  securityDefaults: (orgId: string) => request<SecurityDefaults>('GET', `${org(orgId)}/security/defaults`),
+  applySecurityDefaults: (orgId: string, items: string[]) =>
+    request<{ results: { id: string; result: string }[]; state: SecurityDefaults }>(
+      'POST',
+      `${org(orgId)}/security/defaults/apply`,
+      { items },
+    ),
+  markSignInsReviewed: (orgId: string) => request<SecurityDefaults>('POST', `${org(orgId)}/security/defaults/sign-in-review`),
+  securityAlerts: (orgId: string, query: string) =>
+    request<{ items: SecurityAlert[]; next: string | null }>('GET', `${org(orgId)}/security/alerts${query}`),
   guestSettings: (orgId: string) => request<{ allowGuests: boolean }>('GET', `${org(orgId)}/guest-settings`),
   setGuestSettings: (orgId: string, allowGuests: boolean) =>
     request<{ allowGuests: boolean }>('PUT', `${org(orgId)}/guest-settings`, { allowGuests }),
@@ -840,6 +910,9 @@ export const api = {
   /** TKG Admins only: how many licences the organisation has per product (seats null: unlimited). */
   setAllocations: (orgId: string, allocations: { product: string; seats: number | null }[]) =>
     request<Product[]>('PUT', `${org(orgId)}/licences`, { allocations }),
+  groupLicences: (orgId: string, groupId: string) => request<GroupLicences>('GET', `${org(orgId)}/groups/${groupId}/licences`),
+  setGroupLicences: (orgId: string, groupId: string, products: string[]) =>
+    request<GroupLicences>('PUT', `${org(orgId)}/groups/${groupId}/licences`, { products }),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
   /** Set a password, or with `generatePassword` have Keston ID make one up: returned once. */

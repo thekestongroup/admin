@@ -70,6 +70,12 @@ async function save() {
           <span class="text-sm">{{ availability(t, p) }}</span>
         </div>
         <span class="text-sm text-black/65">{{ t('licences.allocations.inUse', p.assigned) }}</span>
+        <span v-if="p.groups.length" class="text-sm text-black/65">
+          {{ t('licences.allocations.viaGroups', { groups: p.groups.map((g) => g.name).join(', ') }) }}
+        </span>
+        <span v-if="p.unlicensed" class="text-sm text-red" role="alert">
+          {{ t('licences.sources.notLicensed') }}: {{ t('licences.allocations.noSeatsPeople', p.unlicensed) }}
+        </span>
         <span v-if="p.overAllocated" class="text-sm text-red" role="alert">
           {{ t('licences.allocations.overAllocated', { used: p.assigned, seats: p.seats ?? 0 }) }}
         </span>
@@ -80,7 +86,11 @@ async function save() {
         <RadioGroup
           v-model="rows[p.id]!.mode"
           :label="p.name"
-          :helper="t('licences.allocations.inUse', p.assigned)"
+          :helper="[
+            t('licences.allocations.inUse', p.assigned),
+            p.groups.length ? t('licences.allocations.viaGroups', { groups: p.groups.map((g) => g.name).join(', ') }) : '',
+            p.unlicensed ? `${t('licences.sources.notLicensed')}: ${t('licences.allocations.noSeatsPeople', p.unlicensed)}` : '',
+          ].filter(Boolean).join('. ')"
           :options="modes"
         />
         <InputNumber

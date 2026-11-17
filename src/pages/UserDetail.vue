@@ -526,6 +526,8 @@ async function toggle() {
                 :user-id="userId"
                 :name="user.name"
                 :can-edit="can('users.licences')"
+                :sources="user.licenceSources"
+                @saved="reload"
               />
             <UserAppsCard :org-id="orgId" :user-id="userId" :name="user.name" />
           </div>
