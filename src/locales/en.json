@@ -330,6 +330,23 @@
     }
   },
   "licences": {
+    "sources": {
+      "title": "Where licences come from",
+      "direct": "Assigned directly",
+      "fromGroup": "From group {name}",
+      "notLicensed": "Not licensed: no seats left",
+      "notLicensedHelp": "A group gives {name} this licence, but the organisation has no seats left. They can’t sign in to it until a seat is free."
+    },
+    "group": {
+      "title": "Licences",
+      "description": "Licences for Keston’s products that every member of {name} gets. Anyone who also has one assigned directly uses one seat, and a licence assigned directly stays if they leave the group.",
+      "save": "Save group licences",
+      "couldntSave": "Couldn’t save the group’s licences",
+      "couldntLoad": "Couldn’t load the group’s licences",
+      "noSeatsTitle": "Not licensed: no seats left",
+      "noSeatsDescription": "These members are in the group but have no seat for {products}. Seats go to members in the order they got the licence; add seats or free some up.",
+      "noSeatsItem": "{name}: {products}"
+    },
     "couldntSave": "Couldn’t save the licences",
     "title": "Licences",
     "cardDescription": "The Keston products {name} can use. Without a licence, they can’t sign in to it.",
@@ -355,6 +372,8 @@
       "seats": "Seats for {name}",
       "inUse": "{count} in use | {count} in use",
       "overAllocated": "Over allocation: {used} in use, but only {seats} seats.",
+      "viaGroups": "Given by groups: {groups}",
+      "noSeatsPeople": "{count} person has no seat | {count} people have no seat",
       "couldntSave": "Couldn’t save the licences",
       "saved": "Licences saved"
     }
@@ -513,7 +532,8 @@
         "deleted": "Group deleted",
         "member_added": "Added to a group",
         "member_removed": "Removed from a group",
-        "permissions_changed": "Group permissions changed"
+        "permissions_changed": "Group permissions changed",
+        "licences_changed": "Group licences changed"
       },
       "organisation": {
         "created": "Organisation created",
@@ -1470,7 +1490,8 @@
       "deletion": "This organisation is scheduled for deletion on {date}.",
       "locked": "{count} account is locked out | {count} accounts are locked out",
       "noMfa": "{count} user hasn’t set up MFA | {count} users haven’t set up MFA",
-      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password"
+      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password",
+      "notLicensed": "{count} person has a licence from a group but no seat left | {count} people have a licence from a group but no seat left"
     },
     "signInsWeek": {
       "title": "Sign-ins this week",
