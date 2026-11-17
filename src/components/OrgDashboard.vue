@@ -3,8 +3,11 @@ import {
   AppWindow,
   CalendarX,
   CircleCheck,
+  Megaphone,
+  Activity,
   KeyRound,
   Lock,
+  Gauge,
   LogIn,
   Plus,
   ShieldAlert,
@@ -18,8 +21,9 @@ import { Button, Card, EmptyState, Link, RelativeTime, Spinner, StatTile, format
 import { computed, onMounted, ref, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { type Organisation, type OrganisationSummary, type PermissionId, api } from '../lib/api'
+import { type Organisation, type OrganisationSummary, type SecurityDefaults, type PermissionId, api } from '../lib/api'
 import { actionLabel } from '../lib/logs'
+import { actionRequired, activeIncidents } from '../lib/platform'
 
 /**
  * An organisation's dashboard: the numbers that matter as tiles (each linking
@@ -35,7 +39,9 @@ const has = (p: PermissionId) => !!props.org.permissions?.includes(p)
 
 const summary = ref<OrganisationSummary>()
 const error = ref<string>()
+const security = ref<SecurityDefaults>()
 onMounted(async () => {
+  if (has('policy.manage')) api.securityDefaults(props.org.id).then((v) => (security.value = v), () => {})
   try {
     summary.value = await api.summary(props.org.id)
   } catch (e) {
@@ -109,6 +115,18 @@ const tiles = computed<Tile[]>(() => {
       icon: ShieldCheck,
       to: users ? { path: `${base.value}/users`, query: { mfa: 'off', status: 'active,locked' } } : undefined,
     },
+    ...(security.value
+      ? [
+          {
+            key: 'secureScore',
+            label: t('dashboard.secureScore'),
+            value: `${security.value.score}%`,
+            description: t('dashboard.secureScoreDescription', { done: security.value.done, total: security.value.total }),
+            icon: Gauge,
+            to: { path: `${base.value}/security/defaults` },
+          } as Tile,
+        ]
+      : []),
     {
       key: 'signIns',
       label: t('dashboard.signIns'),
@@ -146,6 +164,24 @@ const attention = computed<Item[]>(() => {
   const items: Item[] = []
   if (!s) return items
   const users = has('users.view')
+  for (const i of activeIncidents.value) {
+    items.push({
+      key: `incident-${i.id}`,
+      icon: Activity,
+      text: t('dashboard.attention.incident', { title: i.title, services: i.services.map((id) => t(`health.services.${id}`)).join(', ') }),
+      to: { path: '/health' },
+    })
+  }
+  for (const m of actionRequired.value) {
+    items.push({
+      key: `message-${m.id}`,
+      icon: Megaphone,
+      text: m.actionBy
+        ? t('dashboard.attention.actionRequiredBy', { title: m.title, date: formatDate(m.actionBy) })
+        : t('dashboard.attention.actionRequired', { title: m.title }),
+      to: { path: '/message-centre' },
+    })
+  }
   if (!props.org.verified) {
     items.push({ key: 'verify', icon: ShieldAlert, text: t('dashboard.attention.unverified') })
   }
@@ -175,6 +211,14 @@ const attention = computed<Item[]>(() => {
       icon: KeyRound,
       text: t('dashboard.attention.passwordChange', { count: n(s.users.passwordChangeRequired) }, s.users.passwordChangeRequired),
       to: users ? { path: `${base.value}/users` } : undefined,
+    })
+  }
+  if (s.licences.unlicensed > 0) {
+    items.push({
+      key: 'notLicensed',
+      icon: KeyRound,
+      text: t('dashboard.attention.notLicensed', { count: n(s.licences.unlicensed) }, s.licences.unlicensed),
+      to: users ? { path: `${base.value}/groups` } : undefined,
     })
   }
   return items

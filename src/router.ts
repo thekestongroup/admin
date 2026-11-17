@@ -78,6 +78,11 @@ export const router = createRouter({
           meta: { title: 'titles.apps' },
         },
         {
+          path: 'organisations/:orgId/app-requests',
+          component: () => import('./pages/AppRequests.vue'),
+          meta: { title: 'titles.appRequests' },
+        },
+        {
           path: 'organisations/:orgId/apps/new',
           component: () => import('./pages/OwnAppNew.vue'),
           meta: { title: 'titles.addApp' },
@@ -140,10 +145,22 @@ export const router = createRouter({
           meta: { title: 'titles.mfaSettings' },
         },
         {
+          path: 'organisations/:orgId/security/defaults',
+          component: () => import('./pages/SecurityDefaults.vue'),
+          meta: { title: 'titles.securityDefaults' },
+        },
+        {
+          path: 'organisations/:orgId/security/alerts',
+          component: () => import('./pages/SecurityAlerts.vue'),
+          meta: { title: 'titles.securityAlerts' },
+        },
+        {
           path: 'organisations/:orgId/security/guests',
           component: () => import('./pages/GuestSettings.vue'),
           meta: { title: 'titles.guestSettings' },
         },
+        { path: 'health', component: () => import('./pages/Health.vue'), meta: { title: 'titles.health' } },
+        { path: 'message-centre', component: () => import('./pages/MessageCentre.vue'), meta: { title: 'titles.messageCentre' } },
         {
           path: 'organisations/:orgId/password-policy',
           component: () => import('./pages/PasswordPolicy.vue'),

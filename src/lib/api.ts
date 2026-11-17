@@ -54,7 +54,13 @@ export interface OrganisationSummary {
   }
   groups: number
   apps: { enabled: number; available: number }
-  licences: { inUse: number; licensedUsers: number }
+  licences: {
+    inUse: number
+    licensedUsers: number
+    /** People a group gives a licence to who have no seat left. */
+    unlicensed: number
+    unlicensedByProduct: Record<string, number>
+  }
   signIns: {
     /** The last 7 days (UTC): everything, and the failed ones. */
     total: number
@@ -198,6 +204,46 @@ export interface Group {
   permissions: PermissionId[]
 }
 
+export interface AppRequestPlan {
+  addToRule: boolean
+  assignLicence: boolean
+  seatsLeft: number | null
+  noSeats: boolean
+  alreadyAccess: boolean
+}
+
+export interface AppRequest {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  clientId: string
+  appName: string
+  reason: string
+  status: 'pending' | 'approved' | 'declined'
+  decisionMessage: string
+  decidedByName: string
+  decidedAt?: string
+  addedToRule: boolean
+  licenceAssigned: boolean
+  createdAt: string
+  /** Pending only: what approving will do. */
+  plan?: AppRequestPlan
+}
+
+export interface AppRequestResult {
+  id: string
+  name: string
+  app: string
+  result: 'done' | 'skipped'
+  reason?: string
+}
+
+export interface AppRequestSettings {
+  enabled: boolean
+  excluded: string[]
+}
+
 export interface AppAccess {
   apps: AppInfo[]
   /** A TKG Admin in The Keston Group: can add and manage Keston-wide apps. */
@@ -288,6 +334,83 @@ export interface Support {
   canManage: boolean
 }
 
+export type ServiceId = 'keston-id' | 'keston-admin' | 'keston-forms' | 'learn' | 'work' | 'apps'
+export const serviceIds: ServiceId[] = ['keston-id', 'keston-admin', 'keston-forms', 'learn', 'work', 'apps']
+export type ServiceState = 'operational' | 'degraded' | 'outage' | 'maintenance'
+export type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved'
+export type IncidentImpact = 'degraded' | 'outage'
+
+export interface IncidentUpdate {
+  id: string
+  status: IncidentStatus
+  message: string
+  author: string
+  createdAt: string
+}
+
+export interface Incident {
+  id: string
+  title: string
+  impact: IncidentImpact
+  status: IncidentStatus
+  services: ServiceId[]
+  createdAt: string
+  resolvedAt?: string | null
+  /** Newest first. */
+  updates: IncidentUpdate[]
+}
+
+export interface Maintenance {
+  id: string
+  title: string
+  description: string
+  services: ServiceId[]
+  startsAt: string
+  endsAt: string
+}
+
+export interface Health {
+  services: { id: ServiceId; status: ServiceState }[]
+  incidents: Incident[]
+  maintenance: Maintenance[]
+  canManage: boolean
+}
+
+export type MessageCategory = 'feature' | 'change' | 'action_required' | 'notice'
+
+export interface KestonMessage {
+  id: string
+  title: string
+  /** Markdown (a safe subset: see lib/markdown.ts). */
+  body: string
+  category: MessageCategory
+  /** YYYY-MM-DDT00:00:00Z, or null. */
+  actionBy?: string | null
+  allOrganisations: boolean
+  organisationIds: string[]
+  author: string
+  createdAt: string
+  updatedAt: string
+  read?: boolean
+  archived?: boolean
+}
+
+export interface Messages {
+  messages: KestonMessage[]
+  unread: number
+  actionRequired: KestonMessage[]
+  canPost: boolean
+}
+
+export interface MessageInput {
+  title: string
+  body: string
+  category: MessageCategory
+  actionBy: string
+  allOrganisations: boolean
+  organisationIds: string[]
+}
+
 export interface AdminNotification {
   id: string
   type: 'info' | 'success' | 'warning' | 'error'
@@ -355,6 +478,35 @@ export interface Product {
   available: number | null
   /** More in use than seats: nothing more can be assigned until under. */
   overAllocated: boolean
+  /** People a group gives it to who have no seat left. */
+  unlicensed: number
+  /** The groups that give it to their members. */
+  groups: { id: string; name: string }[]
+}
+
+/** Where someone's licence for a product comes from. */
+export interface LicenceSource {
+  product: string
+  name: string
+  /** Assigned to them. */
+  direct: boolean
+  /** The groups that give it to them. */
+  groups: { id: string; name: string }[]
+  /** They have a seat; false: "Not licensed: no seats left". */
+  licensed: boolean
+}
+
+/** A group member with no seat for a licence the group gives them. */
+export interface LicenceIssue {
+  userId: string
+  name: string
+  email: string
+  products: string[]
+}
+
+export interface GroupLicences {
+  products: string[]
+  issues: LicenceIssue[]
 }
 
 export interface Me {
@@ -452,7 +604,10 @@ export interface UserDetail extends User {
   groups: Group[]
   permissions: PermissionId[]
   canChange: boolean
+  /** Assigned to them directly (what Manage licences edits). */
   licences: string[]
+  /** Every licence, direct or from groups, with whether it has a seat. */
+  licenceSources: LicenceSource[]
   roles: string[]
 }
 
@@ -625,6 +780,28 @@ export const publicApi = {
     ),
 }
 
+export type SecurityItem = {
+  id: string
+  weight: number
+  done: boolean
+  canApply: boolean
+  link: string
+  detail?: Record<string, number>
+  canMark?: boolean
+}
+export type SecurityDefaults = { score: number; items: SecurityItem[]; done: number; total: number }
+export type SecurityAlert = {
+  id: string
+  kind: string
+  severity: 'info' | 'warning' | 'critical'
+  subjectId: string | null
+  subjectName: string
+  params: Record<string, string | number>
+  title: string
+  body: string
+  createdAt: string
+}
+
 export const api = {
   me: () => request<Me>('GET', '/me'),
   passwordCheck: (password: string, opts: { organisationId?: string; username?: string } = {}) =>
@@ -657,6 +834,16 @@ export const api = {
   makePrimaryDomain: (orgId: string, id: string, renameUsers: boolean) =>
     request<OrgDomain>('POST', `${org(orgId)}/domains/${id}/primary`, { renameUsers }),
   removeDomain: (orgId: string, id: string) => request<void>('DELETE', `${org(orgId)}/domains/${id}`),
+  securityDefaults: (orgId: string) => request<SecurityDefaults>('GET', `${org(orgId)}/security/defaults`),
+  applySecurityDefaults: (orgId: string, items: string[]) =>
+    request<{ results: { id: string; result: string }[]; state: SecurityDefaults }>(
+      'POST',
+      `${org(orgId)}/security/defaults/apply`,
+      { items },
+    ),
+  markSignInsReviewed: (orgId: string) => request<SecurityDefaults>('POST', `${org(orgId)}/security/defaults/sign-in-review`),
+  securityAlerts: (orgId: string, query: string) =>
+    request<{ items: SecurityAlert[]; next: string | null }>('GET', `${org(orgId)}/security/alerts${query}`),
   guestSettings: (orgId: string) => request<{ allowGuests: boolean }>('GET', `${org(orgId)}/guest-settings`),
   setGuestSettings: (orgId: string, allowGuests: boolean) =>
     request<{ allowGuests: boolean }>('PUT', `${org(orgId)}/guest-settings`, { allowGuests }),
@@ -683,6 +870,19 @@ export const api = {
     request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
+  appRequests: (orgId: string, query = '') => request<AppRequest[]>('GET', `${org(orgId)}/app-requests${query}`),
+  appRequestCount: (orgId: string) => request<{ pending: number }>('GET', `${org(orgId)}/app-requests/count`),
+  decideAppRequest: (
+    orgId: string,
+    id: string,
+    decision: 'approve' | 'decline',
+    body: { message?: string; addToRule?: boolean; assignLicence?: boolean } = {},
+  ) => request<AppRequest>('POST', `${org(orgId)}/app-requests/${encodeURIComponent(id)}/${decision}`, body),
+  bulkAppRequests: (orgId: string, ids: string[], action: 'approve' | 'decline', message = '') =>
+    request<{ results: AppRequestResult[] }>('POST', `${org(orgId)}/app-requests/bulk`, { ids, action, message }),
+  appRequestSettings: (orgId: string) => request<AppRequestSettings>('GET', `${org(orgId)}/app-request-settings`),
+  setAppRequestSettings: (orgId: string, settings: AppRequestSettings) =>
+    request<AppRequestSettings>('PUT', `${org(orgId)}/app-request-settings`, settings),
   apps: (orgId: string) => request<AppAccess>('GET', `${org(orgId)}/apps`),
   app: (orgId: string, appId: string) => request<AppInfo>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}`),
   /** Sets the organisation's default for an app; mode '' removes the setting. */
@@ -742,6 +942,21 @@ export const api = {
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),
 
+  health: () => request<Health>('GET', '/health'),
+  openIncident: (b: { title: string; impact: IncidentImpact; status: IncidentStatus; services: ServiceId[]; message: string }) =>
+    request<Incident>('POST', '/health/incidents', b),
+  updateIncident: (id: string, b: { status: IncidentStatus; impact?: IncidentImpact; message: string }) =>
+    request<Incident>('POST', `/health/incidents/${id}/updates`, b),
+  scheduleMaintenance: (b: { title: string; description: string; services: ServiceId[]; startsAt: string; endsAt: string }) =>
+    request<Maintenance>('POST', '/health/maintenance', b),
+  cancelMaintenance: (id: string) => request<void>('DELETE', `/health/maintenance/${id}`),
+  messages: () => request<Messages>('GET', '/messages'),
+  allMessages: () => request<KestonMessage[]>('GET', '/messages/all'),
+  setMessageState: (id: string, action: 'read' | 'unread' | 'archive' | 'unarchive') =>
+    request<void>('POST', `/messages/${id}/${action}`, {}),
+  postMessage: (b: MessageInput) => request<KestonMessage>('POST', '/messages', b),
+  editMessage: (id: string, b: MessageInput) => request<KestonMessage>('PUT', `/messages/${id}`, b),
+  deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
   notifications: () => request<AdminNotification[]>('GET', '/notifications'),
   readNotifications: () => request<void>('POST', '/notifications/read', {}),
   clearNotifications: () => request<void>('DELETE', '/notifications'),
@@ -774,6 +989,9 @@ export const api = {
   /** TKG Admins only: how many licences the organisation has per product (seats null: unlimited). */
   setAllocations: (orgId: string, allocations: { product: string; seats: number | null }[]) =>
     request<Product[]>('PUT', `${org(orgId)}/licences`, { allocations }),
+  groupLicences: (orgId: string, groupId: string) => request<GroupLicences>('GET', `${org(orgId)}/groups/${groupId}/licences`),
+  setGroupLicences: (orgId: string, groupId: string, products: string[]) =>
+    request<GroupLicences>('PUT', `${org(orgId)}/groups/${groupId}/licences`, { products }),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
   /** Set a password, or with `generatePassword` have Keston ID make one up: returned once. */

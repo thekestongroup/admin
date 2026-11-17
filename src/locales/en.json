@@ -50,7 +50,13 @@
     "billing": "Billing",
     "licences": "Licences",
     "guestSettings": "Guests",
-    "domains": "Domains"
+    "domains": "Domains",
+    "appRequests": "App requests",
+    "keston": "Keston",
+    "health": "Service health",
+    "messageCentre": "Message centre",
+    "securityDefaults": "Security defaults",
+    "securityAlerts": "Alerts"
   },
   "titles": {
     "billingLicences": "Licences",
@@ -75,7 +81,12 @@
     "addKestonApp": "Add a Keston-wide app",
     "guestSettings": "Guest settings",
     "browseOrganisations": "All organisations",
-    "domains": "Domains"
+    "domains": "Domains",
+    "appRequests": "App requests",
+    "health": "Service health",
+    "messageCentre": "Message centre",
+    "securityDefaults": "Security defaults",
+    "securityAlerts": "Security alerts"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -332,6 +343,23 @@
     }
   },
   "licences": {
+    "sources": {
+      "title": "Where licences come from",
+      "direct": "Assigned directly",
+      "fromGroup": "From group {name}",
+      "notLicensed": "Not licensed: no seats left",
+      "notLicensedHelp": "A group gives {name} this licence, but the organisation has no seats left. They can’t sign in to it until a seat is free."
+    },
+    "group": {
+      "title": "Licences",
+      "description": "Licences for Keston’s products that every member of {name} gets. Anyone who also has one assigned directly uses one seat, and a licence assigned directly stays if they leave the group.",
+      "save": "Save group licences",
+      "couldntSave": "Couldn’t save the group’s licences",
+      "couldntLoad": "Couldn’t load the group’s licences",
+      "noSeatsTitle": "Not licensed: no seats left",
+      "noSeatsDescription": "These members are in the group but have no seat for {products}. Seats go to members in the order they got the licence; add seats or free some up.",
+      "noSeatsItem": "{name}: {products}"
+    },
     "couldntSave": "Couldn’t save the licences",
     "title": "Licences",
     "cardDescription": "The Keston products {name} can use. Without a licence, they can’t sign in to it.",
@@ -357,6 +385,8 @@
       "seats": "Seats for {name}",
       "inUse": "{count} in use | {count} in use",
       "overAllocated": "Over allocation: {used} in use, but only {seats} seats.",
+      "viaGroups": "Given by groups: {groups}",
+      "noSeatsPeople": "{count} person has no seat | {count} people have no seat",
       "couldntSave": "Couldn’t save the licences",
       "saved": "Licences saved"
     }
@@ -516,7 +546,8 @@
         "deleted": "Group deleted",
         "member_added": "Added to a group",
         "member_removed": "Removed from a group",
-        "permissions_changed": "Group permissions changed"
+        "permissions_changed": "Group permissions changed",
+        "licences_changed": "Group licences changed"
       },
       "organisation": {
         "created": "Organisation created",
@@ -586,6 +617,27 @@
         "accepted": "Account moved",
         "declined": "Account move declined",
         "cancelled": "Account move cancelled"
+      },
+      "app_request": {
+        "created": "App requested",
+        "cancelled": "App request withdrawn",
+        "approved": "App request approved",
+        "declined": "App request declined",
+        "settings_changed": "App request settings changed"
+      },
+      "incident": {
+        "opened": "Incident opened",
+        "updated": "Incident updated"
+      },
+      "maintenance": {
+        "scheduled": "Maintenance scheduled",
+        "updated": "Maintenance updated",
+        "cancelled": "Maintenance cancelled"
+      },
+      "message": {
+        "posted": "Message posted",
+        "updated": "Message edited",
+        "deleted": "Message deleted"
       }
     },
     "groups": {
@@ -595,7 +647,8 @@
       "ownApps": "Your apps",
       "support": "Keston support",
       "kestonApps": "Keston-wide apps",
-      "guests": "Guests and moves"
+      "guests": "Guests and moves",
+      "appRequests": "App requests"
     },
     "methods": {
       "password": "Password",
@@ -1473,7 +1526,12 @@
       "deletion": "This organisation is scheduled for deletion on {date}.",
       "locked": "{count} account is locked out | {count} accounts are locked out",
       "noMfa": "{count} user hasn’t set up MFA | {count} users haven’t set up MFA",
-      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password"
+      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password",
+      "incident": "{title}: {services}",
+      "incidentLink": "Details",
+      "actionRequired": "Action required: {title}",
+      "actionRequiredBy": "Action required by {date}: {title}",
+      "notLicensed": "{count} person has a licence from a group but no seat left | {count} people have a licence from a group but no seat left"
     },
     "signInsWeek": {
       "title": "Sign-ins this week",
@@ -1496,7 +1554,9 @@
       "addUser": "Add user",
       "newGroup": "New group",
       "addApp": "Add an app"
-    }
+    },
+    "secureScore": "Secure Score",
+    "secureScoreDescription": "{done} of {total} recommendations done"
   },
   "switcher": {
     "switchOrganisation": "Switch organisation",
@@ -1665,5 +1725,293 @@
     "removeDescription": "The domain is removed from this organisation. Nobody uses it, and you can add it again later.",
     "removed": "{domain} removed",
     "couldntRemove": "Couldn't remove the domain"
+  },
+  "appRequests": {
+    "title": "App requests",
+    "description": "People asking for apps they can’t use yet. Approve to give them access, or decline with a message.",
+    "couldntLoad": "Couldn’t load requests",
+    "none": "No requests",
+    "noneDescription": "When someone asks for an app, it shows here.",
+    "noMatch": "No requests match",
+    "noMatchDescription": "Try different filters.",
+    "search": "Search by name or email",
+    "status": "Status",
+    "app": "App",
+    "anyStatus": "Any status",
+    "anyApp": "Any app",
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "declined": "Declined"
+    },
+    "asked": "Asked {date}",
+    "reason": "Reason",
+    "decidedBy": "{status} {date} by {name}",
+    "message": "Message: {message}",
+    "willDo": "Approving will:",
+    "willAddToRule": "Add {name} to the “Approved requests” access rule for {app}",
+    "willAssignLicence": "Assign {name} a {app} licence",
+    "seatsLeft": "{count} left | {count} left",
+    "unlimitedSeats": "unlimited",
+    "noSeatsLeft": "No {app} licences left. Free one up or ask The Keston Group for more before approving.",
+    "alreadyAccess": "{name} can already use {app}. Approving just closes the request.",
+    "did": "Done:",
+    "didAddToRule": "Added to the “Approved requests” rule",
+    "didAssignLicence": "Licence assigned",
+    "approve": "Approve",
+    "decline": "Decline",
+    "approveFor": "Approve {name}’s request for {app}",
+    "declineFor": "Decline {name}’s request for {app}",
+    "selectRequest": "Select {name}’s request for {app}",
+    "selectAll": "Select all pending",
+    "selected": "{count} selected | {count} selected",
+    "approveSelected": "Approve selected",
+    "declineSelected": "Decline selected",
+    "declineTitle": "Decline {count} request | Decline {count} requests",
+    "declineIntro": "They’ll be told it was declined.",
+    "messageLabel": "Message (optional)",
+    "messageHelper": "Shown to the person. Up to 500 characters.",
+    "confirmDecline": "Decline",
+    "deciding": "Saving",
+    "cancel": "Cancel",
+    "approved": "Approved",
+    "declined": "Declined",
+    "couldntDecide": "Couldn’t save that",
+    "noPermission": "You can’t approve this one.",
+    "bulkDone": "{done} done, {skipped} skipped",
+    "bulkSkipped": "{name} ({app}): {reason}",
+    "viewRequests": "App requests",
+    "settings": {
+      "title": "Requests",
+      "enable": "Let people request apps",
+      "enableDescription": "People can ask admins for apps they can’t use yet, from their Keston account or when sign-in is refused.",
+      "excluded": "Apps people can’t request",
+      "excludedHelper": "Leave empty to let people request any of the apps.",
+      "saved": "Saved",
+      "couldntSave": "Couldn’t save the request settings",
+      "saving": "Saving",
+      "save": "Save"
+    }
+  },
+  "health": {
+    "title": "Service health",
+    "description": "How Keston’s services are running, incidents and planned maintenance.",
+    "couldntLoad": "Couldn’t load service health",
+    "servicesTitle": "Services",
+    "activeTitle": "Current incidents",
+    "noActive": "No incidents right now.",
+    "maintenanceTitle": "Scheduled maintenance",
+    "noMaintenance": "No maintenance is planned.",
+    "recentTitle": "Recent incidents",
+    "recentDescription": "Resolved in the last 14 days.",
+    "noRecent": "Nothing in the last 14 days.",
+    "affects": "Affects: {services}",
+    "window": "{from} to {to}",
+    "services": {
+      "keston-id": "Keston ID",
+      "keston-admin": "Keston Admin",
+      "keston-forms": "Keston Forms",
+      "learn": "Keston Learn",
+      "work": "Keston Work",
+      "apps": "Keston-wide apps"
+    },
+    "state": {
+      "operational": "Operational",
+      "degraded": "Degraded",
+      "outage": "Outage",
+      "maintenance": "Maintenance"
+    },
+    "impact": {
+      "degraded": "Degraded performance",
+      "outage": "Outage"
+    },
+    "incidentStatus": {
+      "investigating": "Investigating",
+      "identified": "Identified",
+      "monitoring": "Monitoring",
+      "resolved": "Resolved"
+    },
+    "banner": "{title}: {services}. {status}.",
+    "bannerMore": "{count} incident affecting services | {count} incidents affecting services",
+    "bannerLink": "Details",
+    "openIncident": "Open an incident",
+    "addUpdate": "Add an update",
+    "addUpdateTitle": "Update: {title}",
+    "postUpdate": "Post update",
+    "scheduleMaintenance": "Schedule maintenance",
+    "schedule": "Schedule",
+    "cancelMaintenance": "Cancel",
+    "incidentOpened": "Incident opened",
+    "incidentUpdated": "Update posted",
+    "maintenanceScheduled": "Maintenance scheduled",
+    "maintenanceCancelled": "Maintenance cancelled",
+    "couldntSave": "Couldn’t save that",
+    "errors": {
+      "title": "Enter a title.",
+      "services": "Choose at least one service.",
+      "message": "Say what’s happening.",
+      "when": "Enter a date and a time like 09:00.",
+      "endAfterStart": "It must end after it starts."
+    },
+    "fields": {
+      "title": "Title",
+      "services": "Services affected",
+      "impact": "Impact",
+      "status": "Status",
+      "message": "Update message",
+      "description": "Description",
+      "startDate": "Starts on",
+      "startTime": "Start time",
+      "endDate": "Ends on",
+      "endTime": "End time"
+    }
+  },
+  "messages": {
+    "title": "Message centre",
+    "description": "Announcements from Keston.",
+    "inbox": "Inbox",
+    "archived": "Archived",
+    "posted": "Posted",
+    "none": "No messages.",
+    "noArchived": "No archived messages.",
+    "nonePosted": "Nothing posted yet.",
+    "unread": "Unread",
+    "actionBy": "Action needed by {date}",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "archive": "Archive",
+    "unarchive": "Move to inbox",
+    "couldntUpdate": "Couldn’t update the message",
+    "couldntSave": "Couldn’t save the message",
+    "new": "New message",
+    "edit": "Edit",
+    "delete": "Delete",
+    "send": "Post message",
+    "sent": "Message posted",
+    "updated": "Message updated",
+    "deleted": "Message deleted",
+    "category": {
+      "feature": "New feature",
+      "change": "Change",
+      "action_required": "Action required",
+      "notice": "Notice"
+    },
+    "audience": {
+      "all": "All organisations",
+      "selected": "Selected organisations",
+      "count": "{count} organisation | {count} organisations"
+    },
+    "errors": {
+      "title": "Enter a title.",
+      "body": "Write the message.",
+      "audience": "Choose at least one organisation."
+    },
+    "fields": {
+      "title": "Title",
+      "body": "Message",
+      "bodyHelp": "Markdown: **bold**, *italic*, lists, ## headings and [links](https://…). HTML isn’t shown.",
+      "category": "Category",
+      "actionBy": "Action by (optional)",
+      "actionByHelp": "Shown on the message.",
+      "audience": "Who it’s for",
+      "organisations": "Organisations"
+    },
+    "bell": "New message from Keston"
+  },
+  "securityDefaults": {
+    "title": "Security defaults",
+    "description": "Recommended settings for keeping your organisation safe. Apply them here, or follow the links for the ones you set up yourself.",
+    "score": "Secure Score",
+    "scoreDescription": "{done} of {total} recommendations done",
+    "done": "Done",
+    "notDone": "Not done",
+    "points": "{count} points",
+    "apply": "Apply",
+    "applySelected": "Apply selected ({count})",
+    "select": "Select {name}",
+    "howToFix": "How to fix",
+    "markReviewed": "Mark as reviewed",
+    "missing": "{count, plural, one {1 global admin still needs this.} other {# global admins still need this.}}",
+    "applied": "{count, plural, one {Applied 1 setting} other {Applied # settings}}",
+    "someFailed": "{count, plural, one {1 setting couldn't be applied} other {# settings couldn't be applied}}",
+    "couldntApply": "Couldn't apply",
+    "couldntLoad": "Couldn't load security defaults",
+    "items": {
+      "mfa_everyone": {
+        "title": "Require MFA for everyone",
+        "why": "A stolen password alone can't sign in when everyone also needs a second step."
+      },
+      "mfa_admins": {
+        "title": "Require MFA for global admins",
+        "why": "Admins can change everything, so they're the accounts to protect first. Apply again after adding admins."
+      },
+      "password_policy": {
+        "title": "Password policy at least Recommended",
+        "why": "At least 12 characters and a number makes passwords much harder to guess."
+      },
+      "two_global_admins": {
+        "title": "Have at least 2 global admins",
+        "why": "If one admin is locked out or leaves, someone else can still manage the organisation."
+      },
+      "admins_have_mfa": {
+        "title": "Global admins have MFA set up",
+        "why": "Requiring MFA only protects admins once they've registered an app or passkey."
+      },
+      "guests_off": {
+        "title": "Turn off guests unless needed",
+        "why": "Fewer ways in. You can turn guests back on whenever you need them."
+      },
+      "sign_in_log_reviewed": {
+        "title": "Review the sign-in log",
+        "why": "Looking over recent sign-ins every month helps you spot anything unusual."
+      }
+    }
+  },
+  "securityAlerts": {
+    "title": "Security alerts",
+    "description": "Recent security events in your organisation. Global admins also get these as notifications.",
+    "kind": "Type",
+    "allKinds": "All types",
+    "severity": "Severity",
+    "allSeverities": "All severities",
+    "none": "No alerts",
+    "noneDescription": "Nothing to report with these filters.",
+    "more": "Show more",
+    "couldntLoad": "Couldn't load alerts",
+    "severities": {
+      "critical": "High",
+      "warning": "Medium",
+      "info": "Low"
+    },
+    "kinds": {
+      "admin_added": {
+        "label": "New admin",
+        "text": "{by} made {name} a global admin or TKG Admin."
+      },
+      "admin_role_granted": {
+        "label": "Admin role granted",
+        "text": "{by} gave {name} the admin role {roles}."
+      },
+      "mfa_off": {
+        "label": "MFA turned off",
+        "text": "{by} turned off multi-factor authentication."
+      },
+      "password_policy_weakened": {
+        "label": "Password policy weakened",
+        "text": "{by} made the password rules less strict."
+      },
+      "failed_sign_ins": {
+        "label": "Many failed sign-ins",
+        "text": "{count} failed sign-ins for {name} in {minutes} minutes."
+      },
+      "account_locked": {
+        "label": "Account locked",
+        "text": "{name} was locked after repeated failed sign-ins."
+      },
+      "new_country": {
+        "label": "New country",
+        "text": "{name}, a global admin, signed in from {country} for the first time."
+      }
+    }
   }
 }
