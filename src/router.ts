@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import { loadMe } from './lib/api'
+import { landingOrganisation, loadMe } from './lib/api'
 import { t } from './i18n'
 import { currentUser, signIn } from './lib/auth'
 
@@ -32,16 +32,19 @@ export const router = createRouter({
       path: '/',
       component: () => import('./pages/AdminLayout.vue'),
       children: [
-        // Platform admins start at every organisation; global admins at theirs.
+        // Everyone starts at their own organisation (or one they're a guest in
+        // and can manage). TKG Admins browse the rest from the organisation
+        // switcher in the account menu.
         {
           path: '',
           component: () => import('./pages/Organisations.vue'),
           beforeEnter: async () => {
             const me = await loadMe()
-            return me.platformAdmin ? '/organisations' : `/organisations/${me.organisation.id}`
+            return `/organisations/${(await landingOrganisation()) ?? me.organisation.id}`
           },
         },
-        { path: 'organisations', component: () => import('./pages/Organisations.vue'), meta: { title: 'titles.organisations' } },
+        // Browse all organisations (TKG Admins; others see only their own).
+        { path: 'organisations', component: () => import('./pages/Organisations.vue'), meta: { title: 'titles.browseOrganisations' } },
         { path: 'organisations/new', redirect: '/create-organisation' },
         // Old links: these pages were called Accounts.
         { path: 'organisations/:orgId/accounts', redirect: (to) => `/organisations/${to.params.orgId}/users` },
@@ -130,6 +133,11 @@ export const router = createRouter({
           path: 'organisations/:orgId/security/mfa',
           component: () => import('./pages/MfaSettings.vue'),
           meta: { title: 'titles.mfaSettings' },
+        },
+        {
+          path: 'organisations/:orgId/security/guests',
+          component: () => import('./pages/GuestSettings.vue'),
+          meta: { title: 'titles.guestSettings' },
         },
         {
           path: 'organisations/:orgId/password-policy',

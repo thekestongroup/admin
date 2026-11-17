@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, CircleCheck, KeyRound, ListFilter, Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
+import { Ban, CircleCheck, KeyRound, ListFilter, Lock, ShieldCheck, TriangleAlert, UserPlus, Users } from '@lucide/vue'
 import {
   Badge,
   Card,
@@ -17,7 +17,9 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import AccountMovesCard from '../components/AccountMovesCard.vue'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
+import GuestsCard from '../components/GuestsCard.vue'
 import BulkActions from '../components/BulkActions.vue'
 import FilterCard from '../components/FilterCard.vue'
 import { useListQuery } from '../lib/listQuery'
@@ -191,8 +193,10 @@ const toolbar = computed<PageHeaderAction[]>(() => [
     icon: ListFilter,
     onSelect: () => (showFilters.value = !showFilters.value),
   },
+  ...(has('users.create') ? [{ label: t('guests.invite'), icon: UserPlus, onSelect: () => (invitingGuest.value = true) }] : []),
   ...(bulk.value?.actions ?? []),
 ])
+const invitingGuest = ref(false)
 
 // ── Block or unblock sign-in ────────────────────────────────────────────────
 
@@ -328,6 +332,19 @@ async function toggle(a: User) {
       </Table>
     </Card>
 
+    <!-- Requests to move accounts between organisations (global admins) -->
+    <AccountMovesCard v-if="iAmGlobalAdmin && !loadError" :org-id="orgId" @changed="load" />
+
+    <!-- Guests from other organisations -->
+    <GuestsCard
+      v-if="!loadError && has('users.view')"
+      v-model:inviting="invitingGuest"
+      :org-id="orgId"
+      :can="has"
+      :roles="roleCatalogue"
+      :my-permissions="org?.permissions ?? []"
+      :global-admin="iAmGlobalAdmin"
+    />
 
     <!-- Add a user -->
     <AddUserSlideover
