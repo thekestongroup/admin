@@ -179,6 +179,24 @@ async function deleteNow() {
   }
 }
 
+// ── Cancel deletion (TKG Admins, without needing support access) ────────────
+
+const cancellingDeletion = ref(false)
+const cancelDeletionStatus = ref<ButtonStatus>('idle')
+async function cancelDeletionAsStaff() {
+  cancelDeletionStatus.value = 'loading'
+  try {
+    await api.cancelDeletion(orgId)
+    cancellingDeletion.value = false
+    cancelDeletionStatus.value = 'idle'
+    await load()
+    notify({ type: 'success', title: t('overview.deletionCancelled') })
+  } catch (e) {
+    cancelDeletionStatus.value = 'idle'
+    notify({ type: 'error', title: t('overview.cancelDeletionFailed'), description: message(e) })
+  }
+}
+
 // ── Deciding (the organisation's global admins) ─────────────────────────────
 
 const busy = ref<string>()
@@ -241,7 +259,8 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
               {{ t('overview.cancelDeletion') }}
             </Button>
           </div>
-          <div v-if="me?.platformAdmin && !org.isPlatform">
+          <div v-if="me?.platformAdmin && !org.isPlatform" class="flex flex-wrap gap-2">
+            <Button v-if="!decides" @click="cancelDeletionStatus = 'idle'; cancellingDeletion = true">{{ t('overview.cancelDeletion') }}</Button>
             <Button variant="danger" @click="startDeleteNow">{{ t('overview.deleteNow.button') }}</Button>
           </div>
         </div>
@@ -396,6 +415,19 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <Button :disabled="verifyStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
         <Button variant="primary" :status="verifyStatus" :loading-text="t('overview.verify.verifying')" @click="verify">
           {{ t('overview.verify.confirm') }}
+        </Button>
+      </template>
+    </Slideover>
+
+    <Slideover
+      v-model:open="cancellingDeletion"
+      :title="t('overview.cancelDeletionConfirm.title', { name: org?.name })"
+      :description="t('overview.cancelDeletionConfirm.description')"
+    >
+      <template #footer="{ close }">
+        <Button :disabled="cancelDeletionStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="cancelDeletionStatus" :loading-text="t('common.saving')" @click="cancelDeletionAsStaff">
+          {{ t('overview.cancelDeletion') }}
         </Button>
       </template>
     </Slideover>

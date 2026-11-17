@@ -1132,6 +1132,11 @@
     },
     "deletionCancelled": "Deletion cancelled",
     "cancelDeletion": "Cancel deletion",
+    "cancelDeletionFailed": "Couldn’t cancel the deletion",
+    "cancelDeletionConfirm": {
+      "title": "Cancel the deletion of {name}?",
+      "description": "{name} stays as it is and is no longer scheduled for deletion. Its global admins are told, and this is recorded in the logs."
+    },
     "lockoutMade": "An organisation lockout request has been made",
     "kestonSupport": "Keston support",
     "lockoutTold": "{who} was told nobody at {org} can sign in: “{reason}”.",
