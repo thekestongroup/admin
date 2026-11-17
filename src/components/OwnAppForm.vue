@@ -25,6 +25,7 @@ const lines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean)
 
 const fields = reactive({
   name: props.app?.name ?? '',
+  description: props.app?.description ?? '',
   logoUrl: props.app?.logoUrl ?? '',
   privacyUrl: props.app?.privacyUrl ?? '',
   termsUrl: props.app?.termsUrl ?? '',
@@ -69,7 +70,7 @@ const errors = ref<Record<string, string>>({})
 const status = ref<ButtonStatus>('idle')
 
 function body(): OwnAppChanges {
-  const b: OwnAppChanges = { name: fields.name, logoUrl: fields.logoUrl }
+  const b: OwnAppChanges = { name: fields.name, description: fields.description, logoUrl: fields.logoUrl }
   if (props.protocol === 'oidc') {
     Object.assign(b, {
       privacyUrl: fields.privacyUrl,
@@ -108,6 +109,12 @@ async function submit() {
 <template>
   <form class="flex flex-col gap-4" novalidate @submit.prevent="submit">
     <Input v-model="fields.name" :label="t('common.name')" :helper="t('ownApp.nameHelper')" :error-text="errors.name" />
+    <InputTextArea
+      v-model="fields.description"
+      :label="t('ownApp.description')"
+      :helper="t('ownApp.descriptionHelper')"
+      :error-text="errors.description"
+    />
 
     <template v-if="protocol === 'oidc'">
       <RadioGroup v-if="adding" v-model="fields.type" :label="t('ownApp.typeOfApp')" :options="types" :error-text="errors.type" />

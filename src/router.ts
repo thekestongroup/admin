@@ -80,8 +80,15 @@ export const router = createRouter({
           meta: { title: 'titles.addApp' },
         },
         {
-          path: 'organisations/:orgId/apps/own/:appId',
-          component: () => import('./pages/OwnAppDetail.vue'),
+          path: 'organisations/:orgId/apps/new/keston',
+          component: () => import('./pages/KestonAppNew.vue'),
+          meta: { title: 'titles.addKestonApp' },
+        },
+        // The page an own app had before every app got one.
+        { path: 'organisations/:orgId/apps/own/:appId', redirect: (to) => `/organisations/${to.params.orgId}/apps/${to.params.appId}` },
+        {
+          path: 'organisations/:orgId/apps/:appId',
+          component: () => import('./pages/AppDetail.vue'),
           meta: { title: 'titles.app' },
         },
         {

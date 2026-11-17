@@ -66,7 +66,8 @@
     "users": "Users",
     "logs": "Logs",
     "mfaSettings": "Manage MFA",
-    "passwordPolicy": "Password policy"
+    "passwordPolicy": "Password policy",
+    "addKestonApp": "Add a Keston-wide app"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -514,14 +515,22 @@
         "cancelled": "Lockout procedure cancelled",
         "completed": "Lockout procedure went through"
       },
-      "label": "Actions"
+      "label": "Actions",
+      "keston_app": {
+        "created": "Keston-wide app added",
+        "updated": "Keston-wide app changed",
+        "retired": "Keston-wide app retired",
+        "restored": "Keston-wide app restored",
+        "secret_changed": "Keston-wide app secret changed"
+      }
     },
     "groups": {
       "users": "Users",
       "groups": "Groups",
       "organisation": "Organisation",
       "ownApps": "Your apps",
-      "support": "Keston support"
+      "support": "Keston support",
+      "kestonApps": "Keston-wide apps"
     },
     "methods": {
       "password": "Password",
@@ -688,7 +697,9 @@
     "newSecretDescription": "The current secret stops working straight away, so the app can’t sign anyone in until you give it the new one.",
     "generating": "Generating",
     "deleteApp": "Delete app",
-    "deleteDescription": "Your users can no longer sign in to it, and its access settings are removed. This can’t be undone."
+    "deleteDescription": "Your users can no longer sign in to it, and its access settings are removed. This can’t be undone.",
+    "description": "Description",
+    "descriptionHelper": "What the app is for, shown on its page."
   },
   "settings": {
     "title": "Settings",
@@ -867,8 +878,6 @@
     "noneDescription": "Users you delete stay here for 30 days."
   },
   "apps": {
-    "everyone": "Everyone (default)",
-    "everyoneDescription": "Also what new users get",
     "mode": {
       "forced": "Forced",
       "enabled": "Enabled",
@@ -877,26 +886,152 @@
       "enabledDescription": "On, and each person can turn it off",
       "disabledDescription": "Off, and they can’t use it"
     },
-    "useDefault": "Use the default ({mode})",
-    "peopleChoose": "people choose",
     "kestonDefault": "Forced (Keston’s default)",
     "notSet": "Not set: people choose",
-    "sections": {
-      "keston": "Keston apps",
-      "own": "Your organisation’s apps",
-      "other": "Other apps"
-    },
-    "description": "Which apps your users have, shown under Connected apps in their Keston account.",
     "addApp": "Add an app",
     "couldntLoad": "Couldn’t load the apps",
-    "appliesTo": "Applies to",
-    "scopeDefault": "The default, for everyone not covered by a group’s setting.",
-    "scopeGroup": "Overrides the default for this group’s users.",
-    "disagree": "If someone’s groups disagree, Disabled wins, then Forced, then Enabled.",
-    "manageGroups": "Manage groups",
-    "addedByOrg": "Added by your organisation",
     "protocolSettings": "{protocol} settings",
-    "forApp": "for {name}"
+    "forApp": "for {name}",
+    "description": "The apps your people can use: Keston’s, other publishers’ and your own. Open one to set who has it, its rules and its settings.",
+    "addKestonApp": "Add a Keston-wide app",
+    "search": "Search by name, publisher or description",
+    "anyPublisher": "Any publisher",
+    "anyState": "Any state",
+    "anyType": "Any type",
+    "notSetShort": "Not set",
+    "retiredBadge": "Retired",
+    "none": "No apps",
+    "noneDescription": "Add an app that signs people in with their Keston account.",
+    "noMatch": "No apps match",
+    "noMatchDescription": "Try different filters, or clear them.",
+    "publisher": {
+      "keston": "The Keston Group",
+      "organisation": "This organisation",
+      "other": "Other"
+    },
+    "type": {
+      "web": "Web app",
+      "native": "Single-page or mobile app",
+      "saml": "SAML app"
+    },
+    "columns": {
+      "app": "App",
+      "publisher": "Publisher",
+      "type": "Type",
+      "state": "Default state",
+      "rules": "Rules"
+    },
+    "notFound": "That app doesn’t exist",
+    "tabs": {
+      "label": "App",
+      "overview": "Overview",
+      "access": "Access",
+      "settings": "Settings"
+    },
+    "managedByDeployment": "Managed by deployment",
+    "managedByDeploymentDescription": "This app is registered from Keston’s deployment, so its details can’t be changed here. You can still set who has it.",
+    "retiredDescription": "This Keston-wide app is retired: it isn’t shown to anyone and nobody can sign in to it.",
+    "overview": {
+      "details": "About this app",
+      "publisher": "Publisher",
+      "description": "Description",
+      "noDescription": "No description.",
+      "type": "Type",
+      "managedBy": "Managed by",
+      "managedByDeployment": "Deployment",
+      "managedByAdmin": "TKG Admins",
+      "managedByOrganisation": "Your organisation",
+      "defaultTitle": "Default state",
+      "defaultDescription": "What this app is for your people unless a rule on the Access tab says otherwise. It’s also what new users get.",
+      "defaultLabel": "Default state",
+      "defaultHelper": "Changes apply at each person’s next sign-in.",
+      "ruleCount": "{count} rule on the Access tab | {count} rules on the Access tab",
+      "couldntSave": "Couldn’t save the default state"
+    },
+    "access": {
+      "defaultIs": "Default: {mode}",
+      "defaultNotSet": "Default: not set, so people choose",
+      "defaultChange": "Change the default on the Overview tab.",
+      "precedence": "Rules are checked from the top and the first one that matches decides. If none match, the default applies."
+    },
+    "settings": {
+      "kestonTitle": "Keston-wide app",
+      "kestonDescription": "Shown to every organisation. Changes apply to all of them.",
+      "kestonDetails": "Sign-in details",
+      "retire": "Retire app",
+      "retireTitle": "Retire {name}?",
+      "retireDescription": "It will disappear for every organisation and nobody will be able to sign in to it. People who are already signed in keep their access until their tokens expire. You can bring it back later.",
+      "retired": "{name} retired",
+      "restore": "Restore app",
+      "restored": "{name} restored",
+      "couldntRetire": "Couldn’t retire the app",
+      "couldntRestore": "Couldn’t restore the app",
+      "typeWeb": "Web app, with a secret",
+      "typePublic": "Single-page or mobile app (PKCE, no secret)"
+    },
+    "newKeston": {
+      "title": "Add a Keston-wide app",
+      "description": "An app every organisation sees, published by The Keston Group. Only TKG Admins can add them.",
+      "submit": "Add app",
+      "description_label": "Description",
+      "descriptionHelper": "What the app is for, shown on its page."
+    },
+    "rules": {
+      "title": "Custom rules",
+      "description": "Checked from the top: the first rule that matches decides this app’s access for someone. A rule matches when everything it names does: users, groups and IP addresses.",
+      "add": "Add rule",
+      "caption": "Access rules",
+      "unknown": "Unknown",
+      "users": "Users: {names}",
+      "groups": "Groups: {names}",
+      "ipAddresses": "IP addresses: {names}",
+      "everyone": "Everyone, everywhere",
+      "columns": {
+        "rule": "Rule",
+        "appliesTo": "Applies to",
+        "access": "Then"
+      },
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "turnOff": "Turn off",
+      "turnOn": "Turn on",
+      "turnedOff": "{name} turned off",
+      "turnedOn": "{name} turned on",
+      "turnedOffBadge": "Turned off",
+      "couldntChange": "Couldn’t change the rule",
+      "couldntMove": "Couldn’t move the rule",
+      "couldntDelete": "Couldn’t delete the rule",
+      "couldntLoad": "Couldn’t load the rules",
+      "deleted": "Rule deleted",
+      "deletedDescription": "{name} no longer applies.",
+      "none": "No rules yet",
+      "noneDescription": "Add one to enable, disable or force this app for particular people or places.",
+      "deleteTitle": "Delete {name}?",
+      "deleteRule": "Delete rule",
+      "deleteDescription": "It stops applying straight away. Anyone it covered is then covered by the rules below it, or the default."
+    },
+    "rule": {
+      "alreadyListed": "{value} is already in the list",
+      "nameRequired": "Give the rule a name",
+      "changeTitle": "Change rule",
+      "addTitle": "Add a rule",
+      "description": "When all of these match, the access below is given. Leave one empty to match everyone, everywhere.",
+      "name": "Name",
+      "nameHelper": "e.g. Pupils at school",
+      "users": "Users",
+      "usersHelper": "Any of these people.",
+      "anyone": "Anyone",
+      "groups": "Groups",
+      "groupsHelper": "Anyone in any of these groups.",
+      "anyGroup": "Any group",
+      "ipAddresses": "IP addresses",
+      "ipHelper": "A single address or a range, e.g. 203.0.113.7 or 10.0.0.0/8. Matches when they sign in from any of them.",
+      "anyAddress": "Any address.",
+      "then": "Then this app is",
+      "save": "Save rule",
+      "add": "Add rule"
+    },
+    "publishedBy": "Published by {publisher}"
   },
   "ownAppNew": {
     "oidcDescription": "Most modern apps, and apps you build yourself (OAuth 2.0).",
