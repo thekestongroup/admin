@@ -49,7 +49,8 @@
     "logs": "Logs",
     "billing": "Billing",
     "licences": "Licences",
-    "guestSettings": "Guests"
+    "guestSettings": "Guests",
+    "appRequests": "App requests"
   },
   "titles": {
     "billingLicences": "Licences",
@@ -73,7 +74,8 @@
     "passwordPolicy": "Password policy",
     "addKestonApp": "Add a Keston-wide app",
     "guestSettings": "Guest settings",
-    "browseOrganisations": "All organisations"
+    "browseOrganisations": "All organisations",
+    "appRequests": "App requests"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -583,6 +585,13 @@
         "accepted": "Account moved",
         "declined": "Account move declined",
         "cancelled": "Account move cancelled"
+      },
+      "app_request": {
+        "created": "App requested",
+        "cancelled": "App request withdrawn",
+        "approved": "App request approved",
+        "declined": "App request declined",
+        "settings_changed": "App request settings changed"
       }
     },
     "groups": {
@@ -592,7 +601,8 @@
       "ownApps": "Your apps",
       "support": "Keston support",
       "kestonApps": "Keston-wide apps",
-      "guests": "Guests and moves"
+      "guests": "Guests and moves",
+      "appRequests": "App requests"
     },
     "methods": {
       "password": "Password",
@@ -1616,5 +1626,72 @@
     "moveBody": "Their email would change from {oldEmail} to {newEmail}. They'd be a member, without their groups, admin roles or licences, and signed out everywhere.",
     "moreWaiting": "{count} more waiting"
   },
-  "notifications": {}
+  "notifications": {},
+  "appRequests": {
+    "title": "App requests",
+    "description": "People asking for apps they can’t use yet. Approve to give them access, or decline with a message.",
+    "couldntLoad": "Couldn’t load requests",
+    "none": "No requests",
+    "noneDescription": "When someone asks for an app, it shows here.",
+    "noMatch": "No requests match",
+    "noMatchDescription": "Try different filters.",
+    "search": "Search by name or email",
+    "status": "Status",
+    "app": "App",
+    "anyStatus": "Any status",
+    "anyApp": "Any app",
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "declined": "Declined"
+    },
+    "asked": "Asked {date}",
+    "reason": "Reason",
+    "decidedBy": "{status} {date} by {name}",
+    "message": "Message: {message}",
+    "willDo": "Approving will:",
+    "willAddToRule": "Add {name} to the “Approved requests” access rule for {app}",
+    "willAssignLicence": "Assign {name} a {app} licence",
+    "seatsLeft": "{count} left | {count} left",
+    "unlimitedSeats": "unlimited",
+    "noSeatsLeft": "No {app} licences left. Free one up or ask The Keston Group for more before approving.",
+    "alreadyAccess": "{name} can already use {app}. Approving just closes the request.",
+    "did": "Done:",
+    "didAddToRule": "Added to the “Approved requests” rule",
+    "didAssignLicence": "Licence assigned",
+    "approve": "Approve",
+    "decline": "Decline",
+    "approveFor": "Approve {name}’s request for {app}",
+    "declineFor": "Decline {name}’s request for {app}",
+    "selectRequest": "Select {name}’s request for {app}",
+    "selectAll": "Select all pending",
+    "selected": "{count} selected | {count} selected",
+    "approveSelected": "Approve selected",
+    "declineSelected": "Decline selected",
+    "declineTitle": "Decline {count} request | Decline {count} requests",
+    "declineIntro": "They’ll be told it was declined.",
+    "messageLabel": "Message (optional)",
+    "messageHelper": "Shown to the person. Up to 500 characters.",
+    "confirmDecline": "Decline",
+    "deciding": "Saving",
+    "cancel": "Cancel",
+    "approved": "Approved",
+    "declined": "Declined",
+    "couldntDecide": "Couldn’t save that",
+    "noPermission": "You can’t approve this one.",
+    "bulkDone": "{done} done, {skipped} skipped",
+    "bulkSkipped": "{name} ({app}): {reason}",
+    "viewRequests": "App requests",
+    "settings": {
+      "title": "Requests",
+      "enable": "Let people request apps",
+      "enableDescription": "People can ask admins for apps they can’t use yet, from their Keston account or when sign-in is refused.",
+      "excluded": "Apps people can’t request",
+      "excludedHelper": "Leave empty to let people request any of the apps.",
+      "saved": "Saved",
+      "couldntSave": "Couldn’t save the request settings",
+      "saving": "Saving",
+      "save": "Save"
+    }
+  }
 }

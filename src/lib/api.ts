@@ -198,6 +198,46 @@ export interface Group {
   permissions: PermissionId[]
 }
 
+export interface AppRequestPlan {
+  addToRule: boolean
+  assignLicence: boolean
+  seatsLeft: number | null
+  noSeats: boolean
+  alreadyAccess: boolean
+}
+
+export interface AppRequest {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  clientId: string
+  appName: string
+  reason: string
+  status: 'pending' | 'approved' | 'declined'
+  decisionMessage: string
+  decidedByName: string
+  decidedAt?: string
+  addedToRule: boolean
+  licenceAssigned: boolean
+  createdAt: string
+  /** Pending only: what approving will do. */
+  plan?: AppRequestPlan
+}
+
+export interface AppRequestResult {
+  id: string
+  name: string
+  app: string
+  result: 'done' | 'skipped'
+  reason?: string
+}
+
+export interface AppRequestSettings {
+  enabled: boolean
+  excluded: string[]
+}
+
 export interface AppAccess {
   apps: AppInfo[]
   /** A TKG Admin in The Keston Group: can add and manage Keston-wide apps. */
@@ -676,6 +716,19 @@ export const api = {
     request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
+  appRequests: (orgId: string, query = '') => request<AppRequest[]>('GET', `${org(orgId)}/app-requests${query}`),
+  appRequestCount: (orgId: string) => request<{ pending: number }>('GET', `${org(orgId)}/app-requests/count`),
+  decideAppRequest: (
+    orgId: string,
+    id: string,
+    decision: 'approve' | 'decline',
+    body: { message?: string; addToRule?: boolean; assignLicence?: boolean } = {},
+  ) => request<AppRequest>('POST', `${org(orgId)}/app-requests/${encodeURIComponent(id)}/${decision}`, body),
+  bulkAppRequests: (orgId: string, ids: string[], action: 'approve' | 'decline', message = '') =>
+    request<{ results: AppRequestResult[] }>('POST', `${org(orgId)}/app-requests/bulk`, { ids, action, message }),
+  appRequestSettings: (orgId: string) => request<AppRequestSettings>('GET', `${org(orgId)}/app-request-settings`),
+  setAppRequestSettings: (orgId: string, settings: AppRequestSettings) =>
+    request<AppRequestSettings>('PUT', `${org(orgId)}/app-request-settings`, settings),
   apps: (orgId: string) => request<AppAccess>('GET', `${org(orgId)}/apps`),
   app: (orgId: string, appId: string) => request<AppInfo>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}`),
   /** Sets the organisation's default for an app; mode '' removes the setting. */

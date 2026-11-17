@@ -15,6 +15,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import FilterCard from '../components/FilterCard.vue'
+import RequestSettingsCard from '../components/RequestSettingsCard.vue'
 import { api, type AppAccess, type AppInfo, type AppMode } from '../lib/api'
 import { useListQuery } from '../lib/listQuery'
 
@@ -165,6 +166,8 @@ const stateColor = { forced: 'primary', enabled: 'green', disabled: 'red' } as c
       <Select :model-value="many('state')" :label="t('apps.columns.state')" :options="stateOptions" :placeholder="t('apps.anyState')" multiple @update:model-value="list.set({ state: ($event as string[]) })" />
       <Select :model-value="many('type')" :label="t('apps.columns.type')" :options="typeOptions" :placeholder="t('apps.anyType')" multiple @update:model-value="list.set({ type: ($event as string[]) })" />
     </FilterCard>
+
+    <RequestSettingsCard v-if="data" :org-id="orgId" :apps="data.apps" />
 
     <Card v-if="error">
       <EmptyState :icon="TriangleAlert" :title="t('apps.couldntLoad')" :description="error" />
