@@ -43,6 +43,29 @@ export interface ProfileEditing {
   picture: boolean
 }
 
+/** An organisation's dashboard numbers (GET …/summary): counts only. */
+export interface OrganisationSummary {
+  users: { total: number; active: number; disabled: number; locked: number; passwordChangeRequired: number }
+  mfa: {
+    mode: 'off' | 'required' | 'custom'
+    /** Users who can sign in, and how many of them have an authenticator app or a passkey. */
+    eligible: number
+    enrolled: number
+  }
+  groups: number
+  apps: { enabled: number; available: number }
+  licences: { inUse: number; licensedUsers: number }
+  signIns: {
+    /** The last 7 days (UTC): everything, and the failed ones. */
+    total: number
+    failed: number
+    /** One per day, oldest first. date is YYYY-MM-DD. */
+    daily: { date: string; success: number; failed: number }[]
+  }
+  /** The latest admin actions; null without See logs (reports.view). */
+  recentActivity: import('./logs').AuditEntry[] | null
+}
+
 export interface Organisation {
   id: string
   name: string
@@ -266,8 +289,15 @@ export interface Product {
   id: string
   name: string
   publisher: string
-  /** How many of the organisation's users have a licence for it. */
+  /** How many of the organisation's users have a licence for it (licences in use). */
   assigned: number
+  /** The licences the organisation has for it; null is unlimited. */
+  seats: number | null
+  unlimited: boolean
+  /** Seats left (null when unlimited; 0 when full or over). */
+  available: number | null
+  /** More in use than seats: nothing more can be assigned until under. */
+  overAllocated: boolean
 }
 
 export interface Me {
@@ -550,6 +580,7 @@ export const api = {
 
   organisations: () => request<Organisation[]>('GET', '/organisations'),
   organisation: (id: string) => request<Organisation>('GET', org(id)),
+  summary: (id: string) => request<OrganisationSummary>('GET', `${org(id)}/summary`),
   platformSettings: () => request<PlatformSettings>('GET', '/platform-settings'),
   savePlatformSettings: (settings: PlatformSettings) => request<PlatformSettings>('PUT', '/platform-settings', settings),
   /** Verify an organisation (platform admins). */
@@ -619,6 +650,8 @@ export const api = {
   scheduleDeletion: (orgId: string, confirm: string) =>
     request<{ deleteAfter: string }>('POST', `${org(orgId)}/deletion`, { confirm }),
   cancelDeletion: (orgId: string) => request<void>('DELETE', `${org(orgId)}/deletion`),
+  /** TKG Admins: delete an organisation that's scheduled for deletion now, skipping the wait. */
+  deleteOrganisationNow: (orgId: string) => request<void>('POST', `${org(orgId)}/delete-now`, {}),
   startLockout: (orgId: string, reason: string) => request<LockoutRequest>('POST', `${org(orgId)}/lockout`, { reason }),
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),
@@ -650,6 +683,9 @@ export const api = {
   setRoles: (orgId: string, userId: string, roles: string[]) =>
     request<{ roles: string[] }>('PUT', `${org(orgId)}/users/${userId}/roles`, { roles }),
   products: (orgId: string) => request<Product[]>('GET', `${org(orgId)}/products`),
+  /** TKG Admins only: how many licences the organisation has per product (seats null: unlimited). */
+  setAllocations: (orgId: string, allocations: { product: string; seats: number | null }[]) =>
+    request<Product[]>('PUT', `${org(orgId)}/licences`, { allocations }),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
   /** Set a password, or with `generatePassword` have Keston ID make one up: returned once. */
@@ -710,6 +746,8 @@ export const api = {
     },
   ) => request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/create`, body),
   /** Add everyone to some groups and take them out of others. */
+  bulkLicences: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/licences`, { userIds, add, remove }),
   bulkGroups: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/groups`, { userIds, add, remove }),
   deletedUsers: (orgId: string) => request<DeletedUser[]>('GET', `${org(orgId)}/deleted-users`),

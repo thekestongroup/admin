@@ -138,7 +138,8 @@ async function bulkDone() {
   selected.value = []
   await load()
 }
-const creating = ref(false)
+// ?new=1 (the dashboard's New group) opens the form.
+const creating = ref(route.query.new === '1')
 const bulk = ref<InstanceType<typeof GroupBulkActions>>()
 
 /** The action bar: filter and sort, then New group, or what can be done to the selection. */

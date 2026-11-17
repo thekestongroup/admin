@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ArchiveRestore, Ban, KeyRound, Trash2, UserPlus, Users, UsersRound, X } from '@lucide/vue'
+import { AppWindow, ArchiveRestore, Ban, KeyRound, Trash2, UserPlus, Users, UsersRound, X } from '@lucide/vue'
 import {
   Button,
   type ButtonStatus,
   Checkbox,
+  CheckboxGroup,
   Notification,
   type PageHeaderAction,
   RadioGroup,
   Select,
   Slideover,
+  Spinner,
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, ref } from 'vue'
-import { ApiError, api, type BulkResult, type Group, type PermissionId, type User } from '../lib/api'
+import { ApiError, api, type BulkResult, type Group, type PermissionId, type Product, type User } from '../lib/api'
+import { availability, isFull } from '../lib/licences'
 import BulkSummary from './BulkSummary.vue'
 import PasswordField from './PasswordField.vue'
 import { useI18n } from 'vue-i18n'
@@ -38,11 +41,12 @@ const emit = defineEmits<{ done: []; add: []; clear: [] }>()
 const { notify } = useNotifications()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-type Kind = 'reset-password' | 'sign-in' | 'groups' | 'delete'
+type Kind = 'reset-password' | 'sign-in' | 'groups' | 'licences' | 'delete'
 const titles = computed<Record<Kind, string>>(() => ({
   'reset-password': t('bulk.resetPassword.title'),
   'sign-in': t('bulk.signIn.title'),
   groups: t('bulk.groups.title'),
+  licences: t('bulk.licences.title'),
   delete: t('bulk.delete.title'),
 }))
 
@@ -71,6 +75,7 @@ const actions = computed<PageHeaderAction[]>(() => {
   if (props.can('users.status')) out.push({ label: titles.value['sign-in'], icon: Ban, onSelect: () => ask('sign-in') })
   if (props.can('groups.manage') || props.can('permissions.assign'))
     out.push({ label: titles.value.groups, icon: UsersRound, onSelect: () => ask('groups') })
+  if (props.can('users.licences')) out.push({ label: titles.value.licences, icon: AppWindow, onSelect: () => ask('licences') })
   if (props.can('users.delete')) out.push({ label: titles.value.delete, icon: Trash2, onSelect: () => ask('delete') })
   out.push({ label: t('bulk.clearSelection'), icon: X, onSelect: () => emit('clear') })
   return out
@@ -104,7 +109,25 @@ const groupOptions = computed(() =>
   props.groups.map((g) => ({ label: g.name, value: g.id, description: t('bulk.groups.members', g.memberCount) })),
 )
 
+// Manage licences
+const products = ref<Product[]>()
+const giveLicences = ref<string[]>([])
+const takeLicences = ref<string[]>([])
+const productOptions = (giving: boolean) =>
+  (products.value ?? []).map((p) => ({
+    label: p.name,
+    value: p.id,
+    description: availability(t, p),
+    disabled: giving && isFull(p),
+  }))
+
 function ask(k: Kind, user?: User) {
+  if (k === 'licences') {
+    products.value = undefined
+    api.products(props.orgId).then((l) => (products.value = l)).catch(() => (products.value = []))
+  }
+  giveLicences.value = []
+  takeLicences.value = []
   only.value = user
   errors.value = {}
   status.value = 'idle'
@@ -125,6 +148,8 @@ const confirm = computed(() => {
       return signIn.value === 'block'
         ? { label: t('bulk.signIn.blockConfirm'), loading: t('bulk.signIn.blocking'), danger: true }
         : { label: t('bulk.signIn.allowConfirm'), loading: t('bulk.signIn.allowing'), danger: false }
+    case 'licences':
+      return { label: t('bulk.licences.confirm'), loading: t('common.saving'), danger: false }
     case 'groups':
       return { label: t('bulk.groups.confirm'), loading: t('common.saving'), danger: false }
     default:
@@ -155,6 +180,11 @@ function check(): boolean {
     const both = addTo.value.find((id) => removeFrom.value.includes(id))
     if (both) errors.value.remove = t('bulk.groups.inBoth', { name: props.groups.find((g) => g.id === both)?.name })
   }
+  if (kind.value === 'licences') {
+    if (!giveLicences.value.length && !takeLicences.value.length) errors.value.give = t('bulk.licences.chooseOne')
+    const both = giveLicences.value.find((id) => takeLicences.value.includes(id))
+    if (both) errors.value.take = t('bulk.licences.inBoth', { name: products.value?.find((p) => p.id === both)?.name })
+  }
   return !passwordInvalid.value && !Object.values(errors.value).some(Boolean)
 }
 
@@ -171,6 +201,7 @@ async function run() {
         requirePasswordChange: requireChange.value,
       })
     else if (k === 'sign-in') res = await api.bulk(props.orgId, signIn.value === 'block' ? 'disable' : 'enable', ids)
+    else if (k === 'licences') res = await api.bulkLicences(props.orgId, ids, giveLicences.value, takeLicences.value)
     else if (k === 'groups') res = await api.bulkGroups(props.orgId, ids, addTo.value, removeFrom.value)
     else res = await api.bulk(props.orgId, 'delete', ids)
     results.value = res.results
@@ -245,6 +276,29 @@ async function run() {
           multiple
           searchable
         />
+      </div>
+
+      <!-- Manage licences -->
+      <div v-else-if="kind === 'licences'" class="flex flex-col gap-4">
+        <p class="text-sm text-black/65">{{ t('bulk.licences.intro') }}</p>
+        <div v-if="!products" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>
+        <template v-else>
+          <CheckboxGroup
+            v-model="giveLicences"
+            :label="t('bulk.licences.give')"
+            :options="productOptions(true)"
+            :error-text="errors.give"
+          />
+          <p v-for="p in products.filter((x) => isFull(x))" :key="p.id" class="text-sm text-black/65">
+            {{ p.name }}: {{ p.overAllocated ? t('licences.overAllocation', { used: p.assigned, seats: p.seats ?? 0 }) : t('licences.fullExplanation') }}
+          </p>
+          <CheckboxGroup
+            v-model="takeLicences"
+            :label="t('bulk.licences.take')"
+            :options="productOptions(false)"
+            :error-text="errors.take"
+          />
+        </template>
       </div>
 
       <!-- Delete -->

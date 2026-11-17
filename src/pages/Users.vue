@@ -143,7 +143,7 @@ onMounted(async () => {
 
 // ── Selecting users, for bulk actions ───────────────────────────────────────
 
-const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'users.delete', 'groups.manage', 'permissions.assign']
+const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'users.licences', 'users.delete', 'groups.manage', 'permissions.assign']
 const canBulk = computed(() => bulkPerms.some(has))
 /** Only users you can change can be ticked. */
 const selectable = (u: User) => !!u.canChange && !u.support
@@ -166,7 +166,8 @@ const columns = computed<TableColumn<User>[]>(() => [
 
 // ── Add a user ──────────────────────────────────────────────────────────
 
-const adding = ref(false)
+// ?add=1 (the dashboard's Add user) opens the form.
+const adding = ref(route.query.add === '1')
 const bulk = ref<InstanceType<typeof BulkActions>>()
 
 // Role names, for the Role column.

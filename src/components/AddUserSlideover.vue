@@ -17,6 +17,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import PasswordField from './PasswordField.vue'
 import RolesField, { type Roles } from './RolesField.vue'
 import { suggestUsername } from '../lib/usernames'
+import { licenceOption, isFull } from '../lib/licences'
 import { ApiError, api, type AdminRole, type Organisation, type PermissionId, type Product } from '../lib/api'
 import { useI18n } from 'vue-i18n'
 
@@ -91,8 +92,8 @@ async function loadProducts() {
   productsError.value = undefined
   try {
     products.value = await api.products(props.orgId)
-    // Every product, unless they're unticked.
-    form.licences = products.value.map((p) => p.id)
+    // Every product with licences left, unless they're unticked.
+    form.licences = products.value.filter((p) => !isFull(p)).map((p) => p.id)
   } catch (e) {
     productsError.value = e instanceof Error ? e.message : String(e)
   }
@@ -297,7 +298,7 @@ async function copyPassword(password: string) {
             v-model="form.licences"
             :label="t('licences.title')"
             hide-label
-            :options="products.map((p) => ({ label: p.name, value: p.id, description: t('addUser.licenceDescription', { publisher: p.publisher }, p.assigned) }))"
+            :options="products.map((p) => licenceOption(t, p))"
           />
           <p v-if="errors.licences" class="text-sm text-red">{{ errors.licences }}</p>
         </div>
