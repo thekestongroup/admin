@@ -17,6 +17,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import OrgDashboard from '../components/OrgDashboard.vue'
 import { ApiError, api, loadMe, type Me, type Organisation, type Support } from '../lib/api'
 import { I18nT, useI18n } from 'vue-i18n'
 
@@ -190,7 +191,7 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
 </script>
 
 <template>
-  <div class="flex max-w-4xl flex-col gap-6 p-4 sm:p-6">
+  <div class="flex max-w-6xl flex-col gap-6 p-4 sm:p-6">
     <Card v-if="error">
       <EmptyState :icon="ShieldAlert" :title="t('overview.couldntLoad')" :description="error" />
     </Card>
@@ -272,6 +273,9 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
           </div>
         </div>
       </Card>
+
+      <!-- The dashboard: tiles, what needs attention, activity. -->
+      <OrgDashboard :org="org" />
 
       <Card :title="t('overview.details')">
         <SummaryList :items="details" />
