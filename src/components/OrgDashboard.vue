@@ -177,6 +177,14 @@ const attention = computed<Item[]>(() => {
       to: users ? { path: `${base.value}/users` } : undefined,
     })
   }
+  if (s.licences.unlicensed > 0) {
+    items.push({
+      key: 'notLicensed',
+      icon: KeyRound,
+      text: t('dashboard.attention.notLicensed', { count: n(s.licences.unlicensed) }, s.licences.unlicensed),
+      to: users ? { path: `${base.value}/groups` } : undefined,
+    })
+  }
   return items
 })
 
