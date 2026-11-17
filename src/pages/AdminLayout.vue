@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ListChecks, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { Activity, AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -27,6 +27,7 @@ import {
   type Prompts,
 } from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
+import { activeIncidents, loadHealth, loadMessages, unreadMessages } from '../lib/platform'
 import { I18nT, useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -123,10 +124,12 @@ onMounted(async () => {
       me.value = undefined
       return
     }
-    await loadNotifications()
+    await Promise.all([loadNotifications(), loadHealth(), loadMessages()])
     timer = setInterval(() => {
       loadNotifications()
       loadPrompts()
+      loadHealth()
+      loadMessages()
     }, 60_000)
   } catch (e) {
     if (!(e instanceof ApiError && e.code === 'signed_out')) error.value = e instanceof Error ? e.message : String(e)
@@ -192,6 +195,21 @@ const nav = computed<SidebarSection[]>(() => {
         items: [{ label: t('nav.licences'), icon: CreditCard, to: `${base}/billing/licences`, active: active(`${base}/billing`, false) }],
       })
   }
+  // Keston's own: service health and announcements, for every admin.
+  sections.push({
+    label: t('nav.keston'),
+    items: [
+      { label: t('nav.health'), icon: Activity, to: '/health', active: active('/health'), badge: activeIncidents.value.length || undefined, badgeColor: 'red' },
+      {
+        label: t('nav.messageCentre'),
+        icon: Megaphone,
+        to: '/message-centre',
+        active: active('/message-centre'),
+        badge: unreadMessages.value || undefined,
+        badgeColor: 'primary',
+      },
+    ],
+  })
   return sections
 })
 
@@ -276,6 +294,22 @@ function accountSettings() {
         </I18nT>
       </span>
       <Button size="sm" @click="switchUser()">{{ t('layout.switchAccount') }}</Button>
+    </div>
+    <!-- An incident is affecting a service. -->
+    <div
+      v-for="i in activeIncidents"
+      :key="i.id"
+      class="flex flex-wrap items-center gap-3 border-b border-black/15 px-4 py-3 text-sm sm:px-6"
+      :class="i.impact === 'outage' ? 'bg-red/10' : 'bg-yellow/20'"
+      role="status"
+    >
+      <TriangleAlert class="size-4 shrink-0" aria-hidden="true" />
+      <span class="flex-1">
+        <span class="font-bold">{{ i.title }}</span>
+        {{ t('health.affects', { services: i.services.map((s) => t(`health.services.${s}`)).join(', ') }) }}
+        · {{ t(`health.incidentStatus.${i.status}`) }}
+      </span>
+      <RouterLink to="/health" class="underline">{{ t('health.bannerLink') }}</RouterLink>
     </div>
     <!-- A new page for each path; pages whose URL carries filters (Logs)
          watch the query themselves, so typing in a filter isn't lost. -->

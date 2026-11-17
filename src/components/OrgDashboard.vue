@@ -3,6 +3,8 @@ import {
   AppWindow,
   CalendarX,
   CircleCheck,
+  Megaphone,
+  Activity,
   KeyRound,
   Lock,
   Gauge,
@@ -21,6 +23,7 @@ import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { type Organisation, type OrganisationSummary, type SecurityDefaults, type PermissionId, api } from '../lib/api'
 import { actionLabel } from '../lib/logs'
+import { actionRequired, activeIncidents } from '../lib/platform'
 
 /**
  * An organisation's dashboard: the numbers that matter as tiles (each linking
@@ -161,6 +164,24 @@ const attention = computed<Item[]>(() => {
   const items: Item[] = []
   if (!s) return items
   const users = has('users.view')
+  for (const i of activeIncidents.value) {
+    items.push({
+      key: `incident-${i.id}`,
+      icon: Activity,
+      text: t('dashboard.attention.incident', { title: i.title, services: i.services.map((id) => t(`health.services.${id}`)).join(', ') }),
+      to: { path: '/health' },
+    })
+  }
+  for (const m of actionRequired.value) {
+    items.push({
+      key: `message-${m.id}`,
+      icon: Megaphone,
+      text: m.actionBy
+        ? t('dashboard.attention.actionRequiredBy', { title: m.title, date: formatDate(m.actionBy) })
+        : t('dashboard.attention.actionRequired', { title: m.title }),
+      to: { path: '/message-centre' },
+    })
+  }
   if (!props.org.verified) {
     items.push({ key: 'verify', icon: ShieldAlert, text: t('dashboard.attention.unverified') })
   }

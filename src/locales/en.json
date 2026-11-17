@@ -50,6 +50,9 @@
     "billing": "Billing",
     "licences": "Licences",
     "guestSettings": "Guests",
+    "keston": "Keston",
+    "health": "Service health",
+    "messageCentre": "Message centre",
     "securityDefaults": "Security defaults",
     "securityAlerts": "Alerts"
   },
@@ -76,6 +79,8 @@
     "addKestonApp": "Add a Keston-wide app",
     "guestSettings": "Guest settings",
     "browseOrganisations": "All organisations",
+    "health": "Service health",
+    "messageCentre": "Message centre",
     "securityDefaults": "Security defaults",
     "securityAlerts": "Security alerts"
   },
@@ -607,6 +612,20 @@
         "accepted": "Account moved",
         "declined": "Account move declined",
         "cancelled": "Account move cancelled"
+      },
+      "incident": {
+        "opened": "Incident opened",
+        "updated": "Incident updated"
+      },
+      "maintenance": {
+        "scheduled": "Maintenance scheduled",
+        "updated": "Maintenance updated",
+        "cancelled": "Maintenance cancelled"
+      },
+      "message": {
+        "posted": "Message posted",
+        "updated": "Message edited",
+        "deleted": "Message deleted"
       }
     },
     "groups": {
@@ -1495,6 +1514,10 @@
       "locked": "{count} account is locked out | {count} accounts are locked out",
       "noMfa": "{count} user hasn’t set up MFA | {count} users haven’t set up MFA",
       "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password",
+      "incident": "{title}: {services}",
+      "incidentLink": "Details",
+      "actionRequired": "Action required: {title}",
+      "actionRequiredBy": "Action required by {date}: {title}",
       "notLicensed": "{count} person has a licence from a group but no seat left | {count} people have a licence from a group but no seat left"
     },
     "signInsWeek": {
@@ -1644,6 +1667,131 @@
     "moreWaiting": "{count} more waiting"
   },
   "notifications": {},
+  "health": {
+    "title": "Service health",
+    "description": "How Keston’s services are running, incidents and planned maintenance.",
+    "couldntLoad": "Couldn’t load service health",
+    "servicesTitle": "Services",
+    "activeTitle": "Current incidents",
+    "noActive": "No incidents right now.",
+    "maintenanceTitle": "Scheduled maintenance",
+    "noMaintenance": "No maintenance is planned.",
+    "recentTitle": "Recent incidents",
+    "recentDescription": "Resolved in the last 14 days.",
+    "noRecent": "Nothing in the last 14 days.",
+    "affects": "Affects: {services}",
+    "window": "{from} to {to}",
+    "services": {
+      "keston-id": "Keston ID",
+      "keston-admin": "Keston Admin",
+      "keston-forms": "Keston Forms",
+      "learn": "Keston Learn",
+      "work": "Keston Work",
+      "apps": "Keston-wide apps"
+    },
+    "state": {
+      "operational": "Operational",
+      "degraded": "Degraded",
+      "outage": "Outage",
+      "maintenance": "Maintenance"
+    },
+    "impact": {
+      "degraded": "Degraded performance",
+      "outage": "Outage"
+    },
+    "incidentStatus": {
+      "investigating": "Investigating",
+      "identified": "Identified",
+      "monitoring": "Monitoring",
+      "resolved": "Resolved"
+    },
+    "banner": "{title}: {services}. {status}.",
+    "bannerMore": "{count} incident affecting services | {count} incidents affecting services",
+    "bannerLink": "Details",
+    "openIncident": "Open an incident",
+    "addUpdate": "Add an update",
+    "addUpdateTitle": "Update: {title}",
+    "postUpdate": "Post update",
+    "scheduleMaintenance": "Schedule maintenance",
+    "schedule": "Schedule",
+    "cancelMaintenance": "Cancel",
+    "incidentOpened": "Incident opened",
+    "incidentUpdated": "Update posted",
+    "maintenanceScheduled": "Maintenance scheduled",
+    "maintenanceCancelled": "Maintenance cancelled",
+    "couldntSave": "Couldn’t save that",
+    "errors": {
+      "title": "Enter a title.",
+      "services": "Choose at least one service.",
+      "message": "Say what’s happening.",
+      "when": "Enter a date and a time like 09:00.",
+      "endAfterStart": "It must end after it starts."
+    },
+    "fields": {
+      "title": "Title",
+      "services": "Services affected",
+      "impact": "Impact",
+      "status": "Status",
+      "message": "Update message",
+      "description": "Description",
+      "startDate": "Starts on",
+      "startTime": "Start time",
+      "endDate": "Ends on",
+      "endTime": "End time"
+    }
+  },
+  "messages": {
+    "title": "Message centre",
+    "description": "Announcements from Keston.",
+    "inbox": "Inbox",
+    "archived": "Archived",
+    "posted": "Posted",
+    "none": "No messages.",
+    "noArchived": "No archived messages.",
+    "nonePosted": "Nothing posted yet.",
+    "unread": "Unread",
+    "actionBy": "Action needed by {date}",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "archive": "Archive",
+    "unarchive": "Move to inbox",
+    "couldntUpdate": "Couldn’t update the message",
+    "couldntSave": "Couldn’t save the message",
+    "new": "New message",
+    "edit": "Edit",
+    "delete": "Delete",
+    "send": "Post message",
+    "sent": "Message posted",
+    "updated": "Message updated",
+    "deleted": "Message deleted",
+    "category": {
+      "feature": "New feature",
+      "change": "Change",
+      "action_required": "Action required",
+      "notice": "Notice"
+    },
+    "audience": {
+      "all": "All organisations",
+      "selected": "Selected organisations",
+      "count": "{count} organisation | {count} organisations"
+    },
+    "errors": {
+      "title": "Enter a title.",
+      "body": "Write the message.",
+      "audience": "Choose at least one organisation."
+    },
+    "fields": {
+      "title": "Title",
+      "body": "Message",
+      "bodyHelp": "Markdown: **bold**, *italic*, lists, ## headings and [links](https://…). HTML isn’t shown.",
+      "category": "Category",
+      "actionBy": "Action by (optional)",
+      "actionByHelp": "Shown on the message.",
+      "audience": "Who it’s for",
+      "organisations": "Organisations"
+    },
+    "bell": "New message from Keston"
+  },
   "securityDefaults": {
     "title": "Security defaults",
     "description": "Recommended settings for keeping your organisation safe. Apply them here, or follow the links for the ones you set up yourself.",

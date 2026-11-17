@@ -149,6 +149,8 @@ export const router = createRouter({
           component: () => import('./pages/GuestSettings.vue'),
           meta: { title: 'titles.guestSettings' },
         },
+        { path: 'health', component: () => import('./pages/Health.vue'), meta: { title: 'titles.health' } },
+        { path: 'message-centre', component: () => import('./pages/MessageCentre.vue'), meta: { title: 'titles.messageCentre' } },
         {
           path: 'organisations/:orgId/password-policy',
           component: () => import('./pages/PasswordPolicy.vue'),
