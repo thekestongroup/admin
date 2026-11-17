@@ -625,6 +625,28 @@ export const publicApi = {
     ),
 }
 
+export type SecurityItem = {
+  id: string
+  weight: number
+  done: boolean
+  canApply: boolean
+  link: string
+  detail?: Record<string, number>
+  canMark?: boolean
+}
+export type SecurityDefaults = { score: number; items: SecurityItem[]; done: number; total: number }
+export type SecurityAlert = {
+  id: string
+  kind: string
+  severity: 'info' | 'warning' | 'critical'
+  subjectId: string | null
+  subjectName: string
+  params: Record<string, string | number>
+  title: string
+  body: string
+  createdAt: string
+}
+
 export const api = {
   me: () => request<Me>('GET', '/me'),
   passwordCheck: (password: string, opts: { organisationId?: string; username?: string } = {}) =>
@@ -650,6 +672,16 @@ export const api = {
   removeGuest: (orgId: string, guestId: string) => request<void>('DELETE', `${org(orgId)}/guests/${guestId}`),
   setGuestRoles: (orgId: string, guestId: string, roles: string[]) =>
     request<Guest>('PUT', `${org(orgId)}/guests/${guestId}/roles`, { roles }),
+  securityDefaults: (orgId: string) => request<SecurityDefaults>('GET', `${org(orgId)}/security/defaults`),
+  applySecurityDefaults: (orgId: string, items: string[]) =>
+    request<{ results: { id: string; result: string }[]; state: SecurityDefaults }>(
+      'POST',
+      `${org(orgId)}/security/defaults/apply`,
+      { items },
+    ),
+  markSignInsReviewed: (orgId: string) => request<SecurityDefaults>('POST', `${org(orgId)}/security/defaults/sign-in-review`),
+  securityAlerts: (orgId: string, query: string) =>
+    request<{ items: SecurityAlert[]; next: string | null }>('GET', `${org(orgId)}/security/alerts${query}`),
   guestSettings: (orgId: string) => request<{ allowGuests: boolean }>('GET', `${org(orgId)}/guest-settings`),
   setGuestSettings: (orgId: string, allowGuests: boolean) =>
     request<{ allowGuests: boolean }>('PUT', `${org(orgId)}/guest-settings`, { allowGuests }),

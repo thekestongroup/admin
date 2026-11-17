@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ListChecks, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -175,6 +175,8 @@ const nav = computed<SidebarSection[]>(() => {
         label: t('nav.security'),
         icon: ShieldCheck,
         children: [
+          { label: t('nav.securityDefaults'), icon: ListChecks, to: `${base}/security/defaults`, active: active(`${base}/security/defaults`) },
+          { label: t('nav.securityAlerts'), icon: BellRing, to: `${base}/security/alerts`, active: active(`${base}/security/alerts`) },
           { label: t('nav.mfaSettings'), icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security/mfa`) },
           { label: t('nav.guestSettings'), icon: Users, to: `${base}/security/guests`, active: active(`${base}/security/guests`) },
         ],
