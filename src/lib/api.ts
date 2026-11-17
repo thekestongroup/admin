@@ -288,6 +288,83 @@ export interface Support {
   canManage: boolean
 }
 
+export type ServiceId = 'keston-id' | 'keston-admin' | 'keston-forms' | 'learn' | 'work' | 'apps'
+export const serviceIds: ServiceId[] = ['keston-id', 'keston-admin', 'keston-forms', 'learn', 'work', 'apps']
+export type ServiceState = 'operational' | 'degraded' | 'outage' | 'maintenance'
+export type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved'
+export type IncidentImpact = 'degraded' | 'outage'
+
+export interface IncidentUpdate {
+  id: string
+  status: IncidentStatus
+  message: string
+  author: string
+  createdAt: string
+}
+
+export interface Incident {
+  id: string
+  title: string
+  impact: IncidentImpact
+  status: IncidentStatus
+  services: ServiceId[]
+  createdAt: string
+  resolvedAt?: string | null
+  /** Newest first. */
+  updates: IncidentUpdate[]
+}
+
+export interface Maintenance {
+  id: string
+  title: string
+  description: string
+  services: ServiceId[]
+  startsAt: string
+  endsAt: string
+}
+
+export interface Health {
+  services: { id: ServiceId; status: ServiceState }[]
+  incidents: Incident[]
+  maintenance: Maintenance[]
+  canManage: boolean
+}
+
+export type MessageCategory = 'feature' | 'change' | 'action_required' | 'notice'
+
+export interface KestonMessage {
+  id: string
+  title: string
+  /** Markdown (a safe subset: see lib/markdown.ts). */
+  body: string
+  category: MessageCategory
+  /** YYYY-MM-DDT00:00:00Z, or null. */
+  actionBy?: string | null
+  allOrganisations: boolean
+  organisationIds: string[]
+  author: string
+  createdAt: string
+  updatedAt: string
+  read?: boolean
+  archived?: boolean
+}
+
+export interface Messages {
+  messages: KestonMessage[]
+  unread: number
+  actionRequired: KestonMessage[]
+  canPost: boolean
+}
+
+export interface MessageInput {
+  title: string
+  body: string
+  category: MessageCategory
+  actionBy: string
+  allOrganisations: boolean
+  organisationIds: string[]
+}
+
 export interface AdminNotification {
   id: string
   type: 'info' | 'success' | 'warning' | 'error'
@@ -735,6 +812,21 @@ export const api = {
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),
 
+  health: () => request<Health>('GET', '/health'),
+  openIncident: (b: { title: string; impact: IncidentImpact; status: IncidentStatus; services: ServiceId[]; message: string }) =>
+    request<Incident>('POST', '/health/incidents', b),
+  updateIncident: (id: string, b: { status: IncidentStatus; impact?: IncidentImpact; message: string }) =>
+    request<Incident>('POST', `/health/incidents/${id}/updates`, b),
+  scheduleMaintenance: (b: { title: string; description: string; services: ServiceId[]; startsAt: string; endsAt: string }) =>
+    request<Maintenance>('POST', '/health/maintenance', b),
+  cancelMaintenance: (id: string) => request<void>('DELETE', `/health/maintenance/${id}`),
+  messages: () => request<Messages>('GET', '/messages'),
+  allMessages: () => request<KestonMessage[]>('GET', '/messages/all'),
+  setMessageState: (id: string, action: 'read' | 'unread' | 'archive' | 'unarchive') =>
+    request<void>('POST', `/messages/${id}/${action}`, {}),
+  postMessage: (b: MessageInput) => request<KestonMessage>('POST', '/messages', b),
+  editMessage: (id: string, b: MessageInput) => request<KestonMessage>('PUT', `/messages/${id}`, b),
+  deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
   notifications: () => request<AdminNotification[]>('GET', '/notifications'),
   readNotifications: () => request<void>('POST', '/notifications/read', {}),
   clearNotifications: () => request<void>('DELETE', '/notifications'),
