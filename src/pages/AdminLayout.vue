@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, Building2, CreditCard, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { AppWindow, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -13,7 +13,19 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { ApiError, api, loadMe, type AdminNotification, type Me, type Organisation, type PermissionId } from '../lib/api'
+import OrgSwitcher from '../components/OrgSwitcher.vue'
+import PromptsPopup from '../components/PromptsPopup.vue'
+import {
+  ApiError,
+  api,
+  loadMe,
+  type AdminNotification,
+  type Me,
+  type MyOrganisation,
+  type Organisation,
+  type PermissionId,
+  type Prompts,
+} from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
 import { I18nT, useI18n } from 'vue-i18n'
 
@@ -42,7 +54,13 @@ function toInput(n: AdminNotification) {
     description: n.body,
     createdAt: new Date(n.createdAt),
     read: !!n.readAt,
-    action: n.link ? { label: t('common.open'), onSelect: () => router.push(n.link) } : undefined,
+    action: n.link
+      ? {
+          label: t('common.open'),
+          // Invitations are answered in the pop-up.
+          onSelect: () => (n.link === '/invitations' ? (showPrompts.value = true) : router.push(n.link)),
+        }
+      : undefined,
   }
 }
 
@@ -69,19 +87,47 @@ watch(
   },
 )
 
+// ── Guest invitations and account moves: a one-time pop-up ──────────────────
+
+const prompts = ref<Prompts>({ guestInvitations: [], moveRequests: [] })
+const showPrompts = ref(false)
+async function loadPrompts() {
+  const p = await api.prompts().catch(() => undefined)
+  if (p) prompts.value = p
+}
+async function answered() {
+  await Promise.all([loadPrompts(), loadNotifications(), loadMine()])
+  // Your organisations or your own account may have changed.
+  org.value = orgId.value ? await api.organisation(orgId.value).catch(() => undefined) : undefined
+}
+
+// The organisations you can open (home, and guest in), for the switcher.
+const mine = ref<MyOrganisation[]>([])
+const switcherOpen = ref(false)
+async function loadMine() {
+  mine.value = (await api.myOrganisations().catch(() => undefined))?.organisations ?? []
+}
+
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(async () => {
   try {
     const loaded = await loadMe()
     // /v1/me answers for everyone; Keston Admin is for people with a
-    // permission in their organisation, and Keston staff.
-    if (!loaded.platformAdmin && !loaded.permissions.length) {
+    // permission in their organisation, in one they're a guest in, and
+    // Keston staff.
+    me.value = loaded
+    await Promise.all([loadMine(), loadPrompts()])
+    if (!loaded.platformAdmin && !loaded.permissions.length && !mine.value.some((o) => o.canManage)) {
+      // Not an admin anywhere (their invitations are on their Keston ID account page).
       error.value = t('layout.notAnAdmin')
+      me.value = undefined
       return
     }
-    me.value = loaded
     await loadNotifications()
-    timer = setInterval(loadNotifications, 60_000)
+    timer = setInterval(() => {
+      loadNotifications()
+      loadPrompts()
+    }, 60_000)
   } catch (e) {
     if (!(e instanceof ApiError && e.code === 'signed_out')) error.value = e instanceof Error ? e.message : String(e)
   }
@@ -92,8 +138,14 @@ onUnmounted(() => clearInterval(timer))
 
 // The organisation in the URL (or a global admin's own), for the sidebar.
 const orgId = computed(
-  () => (route.params.orgId as string | undefined) ?? (me.value && !me.value.platformAdmin ? me.value.organisation.id : undefined),
+  () =>
+    (route.params.orgId as string | undefined) ??
+    (me.value && (me.value.platformAdmin || me.value.permissions.length)
+      ? me.value.organisation.id
+      : mine.value.find((o) => o.canManage)?.id),
 )
+/** You're a guest in the organisation open now (not your own). */
+const guestHere = computed(() => !!orgId.value && !!me.value && orgId.value !== me.value.organisation.id && mine.value.some((o) => o.id === orgId.value))
 const org = ref<Organisation>()
 watch(
   orgId,
@@ -106,11 +158,6 @@ watch(
 const nav = computed<SidebarSection[]>(() => {
   const sections: SidebarSection[] = []
   const active = (to: string, exact = true) => (exact ? route.path === to : route.path.startsWith(to))
-  if (me.value?.platformAdmin) {
-    sections.push({
-      items: [{ label: t('nav.organisations'), icon: Building2, to: '/organisations', active: route.path === '/organisations' }],
-    })
-  }
   const id = orgId.value
   if (id) {
     const base = `/organisations/${id}`
@@ -127,7 +174,10 @@ const nav = computed<SidebarSection[]>(() => {
       items.push({
         label: t('nav.security'),
         icon: ShieldCheck,
-        children: [{ label: t('nav.mfaSettings'), icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security`, false) }],
+        children: [
+          { label: t('nav.mfaSettings'), icon: ShieldCheck, to: `${base}/security/mfa`, active: active(`${base}/security/mfa`) },
+          { label: t('nav.guestSettings'), icon: Users, to: `${base}/security/guests`, active: active(`${base}/security/guests`) },
+        ],
       })
     if (can('settings.manage')) items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     if (can('reports.view')) items.push({ label: t('nav.logs'), icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
@@ -156,6 +206,9 @@ const user = computed(() =>
     ? { name: me.value.user.name, email: me.value.user.email, organisation: me.value.organisation.name, avatar: me.value.user.avatar }
     : undefined,
 )
+
+/** The organisation you're looking at, named in the account menu. */
+const currentName = computed(() => org.value?.name ?? me.value?.organisation.name ?? '')
 
 function accountSettings() {
   // Your own account (password, MFA, profile) is in Keston ID.
@@ -195,6 +248,22 @@ function accountSettings() {
     <template #header-trailing>
       <NotificationPane :notifications="notifications" />
     </template>
+    <!-- The organisation switcher: the organisation's name in the account menu. -->
+    <template #account-menu="{ close }">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2"
+        :aria-label="t('switcher.switchOrganisation')"
+        @click="close(); switcherOpen = true"
+      >
+        <Building2 class="size-4 shrink-0" aria-hidden="true" />
+        <span class="flex min-w-0 flex-1 flex-col">
+          <span class="truncate font-bold">{{ currentName }}</span>
+          <span class="text-xs text-black/65">{{ guestHere ? t('switcher.guest') : t('switcher.switchOrganisation') }}</span>
+        </span>
+        <ChevronRight class="size-4 shrink-0" aria-hidden="true" />
+      </button>
+    </template>
     <!-- Using a Keston support account in another organisation. -->
     <div v-if="me.user.support" class="flex flex-wrap items-center gap-3 border-b border-black/15 bg-surface-elevated px-4 py-3 text-sm sm:px-6" role="status">
       <LifeBuoy class="size-4 shrink-0 text-blue" aria-hidden="true" />
@@ -209,5 +278,12 @@ function accountSettings() {
     <!-- A new page for each path; pages whose URL carries filters (Logs)
          watch the query themselves, so typing in a filter isn't lost. -->
     <RouterView :key="route.path" />
+    <OrgSwitcher v-model:open="switcherOpen" :current-id="orgId" />
+    <PromptsPopup
+      v-model:show="showPrompts"
+      :invitations="prompts.guestInvitations"
+      :moves="prompts.moveRequests"
+      @answered="answered"
+    />
   </AppShell>
 </template>

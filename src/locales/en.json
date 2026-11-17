@@ -48,7 +48,8 @@
     "settings": "Settings",
     "logs": "Logs",
     "billing": "Billing",
-    "licences": "Licences"
+    "licences": "Licences",
+    "guestSettings": "Guests"
   },
   "titles": {
     "billingLicences": "Licences",
@@ -70,7 +71,9 @@
     "logs": "Logs",
     "mfaSettings": "Manage MFA",
     "passwordPolicy": "Password policy",
-    "addKestonApp": "Add a Keston-wide app"
+    "addKestonApp": "Add a Keston-wide app",
+    "guestSettings": "Guest settings",
+    "browseOrganisations": "All organisations"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -563,6 +566,23 @@
         "retired": "Keston-wide app retired",
         "restored": "Keston-wide app restored",
         "secret_changed": "Keston-wide app secret changed"
+      },
+      "guests": {
+        "setting_changed": "Guest setting changed"
+      },
+      "guest": {
+        "invited": "Guest invited",
+        "accepted": "Guest invitation accepted",
+        "declined": "Guest invitation declined",
+        "removed": "Guest removed",
+        "left": "Guest left",
+        "roles_changed": "Guest roles changed"
+      },
+      "move": {
+        "requested": "Account move requested",
+        "accepted": "Account moved",
+        "declined": "Account move declined",
+        "cancelled": "Account move cancelled"
       }
     },
     "groups": {
@@ -571,7 +591,8 @@
       "organisation": "Organisation",
       "ownApps": "Your apps",
       "support": "Keston support",
-      "kestonApps": "Keston-wide apps"
+      "kestonApps": "Keston-wide apps",
+      "guests": "Guests and moves"
     },
     "methods": {
       "password": "Password",
@@ -1421,5 +1442,127 @@
       "newGroup": "New group",
       "addApp": "Add an app"
     }
-  }
+  },
+  "switcher": {
+    "switchOrganisation": "Switch organisation",
+    "currentOrganisation": "Organisation: {name}",
+    "title": "Your organisations",
+    "description": "Open Keston Admin for your own organisation, or one you're a guest in.",
+    "home": "Home",
+    "guest": "Guest",
+    "current": "Current",
+    "noAccess": "No admin access here",
+    "browseAll": "Browse all organisations",
+    "browseAllDescription": "Search every organisation on Keston.",
+    "leave": "Leave",
+    "leaveTitle": "Leave {name}?",
+    "leaveDescription": "You'll stop being a guest in {name}, and lose any access it gave you. Your own account isn't affected.",
+    "leaveConfirm": "Leave organisation",
+    "left": "You left {name}",
+    "couldntLeave": "Couldn't leave",
+    "couldntLoad": "Couldn't load your organisations"
+  },
+  "guests": {
+    "title": "Guests",
+    "description": "People from other organisations who can work here. Their own organisation keeps their account, password and MFA; you choose their groups and admin roles here.",
+    "invite": "Invite a guest",
+    "columns": {
+      "name": "Name",
+      "from": "Home organisation",
+      "access": "Access here",
+      "status": "Status"
+    },
+    "badge": "Guest",
+    "pending": "Invited",
+    "onHold": "On hold",
+    "onHoldHelp": "Their organisation doesn't allow guests at the moment.",
+    "noRoles": "No admin access",
+    "none": "No guests",
+    "noneDescription": "Invite someone from another organisation by their email address.",
+    "couldntLoad": "Couldn't load guests",
+    "invitedBy": "Invited by {name}",
+    "edit": "Change access",
+    "remove": "Remove guest",
+    "withdraw": "Withdraw invitation",
+    "removeTitle": "Remove {name} as a guest?",
+    "removeDescription": "They'll lose all access here, and be taken out of this organisation's groups. Their own account isn't affected.",
+    "withdrawTitle": "Withdraw the invitation to {name}?",
+    "withdrawDescription": "They won't be able to accept it.",
+    "removeConfirm": "Remove guest",
+    "withdrawConfirm": "Withdraw",
+    "removed": "Guest removed",
+    "withdrawn": "Invitation withdrawn",
+    "couldntRemove": "Couldn't remove",
+    "invitePanel": {
+      "title": "Invite a guest",
+      "description": "Enter the email address they use at their own organisation. They'll get a notification, and can accept or decline. This only works if their organisation allows its people to be guests.",
+      "email": "Email address",
+      "emailPlaceholder": "name@their-organisation.com",
+      "send": "Send invitation",
+      "sent": "Invitation sent",
+      "sentDescription": "{name} has been invited. They'll see it in Keston Admin and on their Keston ID page."
+    },
+    "rolesPanel": {
+      "title": "Access for {name}",
+      "description": "What {name} can do in Keston Admin for this organisation. By default a guest is a member: no access. Their groups here can give permissions too.",
+      "roles": "Admin roles",
+      "rolesHelper": "You can only give roles whose permissions you have yourself.",
+      "save": "Save",
+      "saved": "Access changed",
+      "couldntSave": "Couldn't change access"
+    }
+  },
+  "guestSettings": {
+    "title": "Guests",
+    "description": "Whether your people can be guests in other organisations.",
+    "allow": "Allow users to be guests in other organisations",
+    "allowDescription": "When on, other organisations can invite your people by email, and each person decides whether to accept. A guest keeps their account, password and MFA here, and apps always use their home organisation. When you turn it off, guest access ends until you turn it on again, and nobody new can be invited.",
+    "saving": "Saving",
+    "couldntSave": "Couldn't save",
+    "couldntLoad": "Couldn't load guest settings"
+  },
+  "moves": {
+    "title": "Account moves",
+    "description": "Requests to move accounts between organisations. The receiving organisation's global admin must accept.",
+    "incoming": "{name} to {to}, from {from}",
+    "outgoing": "{name} to {to}",
+    "incomingText": "{from} wants to move {name} here. Their email would change from {oldEmail} to {newEmail}.",
+    "outgoingText": "Waiting for {to} to accept. Their email would change from {oldEmail} to {newEmail}.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "cancel": "Cancel request",
+    "accepted": "{name} moved",
+    "acceptedDescription": "Their email is now {email}. They've been signed out everywhere.",
+    "declined": "Request declined",
+    "cancelled": "Request cancelled",
+    "couldntDecide": "Couldn't answer the request",
+    "card": {
+      "title": "Move to another organisation",
+      "description": "Move this account to another organisation. Its email changes to {username}@their domain, it becomes a member there, and groups, admin roles and licences don't come with it. The other organisation's global admin has to accept, and they're signed out everywhere when they do.",
+      "domain": "Organisation's domain",
+      "domainPlaceholder": "example.com",
+      "request": "Ask to move",
+      "requested": "Request sent",
+      "requestedDescription": "{to} will be asked to accept. Their email would become {email}.",
+      "couldntRequest": "Couldn't send the request",
+      "pending": "A move to {to} is waiting for them to accept.",
+      "cancel": "Cancel request"
+    }
+  },
+  "prompts": {
+    "invitationTitle": "You're invited to {name}",
+    "invitationDescription": "{who} invited you to be a guest in {name}.",
+    "invitationBody": "As a guest you can work in {name} in Keston Admin, if they give you access. Your account, password and MFA stay with {home}, and your apps don't change.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "later": "Decide later",
+    "accepted": "You're now a guest in {name}",
+    "declined": "Invitation declined",
+    "couldntAnswer": "Couldn't answer the invitation",
+    "moveTitle": "Request to move {name} here",
+    "moveDescription": "{from} wants to move {name} to {to}.",
+    "moveBody": "Their email would change from {oldEmail} to {newEmail}. They'd be a member, without their groups, admin roles or licences, and signed out everywhere.",
+    "moreWaiting": "{count} more waiting"
+  },
+  "notifications": {}
 }

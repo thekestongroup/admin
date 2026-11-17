@@ -24,6 +24,7 @@ import {
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DeleteUserCard from '../components/DeleteUserCard.vue'
+import MoveAccountCard from '../components/MoveAccountCard.vue'
 import AdminRolesCard from '../components/AdminRolesCard.vue'
 import LicencesCard from '../components/LicencesCard.vue'
 import UserAppsCard from '../components/UserAppsCard.vue'
@@ -509,6 +510,7 @@ async function toggle() {
               </Card>
 
               <RecentActivity v-if="org?.permissions?.includes('reports.view')" :org-id="orgId" :user-id="userId" />
+              <MoveAccountCard v-if="iAmGlobalAdmin && !isMe && !user.support && !user.platformAdmin" :org-id="orgId" :user="user" />
               <DeleteUserCard v-if="!isMe && can('users.delete')" :org-id="orgId" :user="user" />
           </div>
         </template>

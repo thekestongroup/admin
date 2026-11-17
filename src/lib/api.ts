@@ -91,6 +91,63 @@ export interface Organisation {
   /** Verified by Keston staff. Until then its people can't sign in. Always true for The Keston Group. */
   verified: boolean
   verifiedAt?: string
+  /** Its people may be guests in other organisations (Security → Guests). */
+  allowGuests?: boolean
+}
+
+/** Someone invited to be a guest in an organisation, or a guest there. */
+export interface Guest {
+  id: string
+  organisationId: string
+  organisationName: string
+  organisationDomain: string
+  userId: string
+  name: string
+  email: string
+  homeOrganisationId: string
+  homeOrganisationName: string
+  /** Admin roles this organisation gave them (Keston Admin there). */
+  roles: string[]
+  status: 'pending' | 'accepted' | 'declined' | 'removed'
+  invitedByName: string
+  createdAt: string
+  /** Their home organisation allows guests right now; if not, it's on hold. */
+  active: boolean
+}
+
+/** An organisation you can open: your own, or one you're a guest in. */
+export interface MyOrganisation {
+  id: string
+  name: string
+  domain: string
+  home: boolean
+  guestId?: string
+  /** You have some permission in Keston Admin there. */
+  canManage: boolean
+}
+
+/** A request to move an account to another organisation. */
+export interface AccountMove {
+  id: string
+  userId: string
+  name: string
+  oldEmail: string
+  newEmail: string
+  fromOrganisationId: string
+  fromOrganisationName: string
+  toOrganisationId: string
+  toOrganisationName: string
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+  requestedByName: string
+  decidedByName: string
+  createdAt: string
+  decidedAt?: string
+}
+
+/** What needs your answer; popup is true until its pop-up has been shown. */
+export interface Prompts {
+  guestInvitations: (Guest & { popup: boolean })[]
+  moveRequests: (AccountMove & { popup: boolean })[]
 }
 
 /** Platform-wide settings (platform admins only). */
@@ -579,6 +636,28 @@ export const api = {
     ),
 
   organisations: () => request<Organisation[]>('GET', '/organisations'),
+  /** Your own organisation and the ones you're a guest in. */
+  myOrganisations: () => request<{ organisations: MyOrganisation[]; canBrowseAll: boolean }>('GET', '/my-organisations'),
+  guestInvitations: () => request<Guest[]>('GET', '/guest-invitations'),
+  respondToInvitation: (id: string, accept: boolean) =>
+    request<Guest>('POST', `/guest-invitations/${id}/${accept ? 'accept' : 'decline'}`, {}),
+  /** Stop being a guest in an organisation. */
+  leaveGuest: (guestId: string) => request<void>('POST', `/guest-memberships/${guestId}/leave`, {}),
+  prompts: () => request<Prompts>('GET', '/prompts'),
+  promptSeen: (kind: 'guest_invitation' | 'account_move', id: string) => request<void>('POST', '/prompts/seen', { kind, id }),
+  guests: (orgId: string) => request<Guest[]>('GET', `${org(orgId)}/guests`),
+  inviteGuest: (orgId: string, email: string) => request<Guest>('POST', `${org(orgId)}/guests`, { email }),
+  removeGuest: (orgId: string, guestId: string) => request<void>('DELETE', `${org(orgId)}/guests/${guestId}`),
+  setGuestRoles: (orgId: string, guestId: string, roles: string[]) =>
+    request<Guest>('PUT', `${org(orgId)}/guests/${guestId}/roles`, { roles }),
+  guestSettings: (orgId: string) => request<{ allowGuests: boolean }>('GET', `${org(orgId)}/guest-settings`),
+  setGuestSettings: (orgId: string, allowGuests: boolean) =>
+    request<{ allowGuests: boolean }>('PUT', `${org(orgId)}/guest-settings`, { allowGuests }),
+  moves: (orgId: string) => request<AccountMove[]>('GET', `${org(orgId)}/moves`),
+  requestMove: (orgId: string, userId: string, domain: string) =>
+    request<AccountMove>('POST', `${org(orgId)}/users/${userId}/move`, { domain }),
+  decideMove: (orgId: string, moveId: string, decision: 'accept' | 'decline' | 'cancel') =>
+    request<AccountMove | void>('POST', `${org(orgId)}/moves/${moveId}/${decision}`, {}),
   organisation: (id: string) => request<Organisation>('GET', org(id)),
   summary: (id: string) => request<OrganisationSummary>('GET', `${org(id)}/summary`),
   platformSettings: () => request<PlatformSettings>('GET', '/platform-settings'),
@@ -864,4 +943,15 @@ export function loadMe(force = false) {
     throw e
   })
   return mePromise
+}
+
+/**
+ * Where to start: your own organisation if you can manage it, otherwise the
+ * first organisation you're a guest in and can manage (undefined: none).
+ */
+export async function landingOrganisation(): Promise<string | undefined> {
+  const me = await loadMe()
+  if (me.platformAdmin || me.permissions.length) return me.organisation.id
+  const mine = await api.myOrganisations().catch(() => undefined)
+  return mine?.organisations.find((o) => o.canManage)?.id
 }
