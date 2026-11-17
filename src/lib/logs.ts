@@ -50,6 +50,7 @@ export interface LogPage<T> {
 }
 
 export interface LogFilters {
+  /** One or more users' IDs, comma-separated. */
   user?: string
   /** Dates, YYYY-MM-DD (both days included). */
   from?: string
@@ -70,7 +71,7 @@ const org = (id: string) => `/organisations/${encodeURIComponent(id)}`
 export const logsApi = {
   auditLog: (orgId: string, f: LogFilters & { action?: string } = {}) =>
     request<LogPage<AuditEntry>>('GET', `${org(orgId)}/audit-log${query({ ...f })}`),
-  signIns: (orgId: string, f: LogFilters & { result?: 'success' | 'failure'; reason?: string } = {}) =>
+  signIns: (orgId: string, f: LogFilters & { result?: 'success' | 'failure'; /** One or more reasons, comma-separated. */ reason?: string } = {}) =>
     request<LogPage<SignInEntry>>('GET', `${org(orgId)}/sign-ins${query({ ...f })}`),
 }
 
