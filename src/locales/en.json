@@ -255,6 +255,15 @@
       "allowing": "Allowing",
       "explanation": "Blocking someone signs them out of Keston and every app straight away, and stops them signing in until they’re allowed again. Their account, groups and licences stay as they are. It’s a good idea to block an account you think has been compromised, then reset its password."
     },
+    "licences": {
+      "title": "Manage licences",
+      "intro": "Give or take away licences for Keston’s products. If there aren’t enough licences for everyone, the first users get them and the rest are skipped.",
+      "give": "Licences to give",
+      "take": "Licences to take away",
+      "chooseOne": "Choose at least one licence",
+      "inBoth": "{name} can’t be both given and taken away",
+      "confirm": "Save licences"
+    },
     "groups": {
       "title": "Manage group memberships",
       "intro": "Groups give their members apps and permissions.",
@@ -313,7 +322,27 @@
     "couldntLoad": "Couldn’t load the products",
     "none": "No products yet",
     "by": "From {publisher}",
-    "save": "Save licences"
+    "save": "Save licences",
+    "availability": {
+      "some": "{available}/{seats} licences available",
+      "unlimited": "Unlimited licences available",
+      "full": "0/{seats} available"
+    },
+    "fullExplanation": "There are no licences left. Take one from another user, or ask The Keston Group for more.",
+    "overAllocation": "Over allocation: {used} in use, but only {seats} licences. Nobody new can have one until some are taken away.",
+    "fullNotice": "Some products have no licences left, so they can’t be given to anyone new.",
+    "notEnough": "{name}: only {available} licences left for {users} users. The rest are added without one.",
+    "allocations": {
+      "title": "Licences",
+      "description": "How many licences this organisation has for each Keston product. Only TKG Admins can change these.",
+      "unlimited": "Unlimited",
+      "seatLimit": "Limited number of seats",
+      "seats": "Seats for {name}",
+      "inUse": "{count} in use | {count} in use",
+      "overAllocated": "Over allocation: {used} in use, but only {seats} seats.",
+      "couldntSave": "Couldn’t save the licences",
+      "saved": "Licences saved"
+    }
   },
   "userApps": {
     "access": {
@@ -386,7 +415,6 @@
     "requireChange": "Required password change",
     "licencesDescription": "Assign licences to {name} to give access to apps, services and additional functionality",
     "thisUser": "this user",
-    "licenceDescription": "From {publisher}. No users have a licence. | From {publisher}. 1 user has a licence. | From {publisher}. {count} users have a licence.",
     "adding": "Adding",
     "addUser": "Add user"
   },
@@ -475,6 +503,7 @@
       "organisation": {
         "created": "Organisation created",
         "verified": "Organisation verified",
+        "licences_changed": "Licence allocation changed",
         "deleted_now": "Organisation deleted immediately"
       },
       "platform_settings": {

@@ -20,6 +20,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { licenceOption, isFull } from '../lib/licences'
 import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
 import PasswordField from '../components/PasswordField.vue'
 import UserDetailsTable from '../components/UserDetailsTable.vue'
@@ -145,6 +146,10 @@ function checkUsers(): boolean {
 
 const products = ref<Product[]>()
 const licences = ref<string[]>([])
+// Ticked products with fewer licences left than people: the rest are added without one.
+const short = computed(() =>
+  (products.value ?? []).filter((p) => licences.value.includes(p.id) && !p.unlimited && (p.available ?? 0) < people.value.length),
+)
 
 onMounted(async () => {
   try {
@@ -152,7 +157,7 @@ onMounted(async () => {
     rows.value = Array.from({ length: 5 }, newRow)
     if (canAssign.value) {
       products.value = await api.products(orgId)
-      licences.value = products.value.map((p) => p.id)
+      licences.value = products.value.filter((p) => !isFull(p)).map((p) => p.id)
     }
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : String(e)
@@ -216,7 +221,7 @@ function startAgain() {
   rows.value = Array.from({ length: 5 }, newRow)
   results.value = undefined
   step.value = 0
-  if (products.value) licences.value = products.value.map((p) => p.id)
+  if (products.value) licences.value = products.value.filter((p) => !isFull(p)).map((p) => p.id)
   focusHeading()
 }
 
@@ -400,8 +405,11 @@ const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
             v-model="licences"
             :label="t('licences.title')"
             hide-label
-            :options="products.map((p) => ({ label: p.name, value: p.id, description: t('addUser.licenceDescription', { publisher: p.publisher }, p.assigned) }))"
+            :options="products.map((p) => licenceOption(t, p))"
           />
+          <p v-for="p in short" :key="p.id" class="text-sm text-black/65">
+            {{ t('licences.notEnough', { name: p.name, available: p.available, users: people.length }) }}
+          </p>
           <p v-if="usersError" class="text-sm text-red" role="alert">{{ usersError }}</p>
         </div>
 

@@ -2,6 +2,7 @@
 import { Button, type ButtonStatus, Card, CheckboxGroup, EmptyState, Spinner, useNotifications } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type Product } from '../lib/api'
+import { licenceOption } from '../lib/licences'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -35,6 +36,7 @@ async function save() {
   status.value = 'loading'
   try {
     licences.value = (await api.setLicences(props.orgId, props.userId, chosen.value)).licences
+    products.value = await api.products(props.orgId).catch(() => products.value)
     status.value = 'success'
   } catch (e) {
     status.value = 'idle'
@@ -53,7 +55,7 @@ async function save() {
       v-model="chosen"
       :label="t('licences.title')"
       hide-label
-      :options="products.map((p) => ({ label: p.name, value: p.id, description: t('licences.by', { publisher: p.publisher }) }))"
+      :options="products.map((p) => licenceOption(t, p, licences.includes(p.id)))"
       :disabled="!canEdit"
     />
     <template v-if="canEdit && products?.length" #footer>

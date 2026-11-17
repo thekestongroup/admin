@@ -143,7 +143,7 @@ onMounted(async () => {
 
 // ── Selecting users, for bulk actions ───────────────────────────────────────
 
-const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'users.delete', 'groups.manage', 'permissions.assign']
+const bulkPerms: PermissionId[] = ['users.reset_password', 'users.status', 'users.licences', 'users.delete', 'groups.manage', 'permissions.assign']
 const canBulk = computed(() => bulkPerms.some(has))
 /** Only users you can change can be ticked. */
 const selectable = (u: User) => !!u.canChange && !u.support
