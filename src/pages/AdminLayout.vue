@@ -200,7 +200,14 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('settings.manage') || me.value?.platformAdmin)
       items.push({ label: t('nav.domains'), icon: Globe, to: `${base}/settings/domains`, active: active(`${base}/settings/domains`) })
     if (can('settings.manage'))
-      items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
+      items.push({
+        label: t('nav.settings'),
+        icon: Settings,
+        children: [
+          { label: t('nav.settingsGeneral'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) },
+          { label: t('nav.userAttributes'), icon: ListChecks, to: `${base}/settings/user-attributes`, active: active(`${base}/settings/user-attributes`) },
+        ],
+      })
     if (can('reports.view')) items.push({ label: t('nav.logs'), icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
     sections.push({ label: org.value?.name ?? t('nav.organisation'), items })
     // Billing: Keston staff (in any organisation, with or without support

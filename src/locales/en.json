@@ -56,7 +56,9 @@
     "health": "Service health",
     "messageCentre": "Message centre",
     "securityDefaults": "Security defaults",
-    "securityAlerts": "Alerts"
+    "securityAlerts": "Alerts",
+    "settingsGeneral": "General",
+    "userAttributes": "User attributes"
   },
   "titles": {
     "billingLicences": "Licences",
@@ -86,7 +88,8 @@
     "health": "Service health",
     "messageCentre": "Message centre",
     "securityDefaults": "Security defaults",
-    "securityAlerts": "Security alerts"
+    "securityAlerts": "Security alerts",
+    "userAttributes": "User attributes"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -440,7 +443,8 @@
     "title": "Add a user",
     "steps": {
       "userInfo": "User info",
-      "licences": "Licences"
+      "licences": "Licences",
+      "work": "Work details"
     },
     "errors": {
       "firstName": "Enter their first name",
@@ -638,6 +642,11 @@
         "posted": "Message posted",
         "updated": "Message edited",
         "deleted": "Message deleted"
+      },
+      "user_attribute": {
+        "created": "User attribute added",
+        "updated": "User attribute changed",
+        "deleted": "User attribute deleted"
       }
     },
     "groups": {
@@ -829,7 +838,17 @@
       "nameDescription": "How they’re shown in every Keston app.",
       "emailDescription": "The part before the {'@'} (the domain stays yours). They sign in with it.",
       "picture": "Profile picture",
-      "pictureDescription": "Shown next to their name in Keston apps."
+      "pictureDescription": "Shown next to their name in Keston apps.",
+      "jobTitle": "Job title",
+      "jobTitleDescription": "Their job title, in work details.",
+      "department": "Department",
+      "departmentDescription": "Their department, in work details.",
+      "office": "Office",
+      "officeDescription": "Where they work.",
+      "phone": "Phone number",
+      "phoneDescription": "Their work phone number.",
+      "mobile": "Mobile number",
+      "mobileDescription": "Their mobile number."
     },
     "deleteScheduled": "{name} will be deleted on {date}",
     "deleteScheduledDescription": "A global admin signing in before then cancels it.",
@@ -1459,7 +1478,14 @@
     "sameDescription": "This will apply the same password for all of these users. As the password is shared, it’s recommended to require users to change it when they sign in.",
     "requireChange": "Required password change",
     "licencesDescription": "The Keston products these {users} can use. Without a licence, they can’t sign in to it.",
-    "addUsers": "Add {users}"
+    "addUsers": "Add {users}",
+    "csv": {
+      "button": "Import from CSV",
+      "help": "First row is the headings: first_name, last_name, username (or email) and domain.",
+      "empty": "No people found in that file",
+      "imported": "Added {count} people from the file",
+      "ignored": "These columns weren’t used: {columns}"
+    }
   },
   "listFilters": {
     "filterAndSort": "Filter and sort",
@@ -2013,5 +2039,95 @@
         "text": "{name}, a global admin, signed in from {country} for the first time."
       }
     }
+  },
+  "profiles": {
+    "fields": {
+      "jobTitle": "Job title",
+      "department": "Department",
+      "office": "Office / location",
+      "phone": "Phone",
+      "mobile": "Mobile",
+      "employeeId": "Employee ID",
+      "manager": "Manager",
+      "startDate": "Start date"
+    },
+    "phoneHelper": "With the country code, like +44 20 7123 4567",
+    "startDateHelper": "Like 2026-09-01",
+    "title": "Work profile",
+    "edit": "Edit",
+    "editTitle": "Edit work profile",
+    "save": "Save",
+    "saving": "Saving",
+    "updated": "Profile updated",
+    "couldntSave": "Couldn’t update the profile",
+    "couldntLoad": "Couldn’t load the work profile",
+    "reportsTo": "Reports to",
+    "noManager": "No manager",
+    "chooseManager": "Choose a manager",
+    "directReports": "Direct reports",
+    "noReports": "No one reports to {name}.",
+    "yes": "Yes",
+    "no": "No",
+    "unset": "Not set",
+    "choose": "Choose",
+    "sectionCustom": "Other details",
+    "addStep": "Work details",
+    "addStepDescription": "All optional. You can change them later.",
+    "filters": {
+      "department": "Department",
+      "jobTitle": "Job title",
+      "manager": "Manager",
+      "anyManager": "Anyone",
+      "noManager": "No manager",
+      "anyValue": "Any",
+      "notSet": "Not set",
+      "attribute": "{label}"
+    },
+    "sort": {
+      "department": "Department",
+      "jobTitle": "Job title",
+      "manager": "Manager"
+    },
+    "csv": {
+      "headers": "Optional columns: job_title, department, office, phone, mobile, employee_id, manager (their email or username), start_date (2026-09-01){custom}.",
+      "customHint": ", and your attribute keys ({keys})"
+    },
+    "managerHelper": "Their email or username, if they’re already in your organisation."
+  },
+  "userAttributes": {
+    "title": "User attributes",
+    "description": "Extra details you keep about each user, like cost centre or year group. They show on each user’s work profile, in Users filters, and in the CSV when you add several users (the key is the column heading).",
+    "add": "Add attribute",
+    "edit": "Edit attribute",
+    "none": "No attributes yet",
+    "noneDescription": "Add one to start recording it for your users.",
+    "couldntLoad": "Couldn’t load user attributes",
+    "label": "Name",
+    "key": "Key",
+    "keyHelper": "Lowercase letters, numbers and underscores. Used in CSV columns and can’t be changed.",
+    "type": "Type",
+    "types": {
+      "text": "Text",
+      "number": "Number",
+      "date": "Date",
+      "boolean": "Yes / no",
+      "choice": "Choice list"
+    },
+    "choices": "Choices",
+    "choicesHelper": "One per line. Removing a choice clears it for anyone who has it.",
+    "save": "Save",
+    "saving": "Saving",
+    "create": "Add attribute",
+    "saved": "Attribute saved",
+    "couldntSave": "Couldn’t save the attribute",
+    "delete": "Delete",
+    "deleteTitle": "Delete {label}?",
+    "deleteDescription": "Everyone’s {label} is removed, for good. This can’t be undone.",
+    "deleteConfirm": "Delete attribute",
+    "deleted": "Attribute deleted",
+    "couldntDelete": "Couldn’t delete the attribute",
+    "columnType": "Type",
+    "columnKey": "Key",
+    "cancel": "Cancel"
   }
 }

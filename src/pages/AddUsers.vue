@@ -21,7 +21,8 @@ import {
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { licenceOption, isFull } from '../lib/licences'
-import { ApiError, api, type BulkResult, type Organisation, type Product } from '../lib/api'
+import { ApiError, api, type BulkResult, type Organisation, type ProfileChanges, type Product } from '../lib/api'
+import { usersFromCsv } from '../lib/csvImport'
 import PasswordField from '../components/PasswordField.vue'
 import UserDetailsTable from '../components/UserDetailsTable.vue'
 import { suggestUsername } from '../lib/usernames'
@@ -58,6 +59,8 @@ interface Row {
   /** Typed by hand: stop suggesting one from the name. */
   usernameEdited: boolean
   domain: string
+  /** Work profile from an imported CSV (job title, manager, attributes…). */
+  profile: ProfileChanges
   errors: Record<string, string | undefined>
 }
 let nextKey = 0
@@ -68,8 +71,32 @@ const newRow = (): Row => ({
   username: '',
   usernameEdited: false,
   domain: domains.value[0] ?? '',
+  profile: {},
   errors: {},
 })
+
+// ── Import from a CSV ───────────────────────────────────────────────────────
+
+const attributeKeys = ref<string[]>([])
+const csvInput = ref<HTMLInputElement>()
+const csvHint = computed(() =>
+  t('profiles.csv.headers', { custom: attributeKeys.value.length ? t('profiles.csv.customHint', { keys: attributeKeys.value.join(', ') }) : '' }),
+)
+async function importCsv(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const { users, ignored } = usersFromCsv(await file.text(), attributeKeys.value)
+  if (csvInput.value) csvInput.value.value = ''
+  if (!users.length) return notify({ type: 'error', title: t('addUsers.csv.empty') })
+  const imported = users.slice(0, MAX).map((u): Row => ({ ...newRow(), ...u, usernameEdited: !!u.username, domain: u.domain || domains.value[0] || '' }))
+  for (const r of imported) if (!r.username) r.username = suggestUsername(org.value?.usernameFormat, r.first, r.last)
+  rows.value = [...rows.value.filter(filled), ...imported]
+  notify({
+    type: ignored.length ? 'warning' : 'success',
+    title: t('addUsers.csv.imported', { count: imported.length }),
+    description: ignored.length ? t('addUsers.csv.ignored', { columns: ignored.join(', ') }) : undefined,
+  })
+}
 const rows = ref<Row[]>([])
 const requireChange = ref(true)
 const usersError = ref<string>()
@@ -155,6 +182,7 @@ onMounted(async () => {
   try {
     org.value = await api.organisation(orgId)
     rows.value = Array.from({ length: 5 }, newRow)
+    attributeKeys.value = (await api.userAttributes(orgId).catch(() => [])).map((a) => a.key)
     if (canAssign.value) {
       products.value = await api.products(orgId)
       licences.value = products.value.filter((p) => !isFull(p)).map((p) => p.id)
@@ -198,6 +226,7 @@ async function add() {
         name: `${r.first.trim()} ${r.last.trim()}`.trim(),
         username: r.username.trim(),
         domain: r.domain,
+        profile: Object.keys(r.profile).length ? r.profile : undefined,
       })),
       password: autoPassword.value ? undefined : sharedPassword.value,
       licences: canAssign.value ? licences.value : [],
@@ -361,6 +390,14 @@ const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
                 </Button>
               </div>
             </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div>
+              <Button @click="csvInput?.click()">{{ t('addUsers.csv.button') }}</Button>
+              <input ref="csvInput" type="file" accept=".csv,text/csv" class="sr-only" tabindex="-1" aria-hidden="true" @change="importCsv" />
+            </div>
+            <p class="text-xs text-black/65">{{ t('addUsers.csv.help') }} {{ csvHint }}</p>
           </div>
 
           <div class="flex flex-wrap items-center gap-3">
