@@ -311,6 +311,60 @@ export interface DeletedUser extends User {
   deletedByName?: string
 }
 
+/** What the Users list can be filtered and sorted by (all optional; lists are any-of). */
+export interface UserListQuery {
+  q?: string
+  /** 'user', 'global_admin', 'tkg_admin' or an admin role's ID. */
+  role?: string[]
+  status?: ('active' | 'disabled' | 'locked')[]
+  /** A product's ID, or 'none'. */
+  licence?: string[]
+  group?: string[]
+  mfa?: 'on' | 'off'
+  sort?: 'name' | 'email' | 'role' | 'status' | 'created'
+  dir?: 'asc' | 'desc'
+}
+
+/** What the Groups list can be filtered and sorted by. */
+export interface GroupListQuery {
+  q?: string
+  /** A comparison and a number, e.g. 'gt:12' (more than 12). */
+  members?: string
+  /** Gives permissions in Keston Admin (yes) or none (no). */
+  permissions?: 'yes' | 'no'
+  sort?: 'name' | 'members' | 'permissions' | 'created'
+  dir?: 'asc' | 'desc'
+}
+
+/** One group in a bulk membership change: who joined and who left. */
+export interface GroupBulkResult {
+  id: string
+  name: string
+  result: 'done' | 'skipped'
+  reason?: string
+  added: { id: string; name: string; email: string }[]
+  removed: { id: string; name: string; email: string }[]
+  /** How many users it has now. */
+  memberCount: number
+}
+
+export interface GroupBulkResponse {
+  groups: GroupBulkResult[]
+  /** Users left alone (not found, or ones you can't change). */
+  skippedUsers: BulkResult[]
+}
+
+/** ?a=1&b=x,y from an object: lists are comma-separated, empty values left out. */
+export function queryString(query: object): string {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(query)) {
+    const value = Array.isArray(v) ? v.join(',') : v
+    if (value !== undefined && value !== '') q.set(k, String(value))
+  }
+  const s = q.toString()
+  return s ? `?${s}` : ''
+}
+
 /** Bulk actions on users, each its own endpoint. */
 export type BulkAction = 'reset-password' | 'disable' | 'enable' | 'add-to-group' | 'remove-from-group' | 'delete'
 
@@ -436,7 +490,8 @@ export const api = {
   verifyOrganisation: (id: string) => request<Organisation>('POST', `${org(id)}/verify`, {}),
 
 
-  users: (orgId: string) => request<User[]>('GET', `${org(orgId)}/users`),
+  /** The users, filtered and sorted by Keston ID (see UserListQuery). */
+  users: (orgId: string, query: UserListQuery = {}) => request<User[]>('GET', `${org(orgId)}/users${queryString(query)}`),
   user: (orgId: string, userId: string) => request<UserDetail>('GET', `${org(orgId)}/users/${userId}`),
   permissions: () => request<Permission[]>('GET', '/permissions'),
   updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role']; platformAdmin?: boolean }) =>
@@ -450,7 +505,11 @@ export const api = {
   setAppAccess: (orgId: string, appId: string, mode: AppMode | '', groupId?: string) =>
     request<void>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}`, { mode, groupId }),
 
-  groups: (orgId: string) => request<Group[]>('GET', `${org(orgId)}/groups`),
+  /** The groups, filtered and sorted by Keston ID (see GroupListQuery). */
+  groups: (orgId: string, query: GroupListQuery = {}) => request<Group[]>('GET', `${org(orgId)}/groups${queryString(query)}`),
+  /** Add users to, and take users out of, several groups at once. */
+  bulkGroupMembers: (orgId: string, groupIds: string[], add: string[], remove: string[]) =>
+    request<GroupBulkResponse>('POST', `${org(orgId)}/groups/bulk/members`, { groupIds, add, remove }),
   group: (orgId: string, groupId: string) =>
     request<{ group: Group; members: User[] }>('GET', `${org(orgId)}/groups/${groupId}`),
   createGroup: (orgId: string, name: string) => request<Group>('POST', `${org(orgId)}/groups`, { name }),

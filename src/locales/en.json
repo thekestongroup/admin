@@ -184,7 +184,8 @@
       "email": "Email",
       "role": "Role",
       "licences": "Licences",
-      "status": "Status"
+      "status": "Status",
+      "created": "Created"
     },
     "resetPassword": "Reset password",
     "blockSignIn": "Block sign-in",
@@ -208,7 +209,20 @@
     "until": "Until {date}",
     "none": "No users yet",
     "noneDescription": "Add the people who sign in to Keston here.",
-    "tkgAdmin": "TKG Admin"
+    "tkgAdmin": "TKG Admin",
+    "search": "Search by name or email",
+    "anyRole": "Any role",
+    "anyStatus": "Any status",
+    "anyLicence": "Any licence",
+    "anyGroup": "Any group",
+    "noLicence": "No licence",
+    "group": "Group",
+    "mfa": "MFA",
+    "mfaAny": "On or off",
+    "mfaOn": "On",
+    "mfaOff": "Off",
+    "noMatch": "No users match these filters",
+    "noMatchDescription": "Try removing a filter, or clear them all."
   },
   "bulk": {
     "selected": "{count} user selected | {count} users selected",
@@ -753,7 +767,8 @@
     "columns": {
       "group": "Group",
       "permissions": "Permissions in Keston Admin",
-      "users": "Users"
+      "users": "Users",
+      "created": "Created"
     },
     "enterName": "Enter a name for the group",
     "created": "{name} created",
@@ -768,7 +783,24 @@
     "couldntLoad": "Couldn’t load the groups",
     "permissionCount": "{count} permission | {count} permissions",
     "none": "No groups yet",
-    "noneDescription": "Create one, e.g. Sales or Office, to give its users different app access."
+    "noneDescription": "Create one, e.g. Sales or Office, to give its users different app access.",
+    "newGroupDescription": "Give the group a name. You can add its users and permissions next.",
+    "search": "Search by name",
+    "select": "Select {name}",
+    "anyCount": "Any number",
+    "ops": {
+      "gt": "More than",
+      "gte": "At least",
+      "eq": "Exactly",
+      "lte": "At most",
+      "lt": "Fewer than"
+    },
+    "memberNumber": "Number of users",
+    "permissionsAny": "With or without",
+    "permissionsYes": "Has permissions",
+    "permissionsNo": "No permissions",
+    "noMatch": "No groups match these filters",
+    "noMatchDescription": "Try removing a filter, or clear them all."
   },
   "groupDetail": {
     "couldntSavePermissions": "Couldn’t save the permissions",
@@ -1106,5 +1138,37 @@
     "requireChange": "Required password change",
     "licencesDescription": "The Keston products these {users} can use. Without a licence, they can’t sign in to it.",
     "addUsers": "Add {users}"
+  },
+  "listFilters": {
+    "filterAndSort": "Filter and sort",
+    "filterAndSortCount": "Filter and sort ({count})",
+    "searchPlaceholder": "Type to search",
+    "sortBy": "Sort by",
+    "order": "Order",
+    "ascending": "Ascending (A to Z, oldest first)",
+    "descending": "Descending (Z to A, newest first)",
+    "clear": "Clear filters",
+    "anyOf": "Any"
+  },
+  "groupBulk": {
+    "selected": "{count} group selected | {count} groups selected",
+    "manageMembers": "Manage members",
+    "intro": "Add users to the selected groups, take users out of them, or both. Users already in (or out of) a group are left as they are.",
+    "addUsers": "Users to add",
+    "addHelper": "They join the selected group. | They join every selected group.",
+    "removeUsers": "Users to remove",
+    "removeHelper": "They leave the selected group, if they’re in it. | They leave every selected group they’re in.",
+    "confirm": "Save members",
+    "chooseOne": "Choose at least one user",
+    "inBoth": "{name} is in both lists",
+    "summaryTitle": "Members changed",
+    "changedGroups": "{count} group changed. | {count} groups changed.",
+    "addedRemoved": "{added} added, {removed} removed.",
+    "changedHeading": "Changed",
+    "unchangedHeading": "Not changed",
+    "joined": "Joined",
+    "left": "Left",
+    "usersNow": "Users now",
+    "unknownGroup": "Unknown group"
   }
 }

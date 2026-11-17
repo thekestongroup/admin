@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, CircleCheck, KeyRound, Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
+import { Ban, CircleCheck, KeyRound, ListFilter, Lock, ShieldCheck, TriangleAlert, Users } from '@lucide/vue'
 import {
   Badge,
   Card,
@@ -7,16 +7,21 @@ import {
   Menu,
   type MenuItem,
   PageHeader,
+  type PageHeaderAction,
+  Select,
   formatDateTime,
   Table,
   type TableColumn,
+  type TableSort,
   useNotifications,
 } from '@thekestongroup/ui'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
 import BulkActions from '../components/BulkActions.vue'
-import { api, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
+import FilterCard from '../components/FilterCard.vue'
+import { useListQuery } from '../lib/listQuery'
+import { api, type UserListQuery, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -28,6 +33,7 @@ const { t } = useI18n()
 const route = useRoute()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const orgId = route.params.orgId as string
+const path = route.path
 const { notify } = useNotifications()
 
 const org = ref<Organisation>()
@@ -40,8 +46,82 @@ const has = (p: PermissionId) => !!org.value?.permissions?.includes(p)
 
 const loadError = ref<string>()
 
+// ── Filters and sort: in the URL, applied by Keston ID ───────────────────────
+
+const ALL = 'all'
+const list = useListQuery(
+  { q: 'one', role: 'many', status: 'many', licence: 'many', group: 'many', mfa: 'one', sort: 'one', dir: 'one' },
+  ['sort', 'dir', 'q'],
+)
+const filters = list.values
+const filterCount = computed(() => list.active.value + (filters.value.q ? 1 : 0))
+const showFilters = ref(filterCount.value > 0 || !!filters.value.sort)
+const filtered = computed(() => filterCount.value > 0)
+
+const query = computed<UserListQuery>(() => ({
+  q: filters.value.q as string | undefined,
+  role: filters.value.role as string[],
+  status: filters.value.status as UserListQuery['status'],
+  licence: filters.value.licence as string[],
+  group: filters.value.group as string[],
+  mfa: filters.value.mfa as UserListQuery['mfa'],
+  sort: filters.value.sort as UserListQuery['sort'],
+  dir: filters.value.dir as UserListQuery['dir'],
+}))
+
+// The table's column sort is the same ?sort=&dir= (created has no column).
+const tableSort = computed<TableSort | null>(() =>
+  filters.value.sort ? { key: filters.value.sort as string, direction: filters.value.dir === 'desc' ? 'desc' : 'asc' } : null,
+)
+function setTableSort(s: TableSort | null) {
+  list.set({ sort: s?.key, dir: s && s.direction === 'desc' ? 'desc' : undefined })
+}
+
+const roleOptions = computed(() => [
+  { label: t('users.roleUser'), value: 'user' },
+  { label: t('users.globalAdmin'), value: 'global_admin' },
+  ...(iAmPlatformAdmin.value || filters.value.role?.includes('tkg_admin') ? [{ label: t('users.tkgAdmin'), value: 'tkg_admin' }] : []),
+  ...roleCatalogue.value.map((r) => ({ label: r.label, value: r.id })),
+])
+const statusOptions = computed(() => ['active', 'locked', 'disabled'].map((v) => ({ label: t(`users.status.${v}`), value: v })))
+const licenceOptions = computed(() => [
+  ...products.value.map((p) => ({ label: p.name, value: p.id })),
+  { label: t('users.noLicence'), value: 'none' },
+])
+const groupOptions = computed(() => groups.value.map((g) => ({ label: g.name, value: g.id })))
+const mfaOptions = computed(() => [
+  { label: t('users.mfaAny'), value: ALL },
+  { label: t('users.mfaOn'), value: 'on' },
+  { label: t('users.mfaOff'), value: 'off' },
+])
+const sortOptions = computed(() => [
+  { label: t('users.columns.name'), value: 'name' },
+  { label: t('users.columns.email'), value: 'email' },
+  { label: t('users.columns.role'), value: 'role' },
+  { label: t('users.columns.status'), value: 'status' },
+  { label: t('users.columns.created'), value: 'created' },
+])
+
+watch(query, async () => {
+  if (route.path !== path) return // leaving the page
+  loading.value = true
+  try {
+    await load()
+    loadError.value = undefined
+  } catch (e) {
+    loadError.value = message(e)
+  } finally {
+    loading.value = false
+  }
+})
+
+// Filters change the URL, and so reload the users (the latest answer wins).
+let latest = 0
 async function load() {
-  users.value = await api.users(orgId)
+  const n = ++latest
+  const list = await api.users(orgId, query.value)
+  if (n !== latest) return
+  users.value = list
   const ids = new Set(users.value.filter(selectable).map((u) => u.id))
   selected.value = selected.value.filter((id) => ids.has(id))
 }
@@ -53,8 +133,7 @@ onMounted(async () => {
     myId.value = me.user.id
     iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
     iAmPlatformAdmin.value = me.platformAdmin
-    await load()
-    if (has('groups.manage') || has('permissions.assign')) groups.value = await api.groups(orgId)
+    await Promise.all([load(), api.groups(orgId).then((g) => (groups.value = g))])
   } catch (e) {
     loadError.value = message(e)
   } finally {
@@ -104,6 +183,16 @@ onMounted(async () => {
   products.value = await api.products(orgId).catch(() => [])
 })
 
+/** The action bar: filter and sort, then add users, or what can be done to the selection. */
+const toolbar = computed<PageHeaderAction[]>(() => [
+  {
+    label: filterCount.value ? t('listFilters.filterAndSortCount', { count: filterCount.value }) : t('listFilters.filterAndSort'),
+    icon: ListFilter,
+    onSelect: () => (showFilters.value = !showFilters.value),
+  },
+  ...(bulk.value?.actions ?? []),
+])
+
 // ── Block or unblock sign-in ────────────────────────────────────────────────
 
 /** A row's menu: what you can do to them. */
@@ -137,7 +226,7 @@ async function toggle(a: User) {
 
 <template>
   <div class="flex flex-col gap-3 p-4 sm:p-6">
-    <PageHeader :title="t('users.title')" :toolbar="bulk?.actions ?? []" :link-component="RouterLink">
+    <PageHeader :title="t('users.title')" :toolbar="toolbar" :link-component="RouterLink">
       <template v-if="bulk?.count" #toolbar-start>{{ bulk.count }}</template>
     </PageHeader>
     <BulkActions
@@ -151,6 +240,26 @@ async function toggle(a: User) {
       @clear="selected = []"
       @done="bulkDone"
     />
+
+    <FilterCard
+      v-if="showFilters && !loadError"
+      :q="filters.q as string | undefined"
+      :sort="filters.sort as string | undefined"
+      :dir="filters.dir as string | undefined"
+      :active="filterCount"
+      :sort-options="sortOptions"
+      :search-label="t('users.search')"
+      @update:q="list.set({ q: $event })"
+      @update:sort="list.set({ sort: $event })"
+      @update:dir="list.set({ dir: $event === 'asc' ? undefined : $event })"
+      @clear="list.clear(); list.set({ q: undefined })"
+    >
+      <Select :model-value="filters.role" multiple :label="t('users.columns.role')" :placeholder="t('users.anyRole')" :options="roleOptions" @update:model-value="list.set({ role: $event as string[] })" />
+      <Select :model-value="filters.status" multiple :label="t('users.columns.status')" :placeholder="t('users.anyStatus')" :options="statusOptions" @update:model-value="list.set({ status: $event as string[] })" />
+      <Select :model-value="filters.licence" multiple :label="t('users.columns.licences')" :placeholder="t('users.anyLicence')" :options="licenceOptions" @update:model-value="list.set({ licence: $event as string[] })" />
+      <Select v-if="groupOptions.length" :model-value="filters.group" multiple searchable :label="t('users.group')" :placeholder="t('users.anyGroup')" :options="groupOptions" @update:model-value="list.set({ group: $event as string[] })" />
+      <Select :model-value="filters.mfa ?? ALL" :label="t('users.mfa')" :options="mfaOptions" @update:model-value="list.set({ mfa: $event === ALL ? undefined : String($event) })" />
+    </FilterCard>
 
     <Card v-if="loadError">
       <EmptyState :icon="TriangleAlert" :title="t('users.couldntLoad')" :description="loadError" />
@@ -168,6 +277,9 @@ async function toggle(a: User) {
         :selectable="canBulk && selectable"
         :row-label="(row: User) => t('users.select', { name: row.name })"
         v-model:selected="selected"
+        manual-sort
+        :sort="tableSort"
+        @update:sort="setTableSort"
       >
         <template #cell-name="{ row }">
           {{ row.name }}
@@ -204,7 +316,13 @@ async function toggle(a: User) {
           />
         </template>
         <template #empty>
-          <EmptyState size="sm" :icon="Users" :title="t('users.none')" :description="t('users.noneDescription')" class="p-0" />
+          <EmptyState
+            size="sm"
+            :icon="Users"
+            :title="filtered ? t('users.noMatch') : t('users.none')"
+            :description="filtered ? t('users.noMatchDescription') : t('users.noneDescription')"
+            class="p-0"
+          />
         </template>
       </Table>
     </Card>

@@ -46,12 +46,13 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const q = (k: string) => (typeof route.query[k] === 'string' ? (route.query[k] as string) : undefined)
 const view = computed(() => (q('view') === 'sign-ins' ? 'sign-ins' : 'actions'))
 const ALL = 'all'
-/** The filters, as in the URL (actions: any of these; none, every action). */
+/** The filters, as in the URL (users, actions and reasons: any of these; none, all of them). */
+const list = (k: string) => q(k)?.split(',').filter(Boolean) ?? []
 const fromQuery = () => ({
-  user: q('user') ?? ALL,
-  action: q('action')?.split(',').filter(Boolean) ?? [],
+  user: list('user'),
+  action: list('action'),
   result: q('result') ?? ALL,
-  reason: q('reason') ?? ALL,
+  reason: list('reason'),
   from: q('from'),
   to: q('to'),
 })
@@ -59,8 +60,9 @@ const filters = ref(fromQuery())
 const filtered = computed(() => ['user', 'action', 'result', 'reason', 'from', 'to'].some((k) => q(k)))
 
 /** Filters change the URL (and so reload the page's entries). */
-function apply(changes: Partial<Record<'user' | 'action' | 'result' | 'reason' | 'from' | 'to' | 'view', string>>) {
-  const next: Record<string, unknown> = { ...route.query, ...changes }
+function apply(changes: Partial<Record<'user' | 'action' | 'result' | 'reason' | 'from' | 'to' | 'view', string | string[]>>) {
+  const next: Record<string, unknown> = { ...route.query }
+  for (const [k, v] of Object.entries(changes)) next[k] = Array.isArray(v) ? v.join(',') : v
   for (const [k, v] of Object.entries(next)) if (v === ALL || v === undefined || v === '') delete next[k]
   router.replace({ query: next as typeof route.query })
 }
@@ -84,7 +86,7 @@ async function load(before?: string) {
   const n = ++latest
   const f = filters.value
   const opt = (v: string | undefined) => (v === ALL ? undefined : v)
-  const common = { user: opt(f.user), from: f.from, to: f.to, before }
+  const common = { user: f.user.join(',') || undefined, from: f.from, to: f.to, before }
   if (view.value === 'actions') {
     const page = await logsApi.auditLog(orgId, { ...common, action: f.action.length ? f.action.join(',') : undefined })
     if (n !== latest) return
@@ -94,7 +96,7 @@ async function load(before?: string) {
     const page = await logsApi.signIns(orgId, {
       ...common,
       result: opt(f.result) as 'success' | 'failure' | undefined,
-      reason: opt(f.reason),
+      reason: f.reason.join(',') || undefined,
     })
     if (n !== latest) return
     signIns.value = before ? [...signIns.value, ...page.entries] : page.entries
@@ -147,7 +149,6 @@ async function more() {
 // ── Filters ─────────────────────────────────────────────────────────────
 
 const userOptions = computed<SelectOption[]>(() => [
-  { label: t('logs.everyone'), value: ALL },
   ...users.value.map((u) => ({ label: u.name, value: u.id, description: u.email })),
 ])
 const actionOptions = computed(() => [
@@ -161,7 +162,7 @@ const resultOptions = computed<SelectOption[]>(() => [
   { label: t('logs.result.success'), value: 'success' },
   { label: t('logs.result.failure'), value: 'failure' },
 ])
-const reasonOptions = computed<SelectOption[]>(() => [{ label: t('logs.anyReason'), value: ALL }, ...reasonFilterOptions()])
+const reasonOptions = computed<SelectOption[]>(() => reasonFilterOptions())
 
 // ── Tables ──────────────────────────────────────────────────────────────
 
@@ -221,9 +222,11 @@ const tabs = computed(() => [
             v-if="users.length"
             v-model="filters.user"
             :label="t('logs.columns.user')"
+            :placeholder="t('logs.everyone')"
             searchable
+            multiple
             :options="userOptions"
-            @update:model-value="apply({ user: String($event ?? ALL) })"
+            @update:model-value="apply({ user: ($event as string[] | undefined) ?? [] })"
           />
           <Select
             v-if="view === 'actions'"
@@ -237,7 +240,14 @@ const tabs = computed(() => [
           />
           <template v-else>
             <Select v-model="filters.result" :label="t('logs.columns.result')" :options="resultOptions" @update:model-value="apply({ result: String($event) })" />
-            <Select v-model="filters.reason" :label="t('logs.whyFailed')" :options="reasonOptions" @update:model-value="apply({ reason: String($event) })" />
+            <Select
+              v-model="filters.reason"
+              :label="t('logs.whyFailed')"
+              :placeholder="t('logs.anyReason')"
+              multiple
+              :options="reasonOptions"
+              @update:model-value="apply({ reason: ($event as string[] | undefined) ?? [] })"
+            />
           </template>
           <InputDate v-model="filters.from" :label="t('logs.from')" prefer="past" :locale="locale" @update:model-value="apply({ from: $event })" />
           <InputDate v-model="filters.to" :label="t('logs.to')" prefer="past" :locale="locale" @update:model-value="apply({ to: $event })" />
