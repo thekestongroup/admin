@@ -7,6 +7,7 @@ import {
   CheckboxGroup,
   EmptyState,
   Input,
+  Select,
   Slideover,
   Spinner,
   Steps,
@@ -18,7 +19,7 @@ import PasswordField from './PasswordField.vue'
 import RolesField, { type Roles } from './RolesField.vue'
 import { suggestUsername } from '../lib/usernames'
 import { licenceOption, isFull } from '../lib/licences'
-import { ApiError, api, type AdminRole, type Organisation, type PermissionId, type Product } from '../lib/api'
+import { ApiError, api, type AdminRole, type Organisation, type PermissionId, type Product, type ProfileChanges, type UserAttribute } from '../lib/api'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -46,7 +47,9 @@ const open = defineModel<boolean>('open', { default: false })
 const emit = defineEmits<{ added: [] }>()
 const { notify } = useNotifications()
 
-const steps = computed(() => (props.canAssignLicences ? [t('addUser.steps.userInfo'), t('addUser.steps.licences')] : [t('addUser.steps.userInfo')]))
+const stepKeys = computed(() => ['info', 'work', ...(props.canAssignLicences ? ['licences'] : [])] as const)
+const steps = computed(() => stepKeys.value.map((k) => t(`addUser.steps.${k === 'info' ? 'userInfo' : k}`)))
+const stepKey = computed(() => stepKeys.value[step.value])
 const step = ref(0)
 const last = computed(() => step.value === steps.value.length - 1)
 
@@ -61,6 +64,8 @@ const blank = () => ({
   password: '',
   requirePasswordChange: true,
   licences: [] as string[],
+  work: { jobTitle: '', department: '', office: '', phone: '', mobile: '', employeeId: '', managerEmail: '', startDate: '' },
+  attributes: {} as Record<string, string>,
 })
 const form = reactive(blank())
 const errors = reactive<Record<string, string | undefined>>({})
@@ -99,6 +104,22 @@ async function loadProducts() {
   }
 }
 
+// Custom attributes, for the Work details step.
+const defs = ref<UserAttribute[]>([])
+const yesNo = computed(() => [
+  { label: t('profiles.unset'), value: '' },
+  { label: t('profiles.yes'), value: 'yes' },
+  { label: t('profiles.no'), value: 'no' },
+])
+const choiceOptions = (d: UserAttribute) => [{ label: t('profiles.unset'), value: '' }, ...d.choices.map((c) => ({ label: c, value: c }))]
+const profileBody = computed<ProfileChanges | undefined>(() => {
+  const p: ProfileChanges = {}
+  for (const [k, v] of Object.entries(form.work)) if (v.trim()) (p as Record<string, string>)[k] = v.trim()
+  const attrs = Object.fromEntries(Object.entries(form.attributes).filter(([, v]) => v !== ''))
+  if (Object.keys(attrs).length) p.attributes = attrs
+  return Object.keys(p).length ? p : undefined
+})
+
 // A fresh start each time it opens.
 watch(open, (isOpen) => {
   if (!isOpen) return
@@ -109,6 +130,7 @@ watch(open, (isOpen) => {
   status.value = 'idle'
   added.value = undefined
   if (props.canAssignLicences) loadProducts()
+  api.userAttributes(props.orgId).then((d) => (defs.value = d)).catch(() => {})
   if (props.canAssignRoles && !catalogue.value.length) api.roles(props.orgId).then((r) => (catalogue.value = r)).catch(() => {})
 })
 
@@ -129,7 +151,7 @@ function checkUserInfo() {
 }
 
 function next() {
-  if (step.value === 0 && !checkUserInfo()) return
+  if (stepKey.value === 'info' && !checkUserInfo()) return
   if (!last.value) {
     step.value++
     focusHeading()
@@ -157,6 +179,7 @@ async function add() {
       password: form.autoPassword ? undefined : form.password,
       requirePasswordChange: form.requirePasswordChange,
       licences,
+      profile: profileBody.value,
     })
     added.value = {
       name: created.name,
@@ -172,9 +195,11 @@ async function add() {
     status.value = 'idle'
     if (e instanceof ApiError && e.field) {
       errors[e.field === 'name' ? 'first' : e.field] = e.message
-      // Name, username or password: back to User info to fix it.
+      // Name, username or password: back to User info; a work detail: back to that step.
+      const workField = e.field in form.work || e.field === 'managerId' || e.field.startsWith('attributes')
+      if (workField) errors[e.field === 'managerId' ? 'managerEmail' : e.field] = e.message
       if (e.field !== 'licences') {
-        step.value = 0
+        step.value = workField ? 1 : 0
         focusHeading()
       }
     } else {
@@ -240,7 +265,7 @@ async function copyPassword(password: string) {
         <Steps v-if="steps.length > 1" :steps="steps" :step="step" :label="t('addUser.title')" />
 
         <!-- User info -->
-        <div v-if="step === 0" class="flex flex-col gap-4">
+        <div v-if="stepKey === 'info'" class="flex flex-col gap-4">
           <h2 ref="heading" tabindex="-1" class="sr-only outline-none">{{ t('addUser.steps.userInfo') }}</h2>
           <div class="grid gap-4 sm:grid-cols-2">
             <Input v-model="form.first" :label="t('addUser.firstName')" autocomplete="off" :error-text="errors.first" @update:model-value="suggest" />
@@ -282,6 +307,33 @@ async function copyPassword(password: string) {
             :label="t('addUser.requireChange')"
             :description="t('password.requireChangeDescription')"
           />
+        </div>
+
+        <!-- Work details -->
+        <div v-else-if="stepKey === 'work'" class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <h2 ref="heading" tabindex="-1" class="font-bold outline-none">{{ t('addUser.steps.work') }}</h2>
+            <p class="text-sm text-black/65">{{ t('profiles.addStepDescription') }}</p>
+          </div>
+          <Input v-model="form.work.jobTitle" :label="t('profiles.fields.jobTitle')" :error-text="errors.jobTitle" />
+          <Input v-model="form.work.department" :label="t('profiles.fields.department')" :error-text="errors.department" />
+          <Input v-model="form.work.office" :label="t('profiles.fields.office')" :error-text="errors.office" />
+          <Input v-model="form.work.phone" type="tel" :label="t('profiles.fields.phone')" :helper="t('profiles.phoneHelper')" :error-text="errors.phone" />
+          <Input v-model="form.work.mobile" type="tel" :label="t('profiles.fields.mobile')" :helper="t('profiles.phoneHelper')" :error-text="errors.mobile" />
+          <Input v-model="form.work.employeeId" :label="t('profiles.fields.employeeId')" :error-text="errors.employeeId" />
+          <Input v-model="form.work.managerEmail" :label="t('profiles.fields.manager')" :helper="t('profiles.managerHelper')" autocapitalize="off" :error-text="errors.managerEmail" />
+          <Input v-model="form.work.startDate" type="date" :label="t('profiles.fields.startDate')" :error-text="errors.startDate" />
+          <template v-for="d in defs" :key="d.key">
+            <Select v-if="d.type === 'boolean'" v-model="form.attributes[d.key]" :label="d.label" :options="yesNo" :error-text="errors['attributes.' + d.key]" />
+            <Select v-else-if="d.type === 'choice'" v-model="form.attributes[d.key]" :label="d.label" :options="choiceOptions(d)" :error-text="errors['attributes.' + d.key]" />
+            <Input
+              v-else
+              v-model="form.attributes[d.key]"
+              :type="d.type === 'number' ? 'number' : d.type === 'date' ? 'date' : 'text'"
+              :label="d.label"
+              :error-text="errors['attributes.' + d.key]"
+            />
+          </template>
         </div>
 
         <!-- Licences -->

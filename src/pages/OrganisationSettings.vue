@@ -35,13 +35,18 @@ const { notify } = useNotifications()
 const org = ref<Organisation>()
 const me = ref<Me>()
 
-const editing = reactive<ProfileEditing>({ name: false, email: false, picture: false })
+const editing = reactive<ProfileEditing>({ name: false, email: false, picture: false, jobTitle: false, department: false, office: false, phone: false, mobile: false })
 const loaded = ref(false)
 const error = ref<string>()
 const state = reactive<Record<keyof ProfileEditing, { status?: SwitchProps['status']; text?: string }>>({
   name: {},
   email: {},
   picture: {},
+  jobTitle: {},
+  department: {},
+  office: {},
+  phone: {},
+  mobile: {},
 })
 
 onMounted(async () => {
@@ -61,6 +66,11 @@ const fields = computed<{ key: keyof ProfileEditing; label: string; description:
   { key: 'name', label: t('settings.fields.name'), description: t('settings.fields.nameDescription') },
   { key: 'email', label: t('common.email'), description: t('settings.fields.emailDescription') },
   { key: 'picture', label: t('settings.fields.picture'), description: t('settings.fields.pictureDescription') },
+  ...(['jobTitle', 'department', 'office', 'phone', 'mobile'] as const).map((key) => ({
+    key,
+    label: t(`settings.fields.${key}`),
+    description: t(`settings.fields.${key}Description`),
+  })),
 ])
 
 // ── Username format ─────────────────────────────────────────────────────────

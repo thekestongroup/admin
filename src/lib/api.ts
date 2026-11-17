@@ -41,6 +41,54 @@ export interface ProfileEditing {
   name: boolean
   email: boolean
   picture: boolean
+  jobTitle: boolean
+  department: boolean
+  office: boolean
+  phone: boolean
+  mobile: boolean
+}
+
+export type AttributeType = 'text' | 'number' | 'date' | 'boolean' | 'choice'
+
+/** A custom user attribute an organisation defines (Settings → User attributes). */
+export interface UserAttribute {
+  id: string
+  /** Lowercase, used in CSV headers and filters. */
+  key: string
+  label: string
+  type: AttributeType
+  choices: string[]
+}
+
+export type AttributeValue = string | number | boolean
+
+/** A person (a manager, someone's report). */
+export interface PersonRef {
+  id: string
+  name: string
+  email?: string
+  jobTitle?: string
+}
+
+/** A user's work profile: built-in fields, manager and custom attribute values (by key). */
+export interface UserProfile {
+  jobTitle: string
+  department: string
+  office: string
+  /** E.164, like +442071234567. */
+  phone: string
+  mobile: string
+  employeeId: string
+  managerId: string
+  /** YYYY-MM-DD. */
+  startDate: string
+  manager: PersonRef | null
+  attributes: Record<string, AttributeValue>
+}
+
+/** What can be sent to change a profile (null clears a field). */
+export type ProfileChanges = Partial<Record<'jobTitle' | 'department' | 'office' | 'phone' | 'mobile' | 'employeeId' | 'managerId' | 'managerEmail' | 'startDate', string | null>> & {
+  attributes?: Record<string, AttributeValue | null>
 }
 
 /** An organisation's dashboard numbers (GET …/summary): counts only. */
@@ -323,6 +371,8 @@ export interface User {
   licences?: string[]
   /** Their admin roles, besides global admin (lists and one user). */
   roles?: string[]
+  /** Work profile (lists and one user). */
+  profile?: UserProfile
 }
 
 /** A built-in admin role: a named set of Keston Admin permissions, given to a user. */
@@ -454,6 +504,9 @@ export interface UserDetail extends User {
   canChange: boolean
   licences: string[]
   roles: string[]
+  profile: UserProfile
+  /** People who report to them. */
+  reports: PersonRef[]
 }
 
 /** A user in Deleted users: kept 30 days, then removed for good. */
@@ -474,7 +527,14 @@ export interface UserListQuery {
   licence?: string[]
   group?: string[]
   mfa?: 'on' | 'off'
-  sort?: 'name' | 'email' | 'role' | 'status' | 'created'
+  department?: string
+  jobTitle?: string
+  /** A manager's user ID, or 'none'. */
+  manager?: string
+  /** Custom attribute filters by key ('none': not set). */
+  attributes?: Record<string, string>
+  /** …or 'attr.<key>' for a custom attribute. */
+  sort?: 'name' | 'email' | 'role' | 'status' | 'created' | 'department' | 'jobTitle' | 'manager' | `attr.${string}`
   dir?: 'asc' | 'desc'
 }
 
@@ -667,7 +727,12 @@ export const api = {
 
 
   /** The users, filtered and sorted by Keston ID (see UserListQuery). */
-  users: (orgId: string, query: UserListQuery = {}) => request<User[]>('GET', `${org(orgId)}/users${queryString(query)}`),
+  users: (orgId: string, query: UserListQuery = {}) => {
+    const { attributes, ...rest } = query
+    const flat: Record<string, unknown> = { ...rest }
+    for (const [k, v] of Object.entries(attributes ?? {})) flat[`attr.${k}`] = v
+    return request<User[]>('GET', `${org(orgId)}/users${queryString(flat)}`)
+  },
   user: (orgId: string, userId: string) => request<UserDetail>('GET', `${org(orgId)}/users/${userId}`),
   permissions: () => request<Permission[]>('GET', '/permissions'),
   updateUser: (orgId: string, userId: string, changes: { name?: string; username?: string; role?: User['role']; platformAdmin?: boolean }) =>
@@ -755,8 +820,18 @@ export const api = {
       licences?: string[]
       /** Admin roles, besides global admin (role). */
       roles?: string[]
+      /** Work profile fields and attributes by key. */
+      profile?: ProfileChanges
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
+  putUserProfile: (orgId: string, userId: string, changes: ProfileChanges) =>
+    request<UserProfile>('PUT', `${org(orgId)}/users/${userId}/profile`, changes),
+  userAttributes: (orgId: string) => request<UserAttribute[]>('GET', `${org(orgId)}/user-attributes`),
+  createUserAttribute: (orgId: string, body: { key: string; label: string; type: AttributeType; choices?: string[] }) =>
+    request<UserAttribute>('POST', `${org(orgId)}/user-attributes`, body),
+  updateUserAttribute: (orgId: string, id: string, body: { label: string; choices?: string[] }) =>
+    request<UserAttribute>('PUT', `${org(orgId)}/user-attributes/${id}`, body),
+  deleteUserAttribute: (orgId: string, id: string) => request<void>('DELETE', `${org(orgId)}/user-attributes/${id}`),
   userApps: (orgId: string, userId: string) => request<UserApp[]>('GET', `${org(orgId)}/users/${userId}/apps`),
   roles: (orgId: string) => request<AdminRole[]>('GET', `${org(orgId)}/roles`),
   setRoles: (orgId: string, userId: string, roles: string[]) =>
@@ -817,7 +892,7 @@ export const api = {
   bulkCreate: (
     orgId: string,
     body: {
-      users: { name: string; username: string; domain?: string }[]
+      users: { name: string; username: string; domain?: string; profile?: ProfileChanges }[]
       /** One password for everyone; leave out for each their own. */
       password?: string
       licences: string[]

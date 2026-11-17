@@ -27,6 +27,7 @@ import DeleteUserCard from '../components/DeleteUserCard.vue'
 import MoveAccountCard from '../components/MoveAccountCard.vue'
 import AdminRolesCard from '../components/AdminRolesCard.vue'
 import LicencesCard from '../components/LicencesCard.vue'
+import UserProfileCard from '../components/UserProfileCard.vue'
 import UserAppsCard from '../components/UserAppsCard.vue'
 import PasswordField from '../components/PasswordField.vue'
 import RecentActivity from '../components/RecentActivity.vue'
@@ -404,6 +405,8 @@ async function toggle() {
                   <SummaryList :items="details" class="min-w-0 flex-1" />
                 </div>
               </Card>
+
+              <UserProfileCard :org-id="orgId" :user="user" :can-edit="can('users.edit')" @changed="reload" />
 
               <Card v-if="can('users.reset_password')" :title="t('password.label')" :description="t('userDetail.passwordDescription')">
                 <div><Button @click="startReset">{{ t('users.resetPassword') }}</Button></div>

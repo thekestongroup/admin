@@ -8,6 +8,7 @@ import {
   type MenuItem,
   PageHeader,
   type PageHeaderAction,
+  Input,
   Select,
   formatDateTime,
   Table,
@@ -16,14 +17,14 @@ import {
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AccountMovesCard from '../components/AccountMovesCard.vue'
 import AddUserSlideover from '../components/AddUserSlideover.vue'
 import GuestsCard from '../components/GuestsCard.vue'
 import BulkActions from '../components/BulkActions.vue'
 import FilterCard from '../components/FilterCard.vue'
 import { useListQuery } from '../lib/listQuery'
-import { api, type UserListQuery, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole } from '../lib/api'
+import { api, type UserListQuery, loadMe, type Group, type Organisation, type PermissionId, type Product, type User, type AdminRole, type UserAttribute } from '../lib/api'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -33,6 +34,7 @@ const { t } = useI18n()
  * several for bulk actions. Deleted users are on their own page.
  */
 const route = useRoute()
+const router = useRouter()
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const orgId = route.params.orgId as string
 const path = route.path
@@ -52,11 +54,22 @@ const loadError = ref<string>()
 
 const ALL = 'all'
 const list = useListQuery(
-  { q: 'one', role: 'many', status: 'many', licence: 'many', group: 'many', mfa: 'one', sort: 'one', dir: 'one' },
+  { q: 'one', role: 'many', status: 'many', licence: 'many', group: 'many', mfa: 'one', department: 'one', jobTitle: 'one', manager: 'one', sort: 'one', dir: 'one' },
   ['sort', 'dir', 'q'],
 )
 const filters = list.values
-const filterCount = computed(() => list.active.value + (filters.value.q ? 1 : 0))
+// Custom attribute filters are ?attr.<key>=value.
+const attrFilters = computed(() =>
+  Object.fromEntries(
+    Object.entries(route.query)
+      .filter(([k, v]) => k.startsWith('attr.') && typeof v === 'string' && v)
+      .map(([k, v]) => [k.slice(5), v as string]),
+  ),
+)
+function setAttrFilter(key: string, value: string | undefined) {
+  router.replace({ query: { ...route.query, [`attr.${key}`]: value || undefined } })
+}
+const filterCount = computed(() => list.active.value + (filters.value.q ? 1 : 0) + Object.keys(attrFilters.value).length)
 const showFilters = ref(filterCount.value > 0 || !!filters.value.sort)
 const filtered = computed(() => filterCount.value > 0)
 
@@ -67,6 +80,10 @@ const query = computed<UserListQuery>(() => ({
   licence: filters.value.licence as string[],
   group: filters.value.group as string[],
   mfa: filters.value.mfa as UserListQuery['mfa'],
+  department: filters.value.department as string | undefined,
+  jobTitle: filters.value.jobTitle as string | undefined,
+  manager: filters.value.manager as string | undefined,
+  attributes: attrFilters.value,
   sort: filters.value.sort as UserListQuery['sort'],
   dir: filters.value.dir as UserListQuery['dir'],
 }))
@@ -102,7 +119,33 @@ const sortOptions = computed(() => [
   { label: t('users.columns.role'), value: 'role' },
   { label: t('users.columns.status'), value: 'status' },
   { label: t('users.columns.created'), value: 'created' },
+  { label: t('profiles.sort.department'), value: 'department' },
+  { label: t('profiles.sort.jobTitle'), value: 'jobTitle' },
+  { label: t('profiles.sort.manager'), value: 'manager' },
+  ...attributeDefs.value.map((d) => ({ label: d.label, value: `attr.${d.key}` })),
 ])
+
+// Work profile filters: manager choices (everyone in the organisation) and custom attributes.
+const attributeDefs = ref<UserAttribute[]>([])
+const managers = ref<User[]>([])
+onMounted(async () => {
+  attributeDefs.value = await api.userAttributes(orgId).catch(() => [])
+  managers.value = await api.users(orgId).catch(() => [])
+})
+const managerOptions = computed(() => [
+  { label: t('profiles.filters.anyManager'), value: ALL },
+  { label: t('profiles.filters.noManager'), value: 'none' },
+  ...managers.value.map((u) => ({ label: u.name, value: u.id })),
+])
+function attrOptions(d: UserAttribute) {
+  const values =
+    d.type === 'boolean'
+      ? [{ label: t('profiles.yes'), value: 'yes' }, { label: t('profiles.no'), value: 'no' }]
+      : d.type === 'choice'
+        ? d.choices.map((c) => ({ label: c, value: c }))
+        : []
+  return [{ label: t('profiles.filters.anyValue'), value: ALL }, ...values, { label: t('profiles.filters.notSet'), value: 'none' }]
+}
 
 watch(query, async () => {
   if (route.path !== path) return // leaving the page
@@ -257,13 +300,26 @@ async function toggle(a: User) {
       @update:q="list.set({ q: $event })"
       @update:sort="list.set({ sort: $event })"
       @update:dir="list.set({ dir: $event === 'asc' ? undefined : $event })"
-      @clear="list.clear(); list.set({ q: undefined })"
+      @clear="list.clear(); list.set({ q: undefined }); router.replace({ query: Object.fromEntries(Object.entries(route.query).filter(([k]) => !k.startsWith('attr.'))) })"
     >
       <Select :model-value="filters.role" multiple :label="t('users.columns.role')" :placeholder="t('users.anyRole')" :options="roleOptions" @update:model-value="list.set({ role: $event as string[] })" />
       <Select :model-value="filters.status" multiple :label="t('users.columns.status')" :placeholder="t('users.anyStatus')" :options="statusOptions" @update:model-value="list.set({ status: $event as string[] })" />
       <Select :model-value="filters.licence" multiple :label="t('users.columns.licences')" :placeholder="t('users.anyLicence')" :options="licenceOptions" @update:model-value="list.set({ licence: $event as string[] })" />
       <Select v-if="groupOptions.length" :model-value="filters.group" multiple searchable :label="t('users.group')" :placeholder="t('users.anyGroup')" :options="groupOptions" @update:model-value="list.set({ group: $event as string[] })" />
       <Select :model-value="filters.mfa ?? ALL" :label="t('users.mfa')" :options="mfaOptions" @update:model-value="list.set({ mfa: $event === ALL ? undefined : String($event) })" />
+      <Input :model-value="(filters.department as string | undefined) ?? ''" :label="t('profiles.filters.department')" @update:model-value="list.set({ department: String($event ?? '').trim() })" />
+      <Input :model-value="(filters.jobTitle as string | undefined) ?? ''" :label="t('profiles.filters.jobTitle')" @update:model-value="list.set({ jobTitle: String($event ?? '').trim() })" />
+      <Select v-if="managers.length" :model-value="(filters.manager as string | undefined) ?? ALL" searchable :label="t('profiles.filters.manager')" :options="managerOptions" @update:model-value="list.set({ manager: $event === ALL ? undefined : String($event) })" />
+      <template v-for="d in attributeDefs" :key="d.key">
+        <Select
+          v-if="d.type === 'boolean' || d.type === 'choice'"
+          :model-value="attrFilters[d.key] ?? ALL"
+          :label="d.label"
+          :options="attrOptions(d)"
+          @update:model-value="setAttrFilter(d.key, $event === ALL ? undefined : String($event))"
+        />
+        <Input v-else :model-value="attrFilters[d.key] ?? ''" :label="d.label" @update:model-value="setAttrFilter(d.key, String($event ?? '').trim())" />
+      </template>
     </FilterCard>
 
     <Card v-if="loadError">

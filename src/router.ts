@@ -119,6 +119,11 @@ export const router = createRouter({
           meta: { title: 'titles.settings' },
         },
         {
+          path: 'organisations/:orgId/settings/user-attributes',
+          component: () => import('./pages/UserAttributes.vue'),
+          meta: { title: 'titles.userAttributes' },
+        },
+        {
           path: 'organisations/:orgId/users',
           component: () => import('./pages/Users.vue'),
           meta: { title: 'titles.users' },
