@@ -8,7 +8,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
-/** An organisation's groups, e.g. Teachers or Office: used to set app access per group. */
+/** An organisation's groups, e.g. Sales or Office: used to set app access per group. */
 const route = useRoute()
 const router = useRouter()
 const orgId = route.params.orgId as string

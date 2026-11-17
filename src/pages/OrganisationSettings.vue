@@ -70,7 +70,7 @@ const savedFormat = ref('{first}.{last}')
 const formatError = computed(() => checkFormula(usernameFormat.value))
 const formatState = ref<{ status?: InputProps['status']; text?: string }>({})
 const examples = [
-  ['Jo', 'Bloggs'],
+  ['John', 'Doe'],
   ['Zoë', 'O’Brien'],
 ]
 const preview = computed(() =>

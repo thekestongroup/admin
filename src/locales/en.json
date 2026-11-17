@@ -158,7 +158,7 @@
       "addTitle": "Add a rule",
       "description": "When all of these match, the answer below is used. Leave one empty to match everyone, everywhere.",
       "name": "Name",
-      "nameHelper": "e.g. Staff away from school",
+      "nameHelper": "e.g. Staff working remotely",
       "users": "Users",
       "usersHelper": "Any of these people.",
       "anyone": "Anyone",
@@ -262,8 +262,6 @@
   },
   "password": {
     "auto": "Automatic password",
-    "notYetValid": "The password doesn’t meet every rule yet",
-    "enter": "Enter a password",
     "requireChangeDescription": "They choose a new password when they next sign in. Recommended, so only they know their password.",
     "label": "Password",
     "needs": "The password needs:"
@@ -300,7 +298,7 @@
     "cardDescription": "The Keston products {name} can use. Without a licence, they can’t sign in to it.",
     "couldntLoad": "Couldn’t load the products",
     "none": "No products yet",
-    "by": "By {publisher}",
+    "by": "From {publisher}",
     "save": "Save licences"
   },
   "userApps": {
@@ -356,13 +354,12 @@
     },
     "errors": {
       "firstName": "Enter their first name",
-      "username": "Use lowercase letters, numbers, dots, dashes or underscores, like j.smith"
+      "username": "Use lowercase letters, numbers, dots, dashes or underscores, like john.doe"
     },
     "couldntAdd": "Couldn’t add the user",
     "passwordCopied": "Password copied",
     "couldntCopy": "Couldn’t copy",
     "couldntCopyDescription": "Select the password and copy it instead.",
-    "signInAs": "They’ll sign in as {email}.",
     "added": "{name} has been added",
     "giveDetails": "Give them these details securely. The password is shown only once: once you close this, it’s gone.",
     "signInWithSet": "They can sign in with the password you set.",
@@ -373,8 +370,9 @@
     "username": "Username",
     "autoDescription": "Creates one that meets your password policy. Shown once after you add them.",
     "requireChange": "Required password change",
-    "they": "they",
-    "licenceDescription": "By {publisher}. No users have a licence. | By {publisher}. 1 user has a licence. | By {publisher}. {count} users have a licence.",
+    "licencesDescription": "Assign licences to {name} to give access to apps, services and additional functionality",
+    "thisUser": "this user",
+    "licenceDescription": "From {publisher}. No users have a licence. | From {publisher}. 1 user has a licence. | From {publisher}. {count} users have a licence.",
     "adding": "Adding",
     "addUser": "Add user"
   },
@@ -764,13 +762,13 @@
     "title": "Groups",
     "description": "Sets of users, for giving them different app access and permissions in Keston Admin.",
     "newGroup": "New group",
-    "namePlaceholder": "e.g. Teachers",
+    "namePlaceholder": "e.g. Sales",
     "creating": "Creating",
     "create": "Create group",
     "couldntLoad": "Couldn’t load the groups",
     "permissionCount": "{count} permission | {count} permissions",
     "none": "No groups yet",
-    "noneDescription": "Create one, e.g. Teachers or Office, to give its users different app access."
+    "noneDescription": "Create one, e.g. Sales or Office, to give its users different app access."
   },
   "groupDetail": {
     "couldntSavePermissions": "Couldn’t save the permissions",
@@ -804,7 +802,7 @@
       "users": "Users",
       "created": "Created"
     },
-    "description": "Every school and organisation on Keston. Their users need support access, approved by one of their global admins.",
+    "description": "Every organisation on Keston. Their users need support access, approved by one of their global admins.",
     "new": "New organisation",
     "awaitingVerification": "Awaiting verification",
     "onlyAwaiting": "Only awaiting verification",
@@ -816,7 +814,7 @@
     },
     "couldntLoad": "Couldn’t load the organisations",
     "none": "No organisations yet",
-    "noneDescription": "Create one to give a school or organisation its users on Keston."
+    "noneDescription": "Create one to give an organisation its users on Keston."
   },
   "deleted": {
     "title": "Deleted users",
@@ -905,7 +903,7 @@
       "explanation": "Nobody in {name} can sign in until it’s verified.",
       "button": "Verify organisation",
       "title": "Verify {name}?",
-      "description": "Its people will be able to sign in straight away. Check that it’s a real school or organisation first.",
+      "description": "Its people will be able to sign in straight away. Check that it’s a real organisation first.",
       "confirm": "Verify",
       "verifying": "Verifying",
       "done": "{name} is verified",
@@ -952,7 +950,7 @@
       "supportDescription": "Its global admins are asked. Once they allow it, you get a support account in the organisation.",
       "why": "Reason",
       "lockoutHelper": "e.g. Their only global admin has left, and nobody can reset passwords.",
-      "supportHelper": "e.g. Their office asked us to check why a teacher can’t sign in.",
+      "supportHelper": "e.g. Their office asked us to check why a user can’t sign in.",
       "sending": "Sending",
       "startProcedure": "Start the procedure",
       "send": "Send request"
@@ -979,14 +977,14 @@
     "newOrganisation": "New organisation",
     "name": {
       "title": "What’s the organisation called?",
-      "description": "Set up your school or organisation on Keston. As people there would recognise it, e.g. Greenfield Primary School.",
+      "description": "Set up your organisation on Keston. As people there would recognise it, e.g. Example Ltd.",
       "label": "Organisation name"
     },
     "domain": {
       "title": "What’s its domain?",
       "description": "Its users will sign in as {email}. Each organisation needs its own.",
       "fallback": "domain",
-      "placeholder": "greenfield.sch.uk"
+      "placeholder": "example.com"
     },
     "admin": {
       "title": "Who’s the first global admin?",
@@ -1018,7 +1016,6 @@
     "couldntRemoveFromGroup": "Couldn’t remove them from the group",
     "updated": "User updated",
     "couldntUpdate": "Couldn’t update the user",
-    "enterNew": "Enter a new password",
     "passwordReset": "Password reset",
     "passwordResetDescription": "{name} has been signed out everywhere.",
     "resetMfa": "Reset MFA",

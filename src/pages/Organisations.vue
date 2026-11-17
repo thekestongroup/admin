@@ -12,7 +12,7 @@ import {
   type TableColumn,
   formatDate,
 } from '@thekestongroup/ui'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useId } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, loadMe, type Organisation } from '../lib/api'
 import { useI18n } from 'vue-i18n'
@@ -26,6 +26,7 @@ const loadError = ref<string>()
 
 /** Platform-wide: new organisations need verifying (platform admins only). */
 const requireVerification = ref(false)
+const verificationLabelId = `${useId()}-verification`
 const settingState = ref<{ status?: SwitchProps['status']; text?: string }>({})
 const showSetting = ref(false)
 const onlyAwaiting = ref(false)
@@ -83,18 +84,24 @@ const columns = computed<TableColumn<Organisation>[]>(() => [
       </template>
     </PageHeader>
 
-    <Card
-      v-if="showSetting"
-      :title="t('organisations.requireVerification.title')"
-      :description="t('organisations.requireVerification.description')"
-    >
-      <Switch
-        v-model="requireVerification"
-        :label="t('organisations.requireVerification.title')"
-        :status="settingState.status"
-        :status-text="settingState.text"
-        @update:model-value="saveSetting"
-      />
+    <Card v-if="showSetting">
+      <!-- A settings row with a switch: SettingsRow's control column is wide, so this one is laid out by hand. -->
+      <div class="flex items-start justify-between gap-4 sm:gap-6">
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <p :id="verificationLabelId" class="text-sm font-bold">{{ t('organisations.requireVerification.title') }}</p>
+          <p class="text-sm text-black/65">{{ t('organisations.requireVerification.description') }}</p>
+        </div>
+        <Switch
+          v-model="requireVerification"
+          :label="t('organisations.requireVerification.title')"
+          hide-label
+          :aria-labelledby="verificationLabelId"
+          :status="settingState.status"
+          :status-text="settingState.text"
+          class="shrink-0"
+          @update:model-value="saveSetting"
+        />
+      </div>
     </Card>
 
     <div v-if="awaiting.length" class="flex items-center gap-3">

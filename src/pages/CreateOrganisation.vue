@@ -23,6 +23,7 @@ const step = ref(0)
 const form = reactive({ name: '', domain: '', adminName: '', adminUsername: '', password: '' })
 const errors = reactive<Record<string, string | undefined>>({})
 const passwordValid = ref(false)
+const passwordInvalid = ref(false)
 const status = ref<ButtonStatus>('idle')
 const created = ref<Organisation>()
 /** Keston staff have to verify it before anyone can sign in. */
@@ -61,8 +62,8 @@ async function validate(): Promise<boolean> {
         errors.adminUsername = t('addUser.errors.username')
       return !errors.adminName && !errors.adminUsername
     case 3:
-      if (!passwordValid.value) errors.password = form.password ? t('password.notYetValid') : t('password.enter')
-      return !errors.password
+      passwordInvalid.value = !passwordValid.value
+      return !passwordInvalid.value
   }
   return true
 }
@@ -154,7 +155,7 @@ const summary = computed(() => [
             <div class="flex flex-col gap-1">
               <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.domain.title') }}</h1>
               <I18nT keypath="createOrg.domain.description" tag="p" scope="global" class="text-sm text-black/65">
-                <template #email><span class="font-bold text-black">name@{{ domain || t('createOrg.domain.fallback') }}</span></template>
+                <template #email><span class="font-bold text-black">john.doe@{{ domain || t('createOrg.domain.fallback') }}</span></template>
               </I18nT>
             </div>
             <Input
@@ -190,7 +191,7 @@ const summary = computed(() => [
               <h1 tabindex="-1" class="text-xl font-bold outline-none">{{ t('createOrg.password.title') }}</h1>
               <p class="text-sm text-black/65">{{ t('createOrg.password.description', { email: `${username}@${domain}` }) }}</p>
             </div>
-            <PasswordField v-model="form.password" v-model:valid="passwordValid" :username="username" public :error-text="errors.password" />
+            <PasswordField v-model="form.password" v-model:valid="passwordValid" v-model:invalid="passwordInvalid" :username="username" public :error-text="errors.password" />
           </template>
         </div>
 

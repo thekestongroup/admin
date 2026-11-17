@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { InputNumber, Select, SettingsRow, type SelectProps } from '@thekestongroup/ui'
-import { computed, reactive, ref, watch } from 'vue'
+import { Card, InputNumber, Select, SettingsRow, type SelectProps } from '@thekestongroup/ui'
+import { computed, reactive, ref, useId, watch } from 'vue'
 import { api, type MfaMode, type MfaPolicy } from '../lib/api'
 import { useI18n } from 'vue-i18n'
 
@@ -22,7 +22,7 @@ const modes = computed(() =>
     description: t(`mfa.mode.${value}.description`),
   })),
 )
-const modeDescription = computed(() => modes.value.find((m) => m.value === policy.value?.mode)?.description)
+const titleId = `${useId()}-title`
 
 type Saving = { status?: SelectProps['status']; text?: string }
 const saving = reactive<{ mode: Saving; grace: Saving }>({ mode: {}, grace: {} })
@@ -66,9 +66,14 @@ function setGrace(v: number | undefined) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
-    <div class="flex flex-col gap-3">
-      <SettingsRow :label="t('mfa.mode.label')" :description="modeDescription">
+  <Card :aria-labelledby="titleId" as="section">
+    <!-- Title and description on the left, the dropdown on the right (it stacks on narrow screens). -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+      <div class="flex min-w-0 flex-col gap-1">
+        <h2 :id="titleId" class="text-base font-bold">{{ t('mfa.mode.label') }}</h2>
+        <p class="text-sm text-black/65">{{ t('mfa.appliesNextSignIn') }}</p>
+      </div>
+      <div class="w-full shrink-0 sm:w-80">
         <Select
           :model-value="policy.mode"
           :label="t('mfa.mode.label')"
@@ -78,9 +83,9 @@ function setGrace(v: number | undefined) {
           :status-text="saving.mode.text"
           @update:model-value="setMode"
         />
-      </SettingsRow>
-      <p v-if="policy.mode === 'custom'" class="text-sm">{{ t('mfa.mode.customNote') }}</p>
+      </div>
     </div>
+    <p v-if="policy.mode === 'custom'" class="text-sm">{{ t('mfa.mode.customNote') }}</p>
 
     <!-- The grace period, for Require MFA for everyone -->
     <SettingsRow v-if="policy.mode === 'required'" :label="t('mfa.mode.grace.label')" :description="t('mfa.mode.grace.description')">
@@ -99,5 +104,5 @@ function setGrace(v: number | undefined) {
         @update:model-value="setGrace"
       />
     </SettingsRow>
-  </div>
+  </Card>
 </template>
