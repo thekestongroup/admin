@@ -5,6 +5,7 @@ import {
   CircleCheck,
   KeyRound,
   Lock,
+  Gauge,
   LogIn,
   Plus,
   ShieldAlert,
@@ -18,7 +19,7 @@ import { Button, Card, EmptyState, Link, RelativeTime, Spinner, StatTile, format
 import { computed, onMounted, ref, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { type Organisation, type OrganisationSummary, type PermissionId, api } from '../lib/api'
+import { type Organisation, type OrganisationSummary, type SecurityDefaults, type PermissionId, api } from '../lib/api'
 import { actionLabel } from '../lib/logs'
 
 /**
@@ -35,7 +36,9 @@ const has = (p: PermissionId) => !!props.org.permissions?.includes(p)
 
 const summary = ref<OrganisationSummary>()
 const error = ref<string>()
+const security = ref<SecurityDefaults>()
 onMounted(async () => {
+  if (has('policy.manage')) api.securityDefaults(props.org.id).then((v) => (security.value = v), () => {})
   try {
     summary.value = await api.summary(props.org.id)
   } catch (e) {
@@ -109,6 +112,18 @@ const tiles = computed<Tile[]>(() => {
       icon: ShieldCheck,
       to: users ? { path: `${base.value}/users`, query: { mfa: 'off', status: 'active,locked' } } : undefined,
     },
+    ...(security.value
+      ? [
+          {
+            key: 'secureScore',
+            label: t('dashboard.secureScore'),
+            value: `${security.value.score}%`,
+            description: t('dashboard.secureScoreDescription', { done: security.value.done, total: security.value.total }),
+            icon: Gauge,
+            to: { path: `${base.value}/security/defaults` },
+          } as Tile,
+        ]
+      : []),
     {
       key: 'signIns',
       label: t('dashboard.signIns'),
