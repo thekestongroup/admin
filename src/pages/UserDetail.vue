@@ -239,6 +239,7 @@ const resetAuto = ref(false)
 const resetResult = ref<string>()
 const resetValid = ref(false)
 const resetError = ref<string>()
+const resetInvalid = ref(false)
 const resetStatus = ref<ButtonStatus>('idle')
 
 function startReset() {
@@ -261,8 +262,9 @@ async function copyResetPassword(password: string) {
 }
 
 async function reset() {
-  resetError.value = resetAuto.value || resetValid.value ? undefined : newPassword.value ? t('password.notYetValid') : t('userDetail.enterNew')
-  if (resetError.value) return
+  resetError.value = undefined
+  resetInvalid.value = !resetAuto.value && !resetValid.value
+  if (resetInvalid.value) return
   resetStatus.value = 'loading'
   try {
     const done = await api.resetPassword(
@@ -593,7 +595,7 @@ async function toggle() {
         </div>
         <form v-else class="flex flex-col gap-4" novalidate @submit.prevent="reset">
           <Checkbox v-model="resetAuto" :label="t('password.auto')" :description="t('userDetail.autoDescription')" />
-          <PasswordField v-if="!resetAuto" v-model="newPassword" v-model:valid="resetValid" :label="t('userDetail.newPassword')" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
+          <PasswordField v-if="!resetAuto" v-model="newPassword" v-model:valid="resetValid" v-model:invalid="resetInvalid" :label="t('userDetail.newPassword')" :organisation-id="orgId" :username="user?.username" :error-text="resetError" />
           <Checkbox v-model="resetRequireChange" :label="t('userDetail.askChoose')" :description="t('password.requireChangeDescription')" />
           <p v-if="resetAuto && resetError" class="text-sm text-red" role="alert">{{ resetError }}</p>
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />

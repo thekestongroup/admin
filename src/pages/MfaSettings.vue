@@ -60,9 +60,7 @@ async function setEveryoneElse(required: boolean) {
     </Card>
     <div v-else-if="!policy || !options" class="flex justify-center py-12"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
-      <Card :title="t('mfa.mode.label')" :description="t('mfa.appliesNextSignIn')">
-        <MfaModeSettings v-model:policy="policy" :org-id="orgId" />
-      </Card>
+      <MfaModeSettings v-model:policy="policy" :org-id="orgId" />
 
       <template v-if="policy.mode === 'custom'">
         <MfaRulesCard :org-id="orgId" :options="options" />
@@ -77,7 +75,7 @@ async function setEveryoneElse(required: boolean) {
           />
         </Card>
       </template>
-      <Card v-else>
+      <Card v-else :title="t('mfa.rules.title')">
         <I18nT keypath="mfa.rulesNotInUse" tag="p" scope="global" class="text-sm">
           <template #mode>
             <span class="font-bold">{{ t(policy.mode === 'off' ? 'mfa.mode.off.label' : 'mfa.requiredForEveryone') }}</span>

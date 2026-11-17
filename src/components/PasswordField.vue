@@ -27,6 +27,9 @@ const props = withDefaults(
 const password = defineModel<string>({ default: '' })
 /** Whether every rule is met (checked by Keston ID). */
 const valid = defineModel<boolean>('valid', { default: false })
+/** The form was submitted without meeting every rule: the unmet ones show red. Clears itself once they're all met. */
+const invalid = defineModel<boolean>('invalid', { default: false })
+watch(valid, (v) => { if (v) invalid.value = false })
 
 const rules = ref<RuleResult[]>([])
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -57,7 +60,7 @@ const items = computed(() => rules.value.map((r) => ({ label: r.label, done: r.m
     <InputPassword v-model="password" :label="label ?? t('password.label')" autocomplete="new-password" :error-text="errorText" />
     <div v-if="items.length" class="flex flex-col gap-2">
       <p id="password-rules" class="text-sm font-bold">{{ t('password.needs') }}</p>
-      <Checklist :items="items" aria-labelledby="password-rules" />
+      <Checklist :items="items" :invalid="invalid" aria-labelledby="password-rules" />
     </div>
   </div>
 </template>

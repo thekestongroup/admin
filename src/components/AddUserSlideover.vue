@@ -64,6 +64,8 @@ const blank = () => ({
 const form = reactive(blank())
 const errors = reactive<Record<string, string | undefined>>({})
 const passwordValid = ref(false)
+/** Submitted without meeting the password rules: shows the unmet ones red. */
+const passwordInvalid = ref(false)
 const status = ref<ButtonStatus>('idle')
 const username = computed(() => form.username.trim().toLowerCase())
 const fullName = computed(() => `${form.first.trim()} ${form.last.trim()}`.trim())
@@ -100,6 +102,7 @@ async function loadProducts() {
 watch(open, (isOpen) => {
   if (!isOpen) return
   Object.assign(form, blank())
+  passwordInvalid.value = false
   for (const k of Object.keys(errors)) errors[k] = undefined
   step.value = 0
   status.value = 'idle'
@@ -120,9 +123,8 @@ function checkUserInfo() {
   if (!form.first.trim()) errors.first = t('addUser.errors.firstName')
   if (!/^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?$/.test(username.value))
     errors.username = t('addUser.errors.username')
-  if (!form.autoPassword && !passwordValid.value)
-    errors.password = form.password ? t('password.notYetValid') : t('password.enter')
-  return !errors.first && !errors.username && !errors.password
+  passwordInvalid.value = !form.autoPassword && !passwordValid.value
+  return !errors.first && !errors.username && !passwordInvalid.value
 }
 
 function next() {
@@ -204,7 +206,6 @@ async function copyPassword(password: string) {
   <Slideover
     v-model:open="open"
     :title="t('addUser.title')"
-    :description="added ? undefined : org ? t('addUser.signInAs', { email: `username@${org.domain}` }) : undefined"
     initial-focus="auto"
   >
     <!-- Done -->
@@ -270,6 +271,7 @@ async function copyPassword(password: string) {
             v-if="!form.autoPassword"
             v-model="form.password"
             v-model:valid="passwordValid"
+            v-model:invalid="passwordInvalid"
             :organisation-id="orgId"
             :username="username"
             :error-text="errors.password"
@@ -285,7 +287,7 @@ async function copyPassword(password: string) {
         <div v-else class="flex flex-col gap-4">
           <div class="flex flex-col gap-1">
             <h2 ref="heading" tabindex="-1" class="font-bold outline-none">{{ t('licences.title') }}</h2>
-            <p class="text-sm text-black/65">{{ t('licences.cardDescription', { name: fullName || t('addUser.they') }) }}</p>
+            <p class="text-sm text-black/65">{{ t('addUser.licencesDescription', { name: fullName || t('addUser.thisUser') }) }}</p>
           </div>
           <EmptyState v-if="productsError" size="sm" :title="t('licences.couldntLoad')" :description="productsError" class="p-0" />
           <div v-else-if="!products" class="flex justify-center py-6"><Spinner :label="t('common.loading')" /></div>

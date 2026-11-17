@@ -87,6 +87,7 @@ const errors = ref<Record<string, string | undefined>>({})
 const autoPassword = ref(true)
 const password = ref('')
 const passwordValid = ref(false)
+const passwordInvalid = ref(false)
 const requireChange = ref(true)
 
 // Change sign-in status
@@ -148,14 +149,13 @@ defineExpose({
 
 function check(): boolean {
   errors.value = {}
-  if (kind.value === 'reset-password' && !autoPassword.value && !passwordValid.value)
-    errors.value.password = password.value ? t('password.notYetValid') : t('password.enter')
+  passwordInvalid.value = kind.value === 'reset-password' && !autoPassword.value && !passwordValid.value
   if (kind.value === 'groups') {
     if (!addTo.value.length && !removeFrom.value.length) errors.value.add = t('bulk.groups.chooseOne')
     const both = addTo.value.find((id) => removeFrom.value.includes(id))
     if (both) errors.value.remove = t('bulk.groups.inBoth', { name: props.groups.find((g) => g.id === both)?.name })
   }
-  return !Object.values(errors.value).some(Boolean)
+  return !passwordInvalid.value && !Object.values(errors.value).some(Boolean)
 }
 
 async function run() {
@@ -207,7 +207,7 @@ async function run() {
             :description="t('bulk.resetPassword.sameDescription')"
             :dismissible="false"
           />
-          <PasswordField v-model="password" v-model:valid="passwordValid" :organisation-id="orgId" :error-text="errors.password" />
+          <PasswordField v-model="password" v-model:valid="passwordValid" v-model:invalid="passwordInvalid" :organisation-id="orgId" :error-text="errors.password" />
         </template>
         <Checkbox
           v-model="requireChange"

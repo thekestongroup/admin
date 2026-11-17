@@ -88,6 +88,7 @@ const autoPassword = ref(true)
 const sharedPassword = ref('')
 const sharedValid = ref(false)
 const passwordError = ref<string>()
+const passwordInvalid = ref(false)
 
 /** From their name, in the organisation's username format (Settings). */
 function suggest(r: Row) {
@@ -132,13 +133,12 @@ function checkUsers(): boolean {
     seen.set(`${u}@${r.domain}`, r)
   }
   passwordError.value = undefined
-  if (!autoPassword.value && !sharedValid.value)
-    passwordError.value = sharedPassword.value ? t('password.notYetValid') : t('password.enter')
+  passwordInvalid.value = !autoPassword.value && !sharedValid.value
   if (!people.value.length) usersError.value = t('addUsers.errors.atLeastOne')
   else if (people.value.length > MAX) usersError.value = t('addUsers.errors.upTo', { max: MAX })
   const bad = rows.value.find((r) => Object.values(r.errors).some(Boolean))
   if (bad) focusField(`${bad.errors.first ? 'first' : 'username'}-${bad.key}`)
-  return !usersError.value && !bad && !passwordError.value
+  return !usersError.value && !bad && !passwordError.value && !passwordInvalid.value
 }
 
 // ── Licences ────────────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ const skippedColumns = computed<TableColumn<BulkResult>[]>(() => [
               :description="t('addUsers.sameDescription')"
               :dismissible="false"
             />
-            <PasswordField v-model="sharedPassword" v-model:valid="sharedValid" :organisation-id="orgId" :error-text="passwordError" />
+            <PasswordField v-model="sharedPassword" v-model:valid="sharedValid" v-model:invalid="passwordInvalid" :organisation-id="orgId" :error-text="passwordError" />
           </template>
           <Checkbox
             v-model="requireChange"
