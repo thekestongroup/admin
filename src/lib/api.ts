@@ -563,6 +563,8 @@ export const api = {
   scheduleDeletion: (orgId: string, confirm: string) =>
     request<{ deleteAfter: string }>('POST', `${org(orgId)}/deletion`, { confirm }),
   cancelDeletion: (orgId: string) => request<void>('DELETE', `${org(orgId)}/deletion`),
+  /** TKG Admins: delete an organisation that's scheduled for deletion now, skipping the wait. */
+  deleteOrganisationNow: (orgId: string) => request<void>('POST', `${org(orgId)}/delete-now`, {}),
   startLockout: (orgId: string, reason: string) => request<LockoutRequest>('POST', `${org(orgId)}/lockout`, { reason }),
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),

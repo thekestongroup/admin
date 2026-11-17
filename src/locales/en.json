@@ -474,7 +474,8 @@
       },
       "organisation": {
         "created": "Organisation created",
-        "verified": "Organisation verified"
+        "verified": "Organisation verified",
+        "deleted_now": "Organisation deleted immediately"
       },
       "platform_settings": {
         "changed": "Platform settings changed"
@@ -837,6 +838,7 @@
     "description": "Every organisation on Keston. Their users need support access, approved by one of their global admins.",
     "new": "New organisation",
     "awaitingVerification": "Awaiting verification",
+    "scheduledForDeletion": "Scheduled for deletion",
     "onlyAwaiting": "Only awaiting verification",
     "showAll": "Show all",
     "requireVerification": {
@@ -942,6 +944,14 @@
       "couldntVerify": "Couldn’t verify it"
     },
     "deletionExplanation": "With all its users. A global admin signing in to Keston before then cancels it, or cancel it here.",
+    "deleteNow": {
+      "button": "Delete now",
+      "title": "Delete {name} now?",
+      "description": "This permanently deletes the organisation and all its users straight away, skipping the rest of the 14-day wait. It can’t be undone, and a global admin can no longer cancel it.",
+      "confirm": "Delete now",
+      "done": "{name} was deleted",
+      "couldntDelete": "Couldn’t delete the organisation"
+    },
     "deletionCancelled": "Deletion cancelled",
     "cancelDeletion": "Cancel deletion",
     "lockoutMade": "An organisation lockout request has been made",
