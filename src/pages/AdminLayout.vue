@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, Inbox, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
+import { Activity, AppWindow, BellRing, Building2, Globe, ChevronRight, CreditCard, House, Inbox, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -197,7 +197,10 @@ const nav = computed<SidebarSection[]>(() => {
           { label: t('nav.guestSettings'), icon: Users, to: `${base}/security/guests`, active: active(`${base}/security/guests`) },
         ],
       })
-    if (can('settings.manage')) items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
+    if (can('settings.manage') || me.value?.platformAdmin)
+      items.push({ label: t('nav.domains'), icon: Globe, to: `${base}/settings/domains`, active: active(`${base}/settings/domains`) })
+    if (can('settings.manage'))
+      items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     if (can('reports.view')) items.push({ label: t('nav.logs'), icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
     sections.push({ label: org.value?.name ?? t('nav.organisation'), items })
     // Billing: Keston staff (in any organisation, with or without support
