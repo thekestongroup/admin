@@ -43,6 +43,29 @@ export interface ProfileEditing {
   picture: boolean
 }
 
+/** An organisation's dashboard numbers (GET …/summary): counts only. */
+export interface OrganisationSummary {
+  users: { total: number; active: number; disabled: number; locked: number; passwordChangeRequired: number }
+  mfa: {
+    mode: 'off' | 'required' | 'custom'
+    /** Users who can sign in, and how many of them have an authenticator app or a passkey. */
+    eligible: number
+    enrolled: number
+  }
+  groups: number
+  apps: { enabled: number; available: number }
+  licences: { inUse: number; licensedUsers: number }
+  signIns: {
+    /** The last 7 days (UTC): everything, and the failed ones. */
+    total: number
+    failed: number
+    /** One per day, oldest first. date is YYYY-MM-DD. */
+    daily: { date: string; success: number; failed: number }[]
+  }
+  /** The latest admin actions; null without See logs (reports.view). */
+  recentActivity: import('./logs').AuditEntry[] | null
+}
+
 export interface Organisation {
   id: string
   name: string
@@ -484,6 +507,7 @@ export const api = {
 
   organisations: () => request<Organisation[]>('GET', '/organisations'),
   organisation: (id: string) => request<Organisation>('GET', org(id)),
+  summary: (id: string) => request<OrganisationSummary>('GET', `${org(id)}/summary`),
   platformSettings: () => request<PlatformSettings>('GET', '/platform-settings'),
   savePlatformSettings: (settings: PlatformSettings) => request<PlatformSettings>('PUT', '/platform-settings', settings),
   /** Verify an organisation (platform admins). */

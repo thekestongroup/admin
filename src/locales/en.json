@@ -1170,5 +1170,63 @@
     "left": "Left",
     "usersNow": "Users now",
     "unknownGroup": "Unknown group"
+  },
+  "dashboard": {
+    "overview": "Organisation at a glance",
+    "couldntLoad": "Couldn’t load the dashboard",
+    "users": "Users",
+    "usersBreakdown": "{active} active · {disabled} disabled",
+    "groups": "Groups",
+    "groupsDescription": "Groups of users",
+    "noGroups": "No groups yet",
+    "apps": "Apps enabled",
+    "appsDescription": "Out of {available} available",
+    "licences": "Licences in use",
+    "licencesDescription": "For {count} user | For {count} users",
+    "noLicences": "No licences assigned",
+    "mfa": "MFA adoption",
+    "mfaDescription": "{enrolled} of {total} active users",
+    "noActiveUsers": "No active users",
+    "signIns": "Sign-ins",
+    "failedSignIns": "Failed sign-ins",
+    "last7Days": "In the last 7 days",
+    "noSignIns": "None in the last 7 days",
+    "noFailedSignIns": "None in the last 7 days",
+    "lockedAccounts": "Locked accounts",
+    "lockedDescription": "Locked out right now",
+    "noLocked": "Nobody is locked out",
+    "attention": {
+      "title": "Needs attention",
+      "description": "Things to look at, with a link to fix each one.",
+      "nothing": "Nothing needs your attention.",
+      "review": "Review",
+      "unverified": "This organisation is waiting to be verified. Until it is, nobody in it can sign in.",
+      "deletion": "This organisation is scheduled for deletion on {date}.",
+      "locked": "{count} account is locked out | {count} accounts are locked out",
+      "noMfa": "{count} user hasn’t set up MFA | {count} users haven’t set up MFA",
+      "passwordChange": "{count} user has to choose a new password | {count} users have to choose a new password"
+    },
+    "signInsWeek": {
+      "title": "Sign-ins this week",
+      "description": "Sign-ins per day over the last 7 days (UTC).",
+      "none": "No sign-ins in the last 7 days.",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "date": "Date",
+      "day": "{success} succeeded, {failed} failed"
+    },
+    "activity": {
+      "title": "Recent admin activity",
+      "description": "The latest changes made by admins.",
+      "none": "No admin activity yet.",
+      "by": "By {name}",
+      "seeAll": "See all in Logs"
+    },
+    "actions": {
+      "title": "Quick actions",
+      "addUser": "Add user",
+      "newGroup": "New group",
+      "addApp": "Add an app"
+    }
   }
 }
