@@ -78,6 +78,11 @@ export const router = createRouter({
           meta: { title: 'titles.apps' },
         },
         {
+          path: 'organisations/:orgId/app-requests',
+          component: () => import('./pages/AppRequests.vue'),
+          meta: { title: 'titles.appRequests' },
+        },
+        {
           path: 'organisations/:orgId/apps/new',
           component: () => import('./pages/OwnAppNew.vue'),
           meta: { title: 'titles.addApp' },

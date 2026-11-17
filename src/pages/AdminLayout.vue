@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
+import { Activity, AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, Inbox, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -27,6 +27,7 @@ import {
   type Prompts,
 } from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
+import { pendingRequests, refreshRequestCount } from '../lib/requests'
 import { activeIncidents, loadHealth, loadMessages, unreadMessages } from '../lib/platform'
 import { I18nT, useI18n } from 'vue-i18n'
 
@@ -128,6 +129,8 @@ onMounted(async () => {
     timer = setInterval(() => {
       loadNotifications()
       loadPrompts()
+      if (orgId.value && pendingRequests.value >= 0 && org.value?.permissions?.some((p) => p === 'apps.manage' || p === 'users.licences'))
+        refreshRequestCount(orgId.value)
       loadHealth()
       loadMessages()
     }, 60_000)
@@ -154,6 +157,8 @@ watch(
   orgId,
   async (id) => {
     org.value = id ? await api.organisation(id).catch(() => undefined) : undefined
+    pendingRequests.value = 0
+    if (id && (org.value?.permissions?.includes('apps.manage') || org.value?.permissions?.includes('users.licences'))) refreshRequestCount(id)
   },
   { immediate: true },
 )
@@ -171,6 +176,14 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('users.view'))
       items.push({ label: t('nav.groups'), icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) })
     if (can('apps.manage')) items.push({ label: t('nav.apps'), icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
+    if (can('apps.manage') || can('users.licences'))
+      items.push({
+        label: t('nav.appRequests'),
+        icon: Inbox,
+        to: `${base}/app-requests`,
+        active: active(`${base}/app-requests`),
+        ...(pendingRequests.value ? { badge: pendingRequests.value, badgeColor: 'red' as const } : {}),
+      })
     if (can('policy.manage'))
       items.push({ label: t('nav.passwordPolicy'), icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
     if (can('policy.manage'))
