@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, Building2, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { AppWindow, Building2, CreditCard, House, KeyRound, LifeBuoy, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -132,6 +132,13 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('settings.manage')) items.push({ label: t('nav.settings'), icon: Settings, to: `${base}/settings`, active: active(`${base}/settings`) })
     if (can('reports.view')) items.push({ label: t('nav.logs'), icon: ScrollText, to: `${base}/logs`, active: active(`${base}/logs`) })
     sections.push({ label: org.value?.name ?? t('nav.organisation'), items })
+    // Billing: Keston staff (in any organisation, with or without support
+    // access) and its people who manage users or licences.
+    if (me.value?.platformAdmin || can('users.view') || can('users.licences'))
+      sections.push({
+        label: t('nav.billing'),
+        items: [{ label: t('nav.licences'), icon: CreditCard, to: `${base}/billing/licences`, active: active(`${base}/billing`, false) }],
+      })
   }
   return sections
 })

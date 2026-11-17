@@ -46,9 +46,12 @@
     "security": "Security",
     "mfaSettings": "MFA Settings",
     "settings": "Settings",
-    "logs": "Logs"
+    "logs": "Logs",
+    "billing": "Billing",
+    "licences": "Licences"
   },
   "titles": {
+    "billingLicences": "Licences",
     "signingIn": "Signing in",
     "supportHandoff": "Opening support account",
     "createOrganisation": "Create an organisation",
@@ -316,6 +319,13 @@
     "tkgAdminDescription": "Gives the user access to view all organisations",
     "adminRolesHelper": "Optional. Gives the user access to the admin centre with only the permissions of these roles."
   },
+  "billing": {
+    "licences": {
+      "title": "Licences",
+      "description": "The licences for each Keston product, and how many are in use.",
+      "kestonManages": "Keston manages the number of licences. To change them, contact The Keston Group."
+    }
+  },
   "licences": {
     "couldntSave": "Couldn’t save the licences",
     "title": "Licences",
@@ -336,6 +346,7 @@
     "allocations": {
       "title": "Licences",
       "description": "How many licences this organisation has for each Keston product. Only TKG Admins can change these.",
+      "readOnlyDescription": "How many licences your organisation has for each Keston product, and how many are in use.",
       "unlimited": "Unlimited",
       "seatLimit": "Limited number of seats",
       "seats": "Seats for {name}",
@@ -1082,6 +1093,9 @@
     "opening": "Opening the support account"
   },
   "overview": {
+    "domains": "Domains",
+    "primaryDomain": "Primary",
+    "noSupportAccess": "You’re seeing basic details only. To see {name}’s users and activity, ask one of its global admins to allow Keston support access.",
     "status": {
       "approved": "allowed",
       "denied": "declined",
