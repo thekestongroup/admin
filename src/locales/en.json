@@ -1559,7 +1559,7 @@
       "title": "Invite a guest",
       "description": "Enter the email address they use at their own organisation. They'll get a notification, and can accept or decline. This only works if their organisation allows its people to be guests.",
       "email": "Email address",
-      "emailPlaceholder": "name@their-organisation.com",
+      "emailPlaceholder": "name{'@'}their-organisation.com",
       "send": "Send invitation",
       "sent": "Invitation sent",
       "sentDescription": "{name} has been invited. They'll see it in Keston Admin and on their Keston ID page."
@@ -1600,7 +1600,7 @@
     "couldntDecide": "Couldn't answer the request",
     "card": {
       "title": "Move to another organisation",
-      "description": "Move this account to another organisation. Its email changes to {username}@their domain, it becomes a member there, and groups, admin roles and licences don't come with it. The other organisation's global admin has to accept, and they're signed out everywhere when they do.",
+      "description": "Move this account to another organisation. Its email changes to {username}{'@'}their domain, it becomes a member there, and groups, admin roles and licences don't come with it. The other organisation's global admin has to accept, and they're signed out everywhere when they do.",
       "domain": "Organisation's domain",
       "domainPlaceholder": "example.com",
       "request": "Ask to move",
