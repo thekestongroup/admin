@@ -650,6 +650,13 @@ export const api = {
   removeGuest: (orgId: string, guestId: string) => request<void>('DELETE', `${org(orgId)}/guests/${guestId}`),
   setGuestRoles: (orgId: string, guestId: string, roles: string[]) =>
     request<Guest>('PUT', `${org(orgId)}/guests/${guestId}/roles`, { roles }),
+  domains: (orgId: string) => request<{ domains: OrgDomain[]; canOverride: boolean }>('GET', `${org(orgId)}/domains`),
+  addDomain: (orgId: string, domain: string, override: boolean) =>
+    request<OrgDomain>('POST', `${org(orgId)}/domains`, { domain, override }),
+  verifyDomain: (orgId: string, id: string) => request<OrgDomain>('POST', `${org(orgId)}/domains/${id}/verify`, {}),
+  makePrimaryDomain: (orgId: string, id: string, renameUsers: boolean) =>
+    request<OrgDomain>('POST', `${org(orgId)}/domains/${id}/primary`, { renameUsers }),
+  removeDomain: (orgId: string, id: string) => request<void>('DELETE', `${org(orgId)}/domains/${id}`),
   guestSettings: (orgId: string) => request<{ allowGuests: boolean }>('GET', `${org(orgId)}/guest-settings`),
   setGuestSettings: (orgId: string, allowGuests: boolean) =>
     request<{ allowGuests: boolean }>('PUT', `${org(orgId)}/guest-settings`, { allowGuests }),
@@ -755,6 +762,8 @@ export const api = {
       licences?: string[]
       /** Admin roles, besides global admin (role). */
       roles?: string[]
+      /** One of its verified domains (default: the primary one). */
+      domain?: string
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
   userApps: (orgId: string, userId: string) => request<UserApp[]>('GET', `${org(orgId)}/users/${userId}/apps`),
@@ -954,4 +963,21 @@ export async function landingOrganisation(): Promise<string | undefined> {
   if (me.platformAdmin || me.permissions.length) return me.organisation.id
   const mine = await api.myOrganisations().catch(() => undefined)
   return mine?.organisations.find((o) => o.canManage)?.id
+}
+
+/** One of an organisation's domains (Settings → Domains). */
+export interface OrgDomain {
+  id: string
+  domain: string
+  primary: boolean
+  verified: boolean
+  verifiedAt?: string
+  verifiedByName?: string
+  /** Verified by a TKG Admin without DNS. */
+  override: boolean
+  createdAt: string
+  /** People whose email uses it. */
+  userCount: number
+  /** The TXT record to create, while it isn't verified. */
+  record?: { name: string; value: string }
 }

@@ -49,7 +49,8 @@
     "logs": "Logs",
     "billing": "Billing",
     "licences": "Licences",
-    "guestSettings": "Guests"
+    "guestSettings": "Guests",
+    "domains": "Domains"
   },
   "titles": {
     "billingLicences": "Licences",
@@ -73,7 +74,8 @@
     "passwordPolicy": "Password policy",
     "addKestonApp": "Add a Keston-wide app",
     "guestSettings": "Guest settings",
-    "browseOrganisations": "All organisations"
+    "browseOrganisations": "All organisations",
+    "domains": "Domains"
   },
   "mfa": {
     "title": "MFA Settings",
@@ -431,7 +433,8 @@
     "licencesDescription": "Assign licences to {name} to give access to apps, services and additional functionality",
     "thisUser": "this user",
     "adding": "Adding",
-    "addUser": "Add user"
+    "addUser": "Add user",
+    "domain": "Domain"
   },
   "signInCard": {
     "pwRequired": "Password change required",
@@ -1616,5 +1619,51 @@
     "moveBody": "Their email would change from {oldEmail} to {newEmail}. They'd be a member, without their groups, admin roles or licences, and signed out everywhere.",
     "moreWaiting": "{count} more waiting"
   },
-  "notifications": {}
+  "notifications": {},
+  "domains": {
+    "title": "Domains",
+    "description": "The domains your people's email addresses can use. Add one, prove you control it, then choose it when you add people.",
+    "add": "Add domain",
+    "addDescription": "Enter a domain you control, like example.com.",
+    "adding": "Adding",
+    "domain": "Domain",
+    "placeholder": "example.com",
+    "enterDomain": "Enter a domain.",
+    "override": "Add as verified without DNS",
+    "overrideDescription": "TKG Admins only. Skips the DNS check; recorded in the audit log and shown on the domain.",
+    "overrideBadge": "Verified without DNS",
+    "overrideBy": "Added as verified without DNS by {name}.",
+    "addedVerified": "{domain} added and verified",
+    "couldntAdd": "Couldn't add the domain",
+    "couldntLoad": "Couldn't load the domains",
+    "recordDescription": "Create this record at your DNS host, then choose Verify.",
+    "recordIntro": "To prove you control {domain}, create this DNS TXT record:",
+    "recordType": "Type",
+    "recordName": "Name",
+    "recordValue": "Value",
+    "copy": "Copy the record {what}",
+    "copied": "Copied",
+    "couldntCopy": "Couldn't copy",
+    "recordApex": "If your DNS host can't create that name, the same value as a TXT record on {domain} itself works too.",
+    "recordWait": "DNS changes can take a while to spread. You can close this and choose Verify later.",
+    "primary": "Primary",
+    "statusVerified": "Verified",
+    "statusUnverified": "Not verified",
+    "users": "no people | 1 person | {count} people",
+    "verify": "Verify",
+    "verified": "{domain} verified",
+    "couldntVerify": "Couldn't verify {domain}",
+    "makePrimary": "Make primary",
+    "makePrimaryTitle": "Make {domain} primary",
+    "makePrimaryDescription": "New people get the primary domain unless you choose another. Existing people keep their email addresses.",
+    "rename": "Rename users to the new primary domain",
+    "renameDescription": "Everyone gets the same username at {domain}. Nothing changes if two people would end up with the same email.",
+    "nowPrimary": "{domain} is now the primary domain",
+    "couldntMakePrimary": "Couldn't change the primary domain",
+    "remove": "Remove",
+    "removeTitle": "Remove {domain}",
+    "removeDescription": "The domain is removed from this organisation. Nobody uses it, and you can add it again later.",
+    "removed": "{domain} removed",
+    "couldntRemove": "Couldn't remove the domain"
+  }
 }
