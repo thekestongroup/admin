@@ -52,6 +52,7 @@ const org = ref<Organisation>()
 const user = ref<UserDetail>()
 const myId = ref<string>()
 const iAmGlobalAdmin = ref(false)
+const iAmPlatformAdmin = ref(false)
 const catalog = ref<Permission[]>([])
 /** You can do this to this user: your permission, and they're not above you. */
 const can = (p: PermissionId) => !!org.value?.permissions?.includes(p) && !!user.value?.canChange
@@ -74,6 +75,7 @@ onMounted(async () => {
     user.value = a
     myId.value = me.user.id
     iAmGlobalAdmin.value = me.user.role === 'global_admin' && me.organisation.id === orgId
+    iAmPlatformAdmin.value = me.platformAdmin
     catalog.value = perms
   } catch (e) {
     error.value = message(e)
@@ -101,7 +103,7 @@ const details = computed(() =>
     ? [
         { label: t('common.name'), value: user.value.name },
         { label: t('common.email'), value: user.value.email, description: t('userDetail.signInWithThis') },
-        { label: t('users.columns.role'), value: user.value.role === 'global_admin' ? t('users.globalAdmin') : user.value.roles.length ? t('userDetail.roleAdmin') : t('users.roleUser') },
+        { label: t('users.columns.role'), value: user.value.role === 'global_admin' ? (user.value.platformAdmin ? t('users.tkgAdmin') : t('users.globalAdmin')) : user.value.roles.length ? t('userDetail.roleAdmin') : t('users.roleUser') },
         { label: t('userDetail.passwordChanged'), value: formatDate(user.value.passwordChangedAt) },
         { label: t('userDetail.userId'), value: user.value.id },
       ]
@@ -438,6 +440,8 @@ async function toggle() {
                 :org-id="orgId"
                 :user="user"
                 :i-am-global-admin="iAmGlobalAdmin"
+                :i-am-platform-admin="iAmPlatformAdmin"
+                :platform-org="org?.isPlatform"
                 :my-permissions="org?.permissions ?? []"
                 @changed="reload"
               />

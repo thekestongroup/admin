@@ -211,7 +211,7 @@ async function run() {
         </template>
         <Checkbox
           v-model="requireChange"
-          :label="one ? t('bulk.resetPassword.requireOne') : t('bulk.resetPassword.requireMany')"
+          :label="t('bulk.resetPassword.require')"
           :description="t('password.requireChangeDescription')"
         />
       </div>

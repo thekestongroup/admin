@@ -78,8 +78,8 @@
     "everyoneElse": {
       "title": "Everyone else",
       "description": "For anyone no rule above matches, including new users.",
-      "label": "Require MFA",
-      "switchDescription": "They set it up when they next sign in, before they can use any app.",
+      "label": "MFA requirement",
+      "switchDescription": "Everyone else sets up MFA when they next sign in, before they can use any app.",
       "saving": "Saving…",
       "saved": "Saved",
       "couldntSave": "Couldn’t save. Try again.",
@@ -172,7 +172,7 @@
       "ipHelper": "A single address or a range, e.g. 203.0.113.7 or 10.0.0.0/8. Matches when they sign in from any of them.",
       "anyAddress": "Any address.",
       "devicesSoon": "Devices: coming soon.",
-      "then": "Then",
+      "then": "Outcome",
       "save": "Save rule",
       "add": "Add rule"
     }
@@ -198,7 +198,7 @@
     "select": "Select {name}",
     "kestonSupport": "Keston support",
     "you": "(you)",
-    "globalAdmin": "Global admin",
+    "globalAdmin": "Global Admin",
     "roleUser": "User",
     "status": {
       "disabled": "Disabled",
@@ -207,7 +207,8 @@
     },
     "until": "Until {date}",
     "none": "No users yet",
-    "noneDescription": "Add the people who sign in to Keston here."
+    "noneDescription": "Add the people who sign in to Keston here.",
+    "tkgAdmin": "TKG Admin"
   },
   "bulk": {
     "selected": "{count} user selected | {count} users selected",
@@ -225,8 +226,7 @@
       "autoMany": "Each user gets their own, which meets your password policy.",
       "sameTitle": "Everyone gets the same password",
       "sameDescription": "This will apply the same password for all the selected users. For security, we suggest requiring these users to change their password when they first sign in.",
-      "requireOne": "Require this user to change their password on next sign in",
-      "requireMany": "Require these users to change their passwords on next sign in"
+      "require": "Required password change"
     },
     "signIn": {
       "title": "Change sign-in status",
@@ -244,10 +244,10 @@
     "groups": {
       "title": "Manage group memberships",
       "intro": "Groups give their members apps and permissions.",
-      "addTo": "Add to groups",
+      "addTo": "Groups to join",
       "addOne": "They join these groups.",
       "addMany": "Everyone selected joins these groups.",
-      "removeFrom": "Remove from groups",
+      "removeFrom": "Groups to leave",
       "removeOne": "They leave these groups, if they’re in them.",
       "removeMany": "Everyone selected leaves these groups, if they’re in them.",
       "members": "{count} user | {count} users",
@@ -261,10 +261,10 @@
     }
   },
   "password": {
-    "auto": "Automatically create a password",
+    "auto": "Automatic password",
     "notYetValid": "The password doesn’t meet every rule yet",
     "enter": "Enter a password",
-    "requireChangeDescription": "Recommended, so only they know their password.",
+    "requireChangeDescription": "They choose a new password when they next sign in. Recommended, so only they know their password.",
     "label": "Password",
     "needs": "The password needs:"
   },
@@ -280,19 +280,19 @@
   },
   "roles": {
     "user": "User",
-    "userDescription": "No admin centre access.",
+    "userDescription": "No admin centre access",
     "adminRoles": "Admin roles",
-    "adminRolesDescription": "Give the user access to the admin centre.",
-    "globalAdminDescription": "Can do everything, including making other global admins.",
-    "access": "Admin centre access",
-    "roles": "Roles",
-    "helper": "Global admin can do everything; the others, just their part.",
+    "globalAdminDescription": "Gives the user access to the admin centre",
     "search": "Search roles…",
-    "chooseOne": "Choose at least one role",
     "couldntSave": "Couldn’t save the roles",
-    "cardTitle": "Admin roles",
+    "cardTitle": "User role",
     "cardDescription": "What they can do in the admin centre. Their groups can give them permissions too.",
-    "save": "Save roles"
+    "save": "Save user role",
+    "userRole": "User role",
+    "globalAdmin": "Global Admin",
+    "tkgAdmin": "TKG Admin",
+    "tkgAdminDescription": "Gives the user access to view all organisations",
+    "adminRolesHelper": "Optional. Gives the user access to the admin centre with only the permissions of these roles."
   },
   "licences": {
     "couldntSave": "Couldn’t save the licences",
@@ -371,8 +371,8 @@
     "firstName": "First name",
     "lastName": "Last name",
     "username": "Username",
-    "autoDescription": "Shown once after you add them.",
-    "requireChange": "Require this user to change their password on sign in",
+    "autoDescription": "Creates one that meets your password policy. Shown once after you add them.",
+    "requireChange": "Required password change",
     "they": "they",
     "licenceDescription": "By {publisher}. No users have a licence. | By {publisher}. 1 user has a licence. | By {publisher}. {count} users have a licence.",
     "adding": "Adding",
@@ -428,7 +428,7 @@
     "howToUseWithPassword": "They choose {action} on the Keston sign-in page, and enter {email} and this code. Then they choose a new password and set up MFA.",
     "type": "Type",
     "expiresAfter": "Expires after",
-    "needNewPassword": "They need a new password too",
+    "needNewPassword": "Required password change",
     "needNewPasswordDescription": "E.g. they’ve forgotten it. They’ll choose one when they sign in.",
     "issuing": "Issuing"
   },
@@ -561,7 +561,7 @@
       "signIns": "Sign-ins"
     },
     "everyAction": "Every action",
-    "whyFailed": "Why it failed",
+    "whyFailed": "Failure reason",
     "from": "From",
     "to": "To",
     "clearFilters": "Clear filters",
@@ -608,7 +608,7 @@
       "profile": "Name and profile picture",
       "email": "Email address",
       "offline": "Stay signed in (refresh tokens)",
-      "label": "What the app gets",
+      "label": "Shared information",
       "helper": "It always gets a user ID. Your users aren’t asked to allow it, as your organisation set it up."
     },
     "source": {
@@ -710,13 +710,13 @@
       "askNamed": "Delete {name}?",
       "ask": "Delete organisation?",
       "askDescription": "In 14 days, it and all its users are deleted, and can’t be brought back. Everyone is told, and a global admin signing in before then cancels it.",
-      "typeName": "Type {name} to confirm",
+      "typeName": "Confirm organisation name",
+      "typeNameHelper": "Type {name} to confirm.",
       "scheduling": "Scheduling",
       "confirm": "Delete in 14 days"
     }
   },
   "passwordPolicy": {
-    "alreadyBanned": "“{word}” is already on the list",
     "saved": "Password policy saved",
     "savedDescription": "New passwords must meet it. Existing ones aren’t affected until they’re changed.",
     "couldntSave": "Couldn’t save the policy",
@@ -741,16 +741,14 @@
       "minLength": "Minimum length",
       "atLeast": "At least {count}.",
       "mustContain": "It must contain at least",
-      "alsoBan": "Also ban these passwords",
-      "banHelper": "e.g. your organisation’s name or town. Matching ignores capitals, and numbers or symbols on the end.",
-      "banned": "Banned passwords",
-      "noBanned": "No extra banned passwords."
+      "bannedPhrases": "Banned phrases",
+      "bannedPhrasesDescription": "Phrases that will not be allowed in a user’s password. Matching ignores capitals, and numbers and symbols on the end. For example, your organisation’s name or town."
     },
     "save": "Save policy",
     "preview": {
       "title": "What people see",
       "description": "The checklist shown when someone sets a password (as last saved).",
-      "extraBanned": "{count} extra banned password | {count} extra banned passwords"
+      "extraBanned": "{count} extra banned phrase | {count} extra banned phrases"
     }
   },
   "groups": {
@@ -785,7 +783,7 @@
     "couldntLoad": "Couldn’t load the group",
     "rename": "Rename",
     "usersDescription": "App access set for {name} applies to these users.",
-    "addUser": "Add a user",
+    "addUser": "User",
     "chooseUser": "Choose a user",
     "noUsers": "No users in this group",
     "permissions": "Permissions",
@@ -812,7 +810,7 @@
     "onlyAwaiting": "Only awaiting verification",
     "showAll": "Show all",
     "requireVerification": {
-      "title": "Require verification for new organisations",
+      "title": "Verification for new organisations",
       "description": "When on, organisations that sign themselves up can’t be used until Keston staff verify them. Their people can’t sign in before then. Organisations created here, and every organisation that exists now, are always verified.",
       "couldntSave": "Couldn’t save. Try again."
     },
@@ -874,7 +872,7 @@
     "oidcDescription": "Most modern apps, and apps you build yourself (OAuth 2.0).",
     "samlDescription": "Many business apps, e.g. ones that ask for an IdP metadata URL.",
     "description": "An app your organisation uses that signs people in with their Keston account. Only your users can sign in to it.",
-    "how": "How it signs people in",
+    "how": "Sign-in method",
     "howHelper": "The app’s single sign-on (SSO) settings say which it supports.",
     "submit": "Add app"
   },
@@ -952,7 +950,7 @@
       "lockoutTitle": "Start the organisation lockout procedure",
       "lockoutDescription": "Only when nobody at the organisation can sign in. Every global admin is told, and it goes through in 3 days unless one declines it.",
       "supportDescription": "Its global admins are asked. Once they allow it, you get a support account in the organisation.",
-      "why": "Why",
+      "why": "Reason",
       "lockoutHelper": "e.g. Their only global admin has left, and nobody can reset passwords.",
       "supportHelper": "e.g. Their office asked us to check why a teacher can’t sign in.",
       "sending": "Sending",
@@ -1052,7 +1050,7 @@
     "appAccessOnly": "App access only",
     "fromGroup": "from {name}",
     "noGroups": "Not in any groups.",
-    "addToGroup": "Add to a group",
+    "addToGroup": "Group",
     "chooseGroup": "Choose a group",
     "access": "Access",
     "disablingSignsOut": "Disabling signs them out of Keston and every app.",
@@ -1070,8 +1068,8 @@
     "resetNamed": "Reset {name}’s password",
     "resetDescription": "They’ll be signed out everywhere, and unlocked if they were locked out. Give them the new password securely.",
     "newPassword": "New password",
-    "askChoose": "Ask them to choose a new password when they next sign in",
-    "autoDescription": "Shown once after you reset it.",
+    "askChoose": "Required password change",
+    "autoDescription": "Creates one that meets your password policy. Shown once after you reset it.",
     "resetDone": "Give them this password securely. It’s shown only once: once you close this, it’s gone."
   },
   "addUsers": {
@@ -1108,7 +1106,7 @@
     "toAdd": "{users} to add",
     "autoDescription": "Each user gets their own, shown once after they’re added.",
     "sameDescription": "This will apply the same password for all of these users. As the password is shared, it’s recommended to require users to change it when they sign in.",
-    "requireChange": "Require these users to change their password on sign in",
+    "requireChange": "Required password change",
     "licencesDescription": "The Keston products these {users} can use. Without a licence, they can’t sign in to it.",
     "addUsers": "Add {users}"
   }

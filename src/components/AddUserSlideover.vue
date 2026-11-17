@@ -32,6 +32,8 @@ const props = defineProps<{
   org?: Organisation
   /** Can make global admins. */
   globalAdmin: boolean
+  /** Is a TKG Admin (can make them, in The Keston Group). */
+  platformAdmin?: boolean
   /** Has "Assign licences": the Licences step. */
   canAssignLicences: boolean
   /** Can give admin roles ("Give permissions", or a global admin). */
@@ -53,7 +55,7 @@ const blank = () => ({
   username: '',
   /** Typed by hand: stop suggesting one from the name. */
   usernameEdited: false,
-  access: { admin: false, global: false, roles: [] as string[] } as Roles,
+  access: { role: 'member', roles: [] as string[] } as Roles,
   autoPassword: true,
   password: '',
   requirePasswordChange: true,
@@ -74,7 +76,7 @@ function typedUsername(v: string) {
   form.username = v
   form.usernameEdited = v !== ''
 }
-// The admin roles there are, for the Admin centre access field.
+// The admin roles there are, for the User role field.
 const catalogue = ref<AdminRole[]>([])
 
 /** Done: what to show (the password only if Keston ID made it up). */
@@ -120,8 +122,7 @@ function checkUserInfo() {
     errors.username = t('addUser.errors.username')
   if (!form.autoPassword && !passwordValid.value)
     errors.password = form.password ? t('password.notYetValid') : t('password.enter')
-  if (form.access.admin && !form.access.global && !form.access.roles.length) errors.roles = t('roles.chooseOne')
-  return !errors.first && !errors.username && !errors.password && !errors.roles
+  return !errors.first && !errors.username && !errors.password
 }
 
 function next() {
@@ -146,8 +147,9 @@ async function add() {
     const created = await api.createUser(props.orgId, {
       name: fullName.value,
       username: username.value,
-      role: form.access.admin && form.access.global ? 'global_admin' : 'member',
-      roles: form.access.admin && !form.access.global ? form.access.roles : [],
+      role: form.access.role === 'member' ? 'member' : 'global_admin',
+      platformAdmin: form.access.role === 'tkg_admin' ? true : undefined,
+      roles: form.access.role === 'member' ? form.access.roles : [],
       generatePassword: form.autoPassword,
       password: form.autoPassword ? undefined : form.password,
       requirePasswordChange: form.requirePasswordChange,
@@ -258,6 +260,8 @@ async function copyPassword(password: string) {
             v-model="form.access"
             :catalogue="catalogue"
             :i-am-global-admin="globalAdmin"
+            :i-am-platform-admin="platformAdmin"
+            :platform-org="org?.isPlatform"
             :my-permissions="myPermissions"
             :error-text="errors.roles"
           />

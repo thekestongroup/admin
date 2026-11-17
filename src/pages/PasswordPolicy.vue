@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { Lock, Plus, TriangleAlert } from '@lucide/vue'
+import { Lock, TriangleAlert } from '@lucide/vue'
 import {
   Badge,
   Button,
   type ButtonStatus,
   Card,
   Checklist,
-  Chip,
   EmptyState,
-  Input,
   InputNumber,
+  InputTextArea,
   PageHeader,
   Spinner,
   useNotifications,
@@ -39,6 +38,7 @@ const loadError = ref<string>()
 
 function apply(res: { policy: PasswordPolicy; rules: Rule[]; baselineMinLength: number }) {
   Object.assign(policy, { ...res.policy, blocked: [...(res.policy.blocked ?? [])] })
+  phrases.value = policy.blocked.join('\n')
   rules.value = res.rules
   baselineMin.value = res.baselineMinLength
 }
@@ -54,28 +54,26 @@ onMounted(async () => {
   }
 })
 
-// The organisation's own banned passwords.
-const newWord = ref('')
-const wordError = ref<string>()
-function addWord() {
-  const word = newWord.value.trim().toLowerCase()
-  wordError.value = undefined
-  if (!word) return
-  if (policy.blocked.includes(word)) {
-    wordError.value = t('passwordPolicy.alreadyBanned', { word })
-    return
+// The organisation's own banned phrases: one per line.
+const phrases = ref('')
+/** Trimmed, no blanks, no repeats (ignoring capitals), in the order typed. */
+function parsePhrases(text: string): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const line of text.split(/\r?\n/)) {
+    const phrase = line.trim()
+    if (phrase && !seen.has(phrase.toLowerCase())) {
+      seen.add(phrase.toLowerCase())
+      out.push(phrase)
+    }
   }
-  policy.blocked = [...policy.blocked, word].sort()
-  newWord.value = ''
-}
-function removeWord(word: string) {
-  policy.blocked = policy.blocked.filter((w) => w !== word)
+  return out
 }
 
 async function save() {
   status.value = 'loading'
   try {
-    apply(await api.savePolicy(orgId, { ...policy, minLength: Math.max(policy.minLength ?? baselineMin.value, baselineMin.value) }))
+    apply(await api.savePolicy(orgId, { ...policy, blocked: parsePhrases(phrases.value), minLength: Math.max(policy.minLength ?? baselineMin.value, baselineMin.value) }))
     status.value = 'success'
     notify({ type: 'success', title: t('passwordPolicy.saved'), description: t('passwordPolicy.savedDescription') })
   } catch (e) {
@@ -143,33 +141,13 @@ const counts = computed(() => [
             </div>
           </fieldset>
 
-          <div class="flex flex-col gap-3">
-            <!-- The button lines up with the field's box: it starts below the
-                 label row (20px label + 6px gap), and an error under the field
-                 doesn't move it. -->
-            <div class="flex items-start gap-2">
-              <Input
-                v-model="newWord"
-                :label="t('passwordPolicy.rules.alsoBan')"
-                :error-text="wordError"
-                class="flex-1"
-                @keydown.enter.prevent="addWord"
-              />
-              <Button class="mt-6.5 shrink-0" @click="addWord">
-                <template #leading><Plus /></template>
-                {{ t('common.add') }}
-              </Button>
-            </div>
-            <p class="-mt-1 text-sm text-black/65">
-              {{ t('passwordPolicy.rules.banHelper') }}
-            </p>
-            <ul v-if="policy.blocked.length" class="flex flex-wrap gap-2" :aria-label="t('passwordPolicy.rules.banned')">
-              <li v-for="word in policy.blocked" :key="word">
-                <Chip removable :remove-label="t('common.removeItem', { name: word })" @remove="removeWord(word)">{{ word }}</Chip>
-              </li>
-            </ul>
-            <p v-else class="text-sm text-black/65">{{ t('passwordPolicy.rules.noBanned') }}</p>
-          </div>
+          <InputTextArea
+            v-model="phrases"
+            :label="t('passwordPolicy.rules.bannedPhrases')"
+            :helper="t('passwordPolicy.rules.bannedPhrasesDescription')"
+            autocapitalize="off"
+            spellcheck="false"
+          />
         </form>
         <template #footer>
           <!-- v-model: the button sets itself back to idle a couple of
@@ -183,7 +161,7 @@ const counts = computed(() => [
       <Card :title="t('passwordPolicy.preview.title')" :description="t('passwordPolicy.preview.description')">
         <div class="flex flex-col gap-3">
           <Checklist :items="preview" />
-          <div><Badge size="sm">{{ t('passwordPolicy.preview.extraBanned', policy.blocked.length) }}</Badge></div>
+          <div><Badge size="sm">{{ t('passwordPolicy.preview.extraBanned', parsePhrases(phrases).length) }}</Badge></div>
         </div>
       </Card>
     </template>

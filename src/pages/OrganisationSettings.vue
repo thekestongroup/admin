@@ -213,7 +213,7 @@ async function save(key: keyof ProfileEditing, on: boolean) {
     >
       <template #body>
         <form class="flex flex-col gap-4" novalidate @submit.prevent="scheduleDeletion">
-          <Input v-model="confirmName" :label="t('settings.delete.typeName', { name: org?.name })" autocomplete="off" :error-text="confirmError" />
+          <Input v-model="confirmName" :label="t('settings.delete.typeName')" :helper="t('settings.delete.typeNameHelper', { name: org?.name })" autocomplete="off" :error-text="confirmError" />
           <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
         </form>
       </template>
