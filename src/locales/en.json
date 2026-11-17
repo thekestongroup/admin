@@ -805,35 +805,87 @@
     "saved": "Password policy saved",
     "savedDescription": "New passwords must meet it. Existing ones aren’t affected until they’re changed.",
     "couldntSave": "Couldn’t save the policy",
-    "counts": {
-      "upper": "Capital letters",
-      "lower": "Lowercase letters",
-      "digits": "Numbers",
-      "special": "Special characters",
-      "specialHelper": "Anything else, like ! ? # % or a space"
-    },
     "description": "The rules for new passwords at {name}.",
     "couldntLoad": "Couldn’t load the policy",
+    "title": "Password rules",
+    "intro": "Choose a starting point, then adjust it if you need to.",
     "baseline": {
-      "title": "Keston’s baseline",
-      "description": "Set by The Keston Group for every organisation. It can’t be turned off.",
-      "minLength": "At least {count} characters",
-      "common": "Not a commonly used password, like “password1” or “qwerty”"
+      "title": "Keston’s baseline always applies.",
+      "description": "At least {count} characters, and not a commonly used password like “password1” or “qwerty”. It can’t be turned off."
+    },
+    "preset": {
+      "label": "Preset",
+      "baseline": {
+        "title": "Baseline",
+        "description": "{count} characters. Nothing extra."
+      },
+      "recommended": {
+        "title": "Recommended",
+        "description": "12 characters and a number."
+      },
+      "strict": {
+        "title": "Strict",
+        "description": "14 characters with every kind of character."
+      },
+      "custom": {
+        "title": "Custom",
+        "description": "Set each rule yourself."
+      }
+    },
+    "custom": {
+      "title": "Customise rules"
     },
     "rules": {
-      "title": "Your rules",
-      "description": "On top of the baseline. Make them as strict as you need.",
       "minLength": "Minimum length",
-      "atLeast": "At least {count}.",
-      "mustContain": "It must contain at least",
-      "bannedPhrases": "Banned phrases",
-      "bannedPhrasesDescription": "Phrases that will not be allowed in a user’s password. Matching ignores capitals, and numbers and symbols on the end. For example, your organisation’s name or town."
+      "atLeast": "At least {count}, which is Keston’s baseline.",
+      "upper": "Capital letters",
+      "upperHelper": "A–Z",
+      "lower": "Lowercase letters",
+      "lowerHelper": "a–z",
+      "digits": "Numbers",
+      "digitsHelper": "0–9",
+      "special": "Special characters",
+      "specialHelper": "Anything else, like ! ? # % or a space",
+      "addUp": "These add up to {total} characters, so passwords will need to be at least {total} long."
     },
-    "save": "Save policy",
+    "summary": {
+      "length": "{count}+ characters",
+      "upper": "{count} capital letter | {count} capital letters",
+      "lower": "{count} lowercase letter | {count} lowercase letters",
+      "digits": "{count} number | {count} numbers",
+      "special": "{count} special character | {count} special characters"
+    },
+    "banned": {
+      "title": "Banned phrases",
+      "description": "Phrases that will not be allowed in a user’s password. Matching ignores capitals, and numbers and symbols on the end. For example, your organisation’s name or town.",
+      "none": "No banned phrases yet.",
+      "manage": "Manage",
+      "add": "Add phrases",
+      "slideoverDescription": "One phrase per line.",
+      "placeholder": "e.g. wessex",
+      "count": "{count} phrase. Blank lines and repeats are ignored. | {count} phrases. Blank lines and repeats are ignored.",
+      "done": "Done",
+      "unit": "phrase | phrases"
+    },
     "preview": {
-      "title": "What people see",
-      "description": "The checklist shown when someone sets a password (as last saved).",
-      "extraBanned": "{count} extra banned phrase | {count} extra banned phrases"
+      "title": "What people see, and try a password",
+      "checklist": "What a password must meet",
+      "length": "At least {count} characters",
+      "upper": "At least {count} capital letter | At least {count} capital letters",
+      "lower": "At least {count} lowercase letter | At least {count} lowercase letters",
+      "digits": "At least {count} number | At least {count} numbers",
+      "special": "At least {count} special character | At least {count} special characters",
+      "noBanned": "Doesn’t contain a banned phrase",
+      "try": "Try a password",
+      "tryPlaceholder": "Type to test the rules",
+      "tryHelper": "Nothing typed here is saved or sent anywhere. Whether it’s a commonly used password is checked when someone sets theirs.",
+      "empty": "Type a password to see which rules it meets.",
+      "accepted": "This password would meet the rules.",
+      "banned": "Not accepted: it is a banned phrase (“{phrase}”).",
+      "toGo": "Not accepted yet: {count} rule to go. | Not accepted yet: {count} rules to go."
+    },
+    "unsaved": {
+      "leave": "You have unsaved changes to the password policy. Leave without saving?"
     }
   },
   "groups": {
