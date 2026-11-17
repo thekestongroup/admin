@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppWindow, BellRing, Building2, ChevronRight, CreditCard, House, KeyRound, LifeBuoy, ListChecks, ScrollText, Settings, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { Activity, AppWindow, BellRing, Building2, Globe, ChevronRight, CreditCard, House, Inbox, KeyRound, LifeBuoy, ListChecks, Megaphone, ScrollText, Settings, ShieldCheck, TriangleAlert, Users, UsersRound } from '@lucide/vue'
 import {
   AppShell,
   Button,
@@ -27,6 +27,8 @@ import {
   type Prompts,
 } from '../lib/api'
 import { signOut, switchUser } from '../lib/auth'
+import { pendingRequests, refreshRequestCount } from '../lib/requests'
+import { activeIncidents, loadHealth, loadMessages, unreadMessages } from '../lib/platform'
 import { I18nT, useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -123,10 +125,14 @@ onMounted(async () => {
       me.value = undefined
       return
     }
-    await loadNotifications()
+    await Promise.all([loadNotifications(), loadHealth(), loadMessages()])
     timer = setInterval(() => {
       loadNotifications()
       loadPrompts()
+      if (orgId.value && pendingRequests.value >= 0 && org.value?.permissions?.some((p) => p === 'apps.manage' || p === 'users.licences'))
+        refreshRequestCount(orgId.value)
+      loadHealth()
+      loadMessages()
     }, 60_000)
   } catch (e) {
     if (!(e instanceof ApiError && e.code === 'signed_out')) error.value = e instanceof Error ? e.message : String(e)
@@ -151,6 +157,8 @@ watch(
   orgId,
   async (id) => {
     org.value = id ? await api.organisation(id).catch(() => undefined) : undefined
+    pendingRequests.value = 0
+    if (id && (org.value?.permissions?.includes('apps.manage') || org.value?.permissions?.includes('users.licences'))) refreshRequestCount(id)
   },
   { immediate: true },
 )
@@ -168,6 +176,14 @@ const nav = computed<SidebarSection[]>(() => {
     if (can('users.view'))
       items.push({ label: t('nav.groups'), icon: UsersRound, to: `${base}/groups`, active: active(`${base}/groups`, false) })
     if (can('apps.manage')) items.push({ label: t('nav.apps'), icon: AppWindow, to: `${base}/apps`, active: active(`${base}/apps`) })
+    if (can('apps.manage') || can('users.licences'))
+      items.push({
+        label: t('nav.appRequests'),
+        icon: Inbox,
+        to: `${base}/app-requests`,
+        active: active(`${base}/app-requests`),
+        ...(pendingRequests.value ? { badge: pendingRequests.value, badgeColor: 'red' as const } : {}),
+      })
     if (can('policy.manage'))
       items.push({ label: t('nav.passwordPolicy'), icon: KeyRound, to: `${base}/password-policy`, active: active(`${base}/password-policy`) })
     if (can('policy.manage'))
@@ -181,6 +197,8 @@ const nav = computed<SidebarSection[]>(() => {
           { label: t('nav.guestSettings'), icon: Users, to: `${base}/security/guests`, active: active(`${base}/security/guests`) },
         ],
       })
+    if (can('settings.manage') || me.value?.platformAdmin)
+      items.push({ label: t('nav.domains'), icon: Globe, to: `${base}/settings/domains`, active: active(`${base}/settings/domains`) })
     if (can('settings.manage'))
       items.push({
         label: t('nav.settings'),
@@ -200,6 +218,21 @@ const nav = computed<SidebarSection[]>(() => {
         items: [{ label: t('nav.licences'), icon: CreditCard, to: `${base}/billing/licences`, active: active(`${base}/billing`, false) }],
       })
   }
+  // Keston's own: service health and announcements, for every admin.
+  sections.push({
+    label: t('nav.keston'),
+    items: [
+      { label: t('nav.health'), icon: Activity, to: '/health', active: active('/health'), badge: activeIncidents.value.length || undefined, badgeColor: 'red' },
+      {
+        label: t('nav.messageCentre'),
+        icon: Megaphone,
+        to: '/message-centre',
+        active: active('/message-centre'),
+        badge: unreadMessages.value || undefined,
+        badgeColor: 'primary',
+      },
+    ],
+  })
   return sections
 })
 
@@ -284,6 +317,22 @@ function accountSettings() {
         </I18nT>
       </span>
       <Button size="sm" @click="switchUser()">{{ t('layout.switchAccount') }}</Button>
+    </div>
+    <!-- An incident is affecting a service. -->
+    <div
+      v-for="i in activeIncidents"
+      :key="i.id"
+      class="flex flex-wrap items-center gap-3 border-b border-black/15 px-4 py-3 text-sm sm:px-6"
+      :class="i.impact === 'outage' ? 'bg-red/10' : 'bg-yellow/20'"
+      role="status"
+    >
+      <TriangleAlert class="size-4 shrink-0" aria-hidden="true" />
+      <span class="flex-1">
+        <span class="font-bold">{{ i.title }}</span>
+        {{ t('health.affects', { services: i.services.map((s) => t(`health.services.${s}`)).join(', ') }) }}
+        · {{ t(`health.incidentStatus.${i.status}`) }}
+      </span>
+      <RouterLink to="/health" class="underline">{{ t('health.bannerLink') }}</RouterLink>
     </div>
     <!-- A new page for each path; pages whose URL carries filters (Logs)
          watch the query themselves, so typing in a filter isn't lost. -->

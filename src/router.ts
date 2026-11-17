@@ -78,6 +78,11 @@ export const router = createRouter({
           meta: { title: 'titles.apps' },
         },
         {
+          path: 'organisations/:orgId/app-requests',
+          component: () => import('./pages/AppRequests.vue'),
+          meta: { title: 'titles.appRequests' },
+        },
+        {
           path: 'organisations/:orgId/apps/new',
           component: () => import('./pages/OwnAppNew.vue'),
           meta: { title: 'titles.addApp' },
@@ -124,6 +129,11 @@ export const router = createRouter({
           meta: { title: 'titles.userAttributes' },
         },
         {
+          path: 'organisations/:orgId/settings/domains',
+          component: () => import('./pages/Domains.vue'),
+          meta: { title: 'titles.domains' },
+        },
+        {
           path: 'organisations/:orgId/users',
           component: () => import('./pages/Users.vue'),
           meta: { title: 'titles.users' },
@@ -154,6 +164,8 @@ export const router = createRouter({
           component: () => import('./pages/GuestSettings.vue'),
           meta: { title: 'titles.guestSettings' },
         },
+        { path: 'health', component: () => import('./pages/Health.vue'), meta: { title: 'titles.health' } },
+        { path: 'message-centre', component: () => import('./pages/MessageCentre.vue'), meta: { title: 'titles.messageCentre' } },
         {
           path: 'organisations/:orgId/password-policy',
           component: () => import('./pages/PasswordPolicy.vue'),

@@ -57,6 +57,7 @@ const blank = () => ({
   first: '',
   last: '',
   username: '',
+  domain: '',
   /** Typed by hand: stop suggesting one from the name. */
   usernameEdited: false,
   access: { role: 'member', roles: [] as string[] } as Roles,
@@ -73,6 +74,7 @@ const passwordValid = ref(false)
 /** Submitted without meeting the password rules: shows the unmet ones red. */
 const passwordInvalid = ref(false)
 const status = ref<ButtonStatus>('idle')
+const domainOptions = computed(() => (props.org?.domains ?? []).map((d) => ({ label: `@${d}`, value: d })))
 const username = computed(() => form.username.trim().toLowerCase())
 const fullName = computed(() => `${form.first.trim()} ${form.last.trim()}`.trim())
 
@@ -180,6 +182,7 @@ async function add() {
       requirePasswordChange: form.requirePasswordChange,
       licences,
       profile: profileBody.value,
+      domain: form.domain || undefined,
     })
     added.value = {
       name: created.name,
@@ -280,8 +283,9 @@ async function copyPassword(password: string) {
             :error-text="errors.username"
             @update:model-value="typedUsername(String($event ?? ''))"
           >
-            <template #trailing><span class="text-sm text-black/65">@{{ org?.domain }}</span></template>
+            <template #trailing><span v-if="domainOptions.length < 2" class="text-sm text-black/65">@{{ org?.domain }}</span></template>
           </Input>
+          <Select v-if="domainOptions.length > 1" :model-value="form.domain || org?.domain" :label="t('addUser.domain')" :options="domainOptions" @update:model-value="form.domain = String($event ?? '')" />
           <RolesField
             v-if="canAssignRoles"
             v-model="form.access"

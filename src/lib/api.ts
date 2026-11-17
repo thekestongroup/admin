@@ -252,6 +252,46 @@ export interface Group {
   permissions: PermissionId[]
 }
 
+export interface AppRequestPlan {
+  addToRule: boolean
+  assignLicence: boolean
+  seatsLeft: number | null
+  noSeats: boolean
+  alreadyAccess: boolean
+}
+
+export interface AppRequest {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  clientId: string
+  appName: string
+  reason: string
+  status: 'pending' | 'approved' | 'declined'
+  decisionMessage: string
+  decidedByName: string
+  decidedAt?: string
+  addedToRule: boolean
+  licenceAssigned: boolean
+  createdAt: string
+  /** Pending only: what approving will do. */
+  plan?: AppRequestPlan
+}
+
+export interface AppRequestResult {
+  id: string
+  name: string
+  app: string
+  result: 'done' | 'skipped'
+  reason?: string
+}
+
+export interface AppRequestSettings {
+  enabled: boolean
+  excluded: string[]
+}
+
 export interface AppAccess {
   apps: AppInfo[]
   /** A TKG Admin in The Keston Group: can add and manage Keston-wide apps. */
@@ -340,6 +380,83 @@ export interface Support {
   requests: SupportRequest[]
   lockouts: LockoutRequest[]
   canManage: boolean
+}
+
+export type ServiceId = 'keston-id' | 'keston-admin' | 'keston-forms' | 'learn' | 'work' | 'apps'
+export const serviceIds: ServiceId[] = ['keston-id', 'keston-admin', 'keston-forms', 'learn', 'work', 'apps']
+export type ServiceState = 'operational' | 'degraded' | 'outage' | 'maintenance'
+export type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved'
+export type IncidentImpact = 'degraded' | 'outage'
+
+export interface IncidentUpdate {
+  id: string
+  status: IncidentStatus
+  message: string
+  author: string
+  createdAt: string
+}
+
+export interface Incident {
+  id: string
+  title: string
+  impact: IncidentImpact
+  status: IncidentStatus
+  services: ServiceId[]
+  createdAt: string
+  resolvedAt?: string | null
+  /** Newest first. */
+  updates: IncidentUpdate[]
+}
+
+export interface Maintenance {
+  id: string
+  title: string
+  description: string
+  services: ServiceId[]
+  startsAt: string
+  endsAt: string
+}
+
+export interface Health {
+  services: { id: ServiceId; status: ServiceState }[]
+  incidents: Incident[]
+  maintenance: Maintenance[]
+  canManage: boolean
+}
+
+export type MessageCategory = 'feature' | 'change' | 'action_required' | 'notice'
+
+export interface KestonMessage {
+  id: string
+  title: string
+  /** Markdown (a safe subset: see lib/markdown.ts). */
+  body: string
+  category: MessageCategory
+  /** YYYY-MM-DDT00:00:00Z, or null. */
+  actionBy?: string | null
+  allOrganisations: boolean
+  organisationIds: string[]
+  author: string
+  createdAt: string
+  updatedAt: string
+  read?: boolean
+  archived?: boolean
+}
+
+export interface Messages {
+  messages: KestonMessage[]
+  unread: number
+  actionRequired: KestonMessage[]
+  canPost: boolean
+}
+
+export interface MessageInput {
+  title: string
+  body: string
+  category: MessageCategory
+  actionBy: string
+  allOrganisations: boolean
+  organisationIds: string[]
 }
 
 export interface AdminNotification {
@@ -770,6 +887,13 @@ export const api = {
   removeGuest: (orgId: string, guestId: string) => request<void>('DELETE', `${org(orgId)}/guests/${guestId}`),
   setGuestRoles: (orgId: string, guestId: string, roles: string[]) =>
     request<Guest>('PUT', `${org(orgId)}/guests/${guestId}/roles`, { roles }),
+  domains: (orgId: string) => request<{ domains: OrgDomain[]; canOverride: boolean }>('GET', `${org(orgId)}/domains`),
+  addDomain: (orgId: string, domain: string, override: boolean) =>
+    request<OrgDomain>('POST', `${org(orgId)}/domains`, { domain, override }),
+  verifyDomain: (orgId: string, id: string) => request<OrgDomain>('POST', `${org(orgId)}/domains/${id}/verify`, {}),
+  makePrimaryDomain: (orgId: string, id: string, renameUsers: boolean) =>
+    request<OrgDomain>('POST', `${org(orgId)}/domains/${id}/primary`, { renameUsers }),
+  removeDomain: (orgId: string, id: string) => request<void>('DELETE', `${org(orgId)}/domains/${id}`),
   securityDefaults: (orgId: string) => request<SecurityDefaults>('GET', `${org(orgId)}/security/defaults`),
   applySecurityDefaults: (orgId: string, items: string[]) =>
     request<{ results: { id: string; result: string }[]; state: SecurityDefaults }>(
@@ -811,6 +935,19 @@ export const api = {
     request<User>('PUT', `${org(orgId)}/users/${userId}/picture`, file),
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
+  appRequests: (orgId: string, query = '') => request<AppRequest[]>('GET', `${org(orgId)}/app-requests${query}`),
+  appRequestCount: (orgId: string) => request<{ pending: number }>('GET', `${org(orgId)}/app-requests/count`),
+  decideAppRequest: (
+    orgId: string,
+    id: string,
+    decision: 'approve' | 'decline',
+    body: { message?: string; addToRule?: boolean; assignLicence?: boolean } = {},
+  ) => request<AppRequest>('POST', `${org(orgId)}/app-requests/${encodeURIComponent(id)}/${decision}`, body),
+  bulkAppRequests: (orgId: string, ids: string[], action: 'approve' | 'decline', message = '') =>
+    request<{ results: AppRequestResult[] }>('POST', `${org(orgId)}/app-requests/bulk`, { ids, action, message }),
+  appRequestSettings: (orgId: string) => request<AppRequestSettings>('GET', `${org(orgId)}/app-request-settings`),
+  setAppRequestSettings: (orgId: string, settings: AppRequestSettings) =>
+    request<AppRequestSettings>('PUT', `${org(orgId)}/app-request-settings`, settings),
   apps: (orgId: string) => request<AppAccess>('GET', `${org(orgId)}/apps`),
   app: (orgId: string, appId: string) => request<AppInfo>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}`),
   /** Sets the organisation's default for an app; mode '' removes the setting. */
@@ -870,6 +1007,21 @@ export const api = {
   decideLockout: (orgId: string, lockoutId: string, decision: 'deny' | 'cancel') =>
     request<void>('POST', `${org(orgId)}/lockout/${lockoutId}/${decision}`, {}),
 
+  health: () => request<Health>('GET', '/health'),
+  openIncident: (b: { title: string; impact: IncidentImpact; status: IncidentStatus; services: ServiceId[]; message: string }) =>
+    request<Incident>('POST', '/health/incidents', b),
+  updateIncident: (id: string, b: { status: IncidentStatus; impact?: IncidentImpact; message: string }) =>
+    request<Incident>('POST', `/health/incidents/${id}/updates`, b),
+  scheduleMaintenance: (b: { title: string; description: string; services: ServiceId[]; startsAt: string; endsAt: string }) =>
+    request<Maintenance>('POST', '/health/maintenance', b),
+  cancelMaintenance: (id: string) => request<void>('DELETE', `/health/maintenance/${id}`),
+  messages: () => request<Messages>('GET', '/messages'),
+  allMessages: () => request<KestonMessage[]>('GET', '/messages/all'),
+  setMessageState: (id: string, action: 'read' | 'unread' | 'archive' | 'unarchive') =>
+    request<void>('POST', `/messages/${id}/${action}`, {}),
+  postMessage: (b: MessageInput) => request<KestonMessage>('POST', '/messages', b),
+  editMessage: (id: string, b: MessageInput) => request<KestonMessage>('PUT', `/messages/${id}`, b),
+  deleteMessage: (id: string) => request<void>('DELETE', `/messages/${id}`),
   notifications: () => request<AdminNotification[]>('GET', '/notifications'),
   readNotifications: () => request<void>('POST', '/notifications/read', {}),
   clearNotifications: () => request<void>('DELETE', '/notifications'),
@@ -892,6 +1044,8 @@ export const api = {
       roles?: string[]
       /** Work profile fields and attributes by key. */
       profile?: ProfileChanges
+      /** One of its verified domains (default: the primary one). */
+      domain?: string
     },
   ) => request<User & { password?: string }>('POST', `${org(orgId)}/users`, body),
   putUserProfile: (orgId: string, userId: string, changes: ProfileChanges) =>
@@ -1102,4 +1256,21 @@ export async function landingOrganisation(): Promise<string | undefined> {
   if (me.platformAdmin || me.permissions.length) return me.organisation.id
   const mine = await api.myOrganisations().catch(() => undefined)
   return mine?.organisations.find((o) => o.canManage)?.id
+}
+
+/** One of an organisation's domains (Settings → Domains). */
+export interface OrgDomain {
+  id: string
+  domain: string
+  primary: boolean
+  verified: boolean
+  verifiedAt?: string
+  verifiedByName?: string
+  /** Verified by a TKG Admin without DNS. */
+  override: boolean
+  createdAt: string
+  /** People whose email uses it. */
+  userCount: number
+  /** The TXT record to create, while it isn't verified. */
+  record?: { name: string; value: string }
 }
