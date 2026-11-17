@@ -200,8 +200,15 @@ export interface Product {
   id: string
   name: string
   publisher: string
-  /** How many of the organisation's users have a licence for it. */
+  /** How many of the organisation's users have a licence for it (licences in use). */
   assigned: number
+  /** The licences the organisation has for it; null is unlimited. */
+  seats: number | null
+  unlimited: boolean
+  /** Seats left (null when unlimited; 0 when full or over). */
+  available: number | null
+  /** More in use than seats: nothing more can be assigned until under. */
+  overAllocated: boolean
 }
 
 export interface Me {
@@ -570,6 +577,9 @@ export const api = {
   setRoles: (orgId: string, userId: string, roles: string[]) =>
     request<{ roles: string[] }>('PUT', `${org(orgId)}/users/${userId}/roles`, { roles }),
   products: (orgId: string) => request<Product[]>('GET', `${org(orgId)}/products`),
+  /** TKG Admins only: how many licences the organisation has per product (seats null: unlimited). */
+  setAllocations: (orgId: string, allocations: { product: string; seats: number | null }[]) =>
+    request<Product[]>('PUT', `${org(orgId)}/licences`, { allocations }),
   setLicences: (orgId: string, userId: string, products: string[]) =>
     request<{ licences: string[] }>('PUT', `${org(orgId)}/users/${userId}/licences`, { products }),
   /** Set a password, or with `generatePassword` have Keston ID make one up: returned once. */
@@ -630,6 +640,8 @@ export const api = {
     },
   ) => request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/create`, body),
   /** Add everyone to some groups and take them out of others. */
+  bulkLicences: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
+    request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/licences`, { userIds, add, remove }),
   bulkGroups: (orgId: string, userIds: string[], add: string[], remove: string[]) =>
     request<{ results: BulkResult[] }>('POST', `${org(orgId)}/users/bulk/groups`, { userIds, add, remove }),
   deletedUsers: (orgId: string) => request<DeletedUser[]>('GET', `${org(orgId)}/deleted-users`),

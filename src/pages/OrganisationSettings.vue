@@ -17,6 +17,7 @@ import {
 } from '@thekestongroup/ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import LicenceAllocationsCard from '../components/LicenceAllocationsCard.vue'
 import { checkFormula, suggestUsername } from '../lib/usernames'
 import { ApiError, api, loadMe, type Me, type Organisation, type ProfileEditing } from '../lib/api'
 import { useI18n } from 'vue-i18n'
@@ -174,6 +175,8 @@ async function save(key: keyof ProfileEditing, on: boolean) {
         />
       </div>
     </Card>
+
+    <LicenceAllocationsCard v-if="loaded && me?.platformAdmin" :org-id="orgId" />
 
     <Card
       v-if="loaded"
