@@ -106,6 +106,7 @@ export interface AppInfo {
   id: string
   name: string
   publisher: string
+  description: string
   verification: 'owned' | 'verified' | 'none'
   /** One of Keston's own apps: forced unless set otherwise. */
   builtin: boolean
@@ -113,6 +114,22 @@ export interface AppInfo {
   own: boolean
   protocol: 'oidc' | 'saml'
   logoUrl: string
+  /** Who publishes it: The Keston Group, this organisation (its own apps) or someone else. */
+  publisherKind: 'keston' | 'organisation' | 'other'
+  /** web: has a secret · native: single-page or mobile · saml. */
+  type: 'web' | 'native' | 'saml'
+  /** The organisation's default: '' when not set. */
+  defaultMode: AppMode | ''
+  /** What it is when not set: forced for Keston's own apps, else '' (people choose). */
+  fallback: AppMode | ''
+  ruleCount: number
+  /** Registered for every organisation. */
+  kestonWide: boolean
+  /** Keston-wide apps: 'deployment' (deploy/clients.json, read-only) or 'admin' (TKG Admins). */
+  managedBy: 'deployment' | 'admin'
+  retired: boolean
+  /** You can change it in Keston Admin (a TKG Admin, for an app managed in Keston Admin). */
+  canManage: boolean
 }
 
 export interface Group {
@@ -126,13 +143,62 @@ export interface Group {
 
 export interface AppAccess {
   apps: AppInfo[]
-  groups: Group[]
-  policies: {
-    /** The organisation's default, per app. */
-    default: Record<string, AppMode>
-    /** Per group, per app: overrides the default for the group's members. */
-    groups: Record<string, Record<string, AppMode>>
-  }
+  /** A TKG Admin in The Keston Group: can add and manage Keston-wide apps. */
+  canManageKeston: boolean
+}
+
+/**
+ * An app access rule. Tried in order; the first turned-on one whose
+ * conditions all match gives the person's access to the app (otherwise the
+ * app's default). A condition left empty matches anyone / anywhere.
+ */
+export interface AppRule {
+  id: string
+  name: string
+  enabled: boolean
+  mode: AppMode
+  users: string[]
+  groups: string[]
+  /** IP addresses or ranges, e.g. 203.0.113.7/32 or 10.0.0.0/8. */
+  ipRanges: string[]
+}
+
+/** What an app rule can be about: the organisation's users and groups. */
+export interface AppRuleOptions {
+  users: { id: string; name: string; extra?: string }[]
+  groups: { id: string; name: string }[]
+}
+
+/** A Keston-wide app, as TKG Admins see it. */
+export interface KestonApp {
+  id: string
+  name: string
+  description: string
+  publisher: string
+  type: 'web' | 'native'
+  logoUrl: string
+  privacyUrl: string
+  termsUrl: string
+  redirectUris: string[]
+  postLogoutRedirectUris: string[]
+  scopes: string[]
+  managedBy: 'deployment' | 'admin'
+  retired: boolean
+  hasSecret: boolean
+  issuer: string
+  discoveryUrl: string
+}
+
+export interface KestonAppChanges {
+  name?: string
+  description?: string
+  type?: 'web' | 'native'
+  logoUrl?: string
+  privacyUrl?: string
+  termsUrl?: string
+  redirectUris?: string[]
+  postLogoutRedirectUris?: string[]
+  scopes?: string[]
 }
 
 export interface SupportRequest {
@@ -532,9 +598,23 @@ export const api = {
   removeUserPicture: (orgId: string, userId: string) => request<void>('DELETE', `${org(orgId)}/users/${userId}/picture`),
 
   apps: (orgId: string) => request<AppAccess>('GET', `${org(orgId)}/apps`),
-  /** Sets the default (no groupId) or a group's access to an app; mode '' removes the setting. */
-  setAppAccess: (orgId: string, appId: string, mode: AppMode | '', groupId?: string) =>
-    request<void>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}`, { mode, groupId }),
+  app: (orgId: string, appId: string) => request<AppInfo>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}`),
+  /** Sets the organisation's default for an app; mode '' removes the setting. */
+  setAppAccess: (orgId: string, appId: string, mode: AppMode | '') =>
+    request<void>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}`, { mode }),
+  appRules: (orgId: string, appId: string) =>
+    request<AppRule[]>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules`),
+  appRuleOptions: (orgId: string, appId: string) =>
+    request<AppRuleOptions>('GET', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules/options`),
+  saveAppRule: (orgId: string, appId: string, rule: Omit<AppRule, 'id'> & { id?: string }) =>
+    rule.id
+      ? request<AppRule>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules/${rule.id}`, rule)
+      : request<AppRule>('POST', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules`, rule),
+  deleteAppRule: (orgId: string, appId: string, id: string) =>
+    request<void>('DELETE', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules/${id}`),
+  /** Every rule of the app, in the order they're tried. */
+  orderAppRules: (orgId: string, appId: string, ids: string[]) =>
+    request<AppRule[]>('PUT', `${org(orgId)}/apps/${encodeURIComponent(appId)}/rules/order`, { ids }),
 
   /** The groups, filtered and sorted by Keston ID (see GroupListQuery). */
   groups: (orgId: string, query: GroupListQuery = {}) => request<Group[]>('GET', `${org(orgId)}/groups${queryString(query)}`),
@@ -691,6 +771,7 @@ export type OwnAppType = 'web' | 'native'
 export interface OwnApp {
   id: string
   name: string
+  description: string
   protocol: 'oidc' | 'saml'
   logoUrl: string
   privacyUrl: string
@@ -726,6 +807,7 @@ export interface OwnApp {
 
 export interface OwnAppChanges {
   name?: string
+  description?: string
   logoUrl?: string
   privacyUrl?: string
   termsUrl?: string
@@ -753,6 +835,25 @@ export const ownApps = {
   /** A new secret; the old one stops working. */
   newSecret: (orgId: string, appId: string) =>
     request<SavedOwnApp>('POST', `${org(orgId)}/own-apps/${encodeURIComponent(appId)}/secret`),
+}
+
+// ── Keston-wide apps (TKG Admins, in The Keston Group) ───────────────────
+
+type SavedKestonApp = { app: KestonApp; clientSecret?: string }
+
+export const kestonApps = {
+  get: (orgId: string, appId: string) =>
+    request<SavedKestonApp>('GET', `${org(orgId)}/keston-apps/${encodeURIComponent(appId)}`),
+  create: (orgId: string, body: KestonAppChanges) => request<SavedKestonApp>('POST', `${org(orgId)}/keston-apps`, body),
+  update: (orgId: string, appId: string, body: KestonAppChanges) =>
+    request<SavedKestonApp>('PATCH', `${org(orgId)}/keston-apps/${encodeURIComponent(appId)}`, body),
+  /** A new secret, shown once; the old one stops working. */
+  newSecret: (orgId: string, appId: string) =>
+    request<SavedKestonApp>('POST', `${org(orgId)}/keston-apps/${encodeURIComponent(appId)}/secret`),
+  retire: (orgId: string, appId: string) =>
+    request<SavedKestonApp>('POST', `${org(orgId)}/keston-apps/${encodeURIComponent(appId)}/retire`),
+  restore: (orgId: string, appId: string) =>
+    request<SavedKestonApp>('POST', `${org(orgId)}/keston-apps/${encodeURIComponent(appId)}/restore`),
 }
 
 /** The signed-in admin, loaded once. */

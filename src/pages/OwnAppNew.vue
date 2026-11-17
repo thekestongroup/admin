@@ -24,7 +24,7 @@ async function save(body: OwnAppChanges) {
   const res = await ownApps.create(orgId, protocol.value, body)
   // The secret is shown once, on the app's page.
   await router.push({
-    path: `/organisations/${orgId}/apps/own/${res.app.id}`,
+    path: `/organisations/${orgId}/apps/${res.app.id}`,
     state: res.clientSecret ? { clientSecret: res.clientSecret } : {},
   })
 }
