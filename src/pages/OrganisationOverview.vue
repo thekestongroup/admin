@@ -16,7 +16,7 @@ import {
   useNotifications,
 } from '@thekestongroup/ui'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ApiError, api, loadMe, type Me, type Organisation, type Support } from '../lib/api'
 import { I18nT, useI18n } from 'vue-i18n'
 
@@ -33,6 +33,7 @@ const { t } = useI18n()
  *   they like, and see and cancel a scheduled deletion.
  */
 const route = useRoute()
+const router = useRouter()
 const orgId = route.params.orgId as string
 const { notify } = useNotifications()
 
@@ -146,6 +147,31 @@ async function verify() {
   }
 }
 
+// ── Delete now (TKG Admins, once it's scheduled) ────────────────────────────
+
+const deletingNow = ref(false)
+const confirmName = ref('')
+const deleteNowStatus = ref<ButtonStatus>('idle')
+function startDeleteNow() {
+  confirmName.value = ''
+  deleteNowStatus.value = 'idle'
+  deletingNow.value = true
+}
+async function deleteNow() {
+  if (!org.value || confirmName.value.trim() !== org.value.name) return
+  const name = org.value.name
+  deleteNowStatus.value = 'loading'
+  try {
+    await api.deleteOrganisationNow(orgId)
+    deletingNow.value = false
+    notify({ type: 'success', title: t('overview.deleteNow.done', { name }) })
+    router.push('/organisations')
+  } catch (e) {
+    deleteNowStatus.value = 'idle'
+    notify({ type: 'error', title: t('overview.deleteNow.couldntDelete'), description: message(e) })
+  }
+}
+
 // ── Deciding (the organisation's global admins) ─────────────────────────────
 
 const busy = ref<string>()
@@ -172,6 +198,7 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
     <template v-else>
       <PageHeader :title="org.name" :description="org.domain">
         <template v-if="org.isPlatform" #badge><Badge color="primary">{{ t('overview.officialTkg') }}</Badge></template>
+        <template v-else-if="org.deleteAfter" #badge><Badge color="red">{{ t('organisations.scheduledForDeletion') }}</Badge></template>
         <template v-else-if="!org.verified" #badge><Badge color="yellow">{{ t('overview.verify.awaiting') }}</Badge></template>
       </PageHeader>
 
@@ -206,6 +233,9 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
             >
               {{ t('overview.cancelDeletion') }}
             </Button>
+          </div>
+          <div v-if="me?.platformAdmin && !org.isPlatform">
+            <Button variant="danger" @click="startDeleteNow">{{ t('overview.deleteNow.button') }}</Button>
           </div>
         </div>
       </Card>
@@ -349,6 +379,26 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <Button :disabled="verifyStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
         <Button variant="primary" :status="verifyStatus" :loading-text="t('overview.verify.verifying')" @click="verify">
           {{ t('overview.verify.confirm') }}
+        </Button>
+      </template>
+    </Slideover>
+
+    <Slideover
+      v-model:open="deletingNow"
+      :title="t('overview.deleteNow.title', { name: org?.name })"
+      :description="t('overview.deleteNow.description')"
+      initial-focus="auto"
+    >
+      <template #body>
+        <form class="flex flex-col gap-4" novalidate @submit.prevent="deleteNow">
+          <Input v-model="confirmName" :label="t('settings.delete.typeName')" :helper="t('settings.delete.typeNameHelper', { name: org?.name })" autocomplete="off" />
+          <button type="submit" class="hidden" tabindex="-1" aria-hidden="true" />
+        </form>
+      </template>
+      <template #footer="{ close }">
+        <Button :disabled="deleteNowStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="danger" :disabled="confirmName.trim() !== org?.name" :status="deleteNowStatus" :loading-text="t('common.deleting')" @click="deleteNow">
+          {{ t('overview.deleteNow.confirm') }}
         </Button>
       </template>
     </Slideover>
