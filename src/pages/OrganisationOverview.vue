@@ -69,11 +69,17 @@ const pendingLockout = computed(() => support.value?.lockouts.find((l) => l.stat
 const history = computed(() => (support.value?.requests ?? []).filter((r) => r.status !== 'pending').slice(0, 5))
 const statusWord = (s: string) => (['approved', 'denied', 'revoked'].includes(s) ? t(`overview.status.${s}`) : s)
 
+// Keston staff without support access see the basic details only (Keston ID
+// refuses the rest).
+const full = computed(() => !!org.value?.canManage)
+// Its domains, the primary one first; more than one is possible later.
+const domains = computed(() => (org.value ? (org.value.domains?.length ? org.value.domains : [org.value.domain]) : []))
+
 const details = computed(() =>
   org.value
     ? [
         { label: t('common.name'), value: org.value.name },
-        { label: t('organisations.columns.domain'), value: org.value.domain },
+        { label: t('overview.domains'), value: '' },
         { label: t('organisations.columns.users'), value: org.value.userCount },
         { label: t('organisations.columns.created'), value: formatDate(org.value.createdAt) },
       ]
@@ -173,6 +179,24 @@ async function deleteNow() {
   }
 }
 
+// ── Cancel deletion (TKG Admins, without needing support access) ────────────
+
+const cancellingDeletion = ref(false)
+const cancelDeletionStatus = ref<ButtonStatus>('idle')
+async function cancelDeletionAsStaff() {
+  cancelDeletionStatus.value = 'loading'
+  try {
+    await api.cancelDeletion(orgId)
+    cancellingDeletion.value = false
+    cancelDeletionStatus.value = 'idle'
+    await load()
+    notify({ type: 'success', title: t('overview.deletionCancelled') })
+  } catch (e) {
+    cancelDeletionStatus.value = 'idle'
+    notify({ type: 'error', title: t('overview.cancelDeletionFailed'), description: message(e) })
+  }
+}
+
 // ── Deciding (the organisation's global admins) ─────────────────────────────
 
 const busy = ref<string>()
@@ -235,7 +259,8 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
               {{ t('overview.cancelDeletion') }}
             </Button>
           </div>
-          <div v-if="me?.platformAdmin && !org.isPlatform">
+          <div v-if="me?.platformAdmin && !org.isPlatform" class="flex flex-wrap gap-2">
+            <Button v-if="!decides" @click="cancelDeletionStatus = 'idle'; cancellingDeletion = true">{{ t('overview.cancelDeletion') }}</Button>
             <Button variant="danger" @click="startDeleteNow">{{ t('overview.deleteNow.button') }}</Button>
           </div>
         </div>
@@ -275,10 +300,17 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
       </Card>
 
       <!-- The dashboard: tiles, what needs attention, activity. -->
-      <OrgDashboard :org="org" />
+      <OrgDashboard v-if="full" :org="org" />
 
-      <Card :title="t('overview.details')">
-        <SummaryList :items="details" />
+      <Card :title="t('overview.details')" :description="full ? undefined : t('overview.noSupportAccess', { name: org.name })">
+        <SummaryList :items="details">
+          <template #value="{ item, index }">
+            <ul v-if="index === 1" class="flex flex-col gap-1">
+              <li v-for="(d, i) in domains" :key="d" :class="i === 0 ? 'font-bold' : undefined">{{ d }}</li>
+            </ul>
+            <template v-else>{{ item.value }}</template>
+          </template>
+        </SummaryList>
       </Card>
 
       <Card
@@ -383,6 +415,19 @@ async function act(key: string, fn: () => Promise<unknown>, title: string) {
         <Button :disabled="verifyStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
         <Button variant="primary" :status="verifyStatus" :loading-text="t('overview.verify.verifying')" @click="verify">
           {{ t('overview.verify.confirm') }}
+        </Button>
+      </template>
+    </Slideover>
+
+    <Slideover
+      v-model:open="cancellingDeletion"
+      :title="t('overview.cancelDeletionConfirm.title', { name: org?.name })"
+      :description="t('overview.cancelDeletionConfirm.description')"
+    >
+      <template #footer="{ close }">
+        <Button :disabled="cancelDeletionStatus !== 'idle'" @click="close">{{ t('common.cancel') }}</Button>
+        <Button variant="primary" :status="cancelDeletionStatus" :loading-text="t('common.saving')" @click="cancelDeletionAsStaff">
+          {{ t('overview.cancelDeletion') }}
         </Button>
       </template>
     </Slideover>

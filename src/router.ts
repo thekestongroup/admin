@@ -102,6 +102,15 @@ export const router = createRouter({
           meta: { title: 'titles.group' },
         },
         {
+          path: 'organisations/:orgId/billing',
+          redirect: (to) => `/organisations/${to.params.orgId}/billing/licences`,
+        },
+        {
+          path: 'organisations/:orgId/billing/licences',
+          component: () => import('./pages/BillingLicences.vue'),
+          meta: { title: 'titles.billingLicences' },
+        },
+        {
           path: 'organisations/:orgId/settings',
           component: () => import('./pages/OrganisationSettings.vue'),
           meta: { title: 'titles.settings' },
