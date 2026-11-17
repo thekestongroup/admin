@@ -135,6 +135,16 @@ export const router = createRouter({
           meta: { title: 'titles.mfaSettings' },
         },
         {
+          path: 'organisations/:orgId/security/defaults',
+          component: () => import('./pages/SecurityDefaults.vue'),
+          meta: { title: 'titles.securityDefaults' },
+        },
+        {
+          path: 'organisations/:orgId/security/alerts',
+          component: () => import('./pages/SecurityAlerts.vue'),
+          meta: { title: 'titles.securityAlerts' },
+        },
+        {
           path: 'organisations/:orgId/security/guests',
           component: () => import('./pages/GuestSettings.vue'),
           meta: { title: 'titles.guestSettings' },
