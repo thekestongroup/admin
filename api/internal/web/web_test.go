@@ -79,3 +79,33 @@ func TestDoesNotEscapeTheFolder(t *testing.T) {
 		t.Error("read outside the folder")
 	}
 }
+
+func TestReportOnlyCSP(t *testing.T) {
+	h := site(t)
+	rec := get(h, "/users")
+	if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
+		t.Errorf("enforced CSP = %q", got)
+	}
+	ro := rec.Header().Get("Content-Security-Policy-Report-Only")
+	for _, want := range []string{"script-src 'self'", "connect-src 'self' https://id.example.com;", "img-src 'self' data: blob: https://id.example.com;", "object-src 'none'", "report-uri /csp-report"} {
+		if !strings.Contains(ro, want) {
+			t.Errorf("report-only CSP %q is missing %q", ro, want)
+		}
+	}
+	if strings.Contains(ro, "unsafe-") {
+		t.Errorf("must not allow inline or eval: %q", ro)
+	}
+	if !strings.Contains(csp(""), "connect-src 'self' https:;") {
+		t.Errorf("no Keston ID address should fall back to https: %q", csp(""))
+	}
+}
+
+func TestCSPReportEndpoint(t *testing.T) {
+	h := site(t)
+	req := httptest.NewRequest("POST", "/csp-report", strings.NewReader(`{"csp-report":{}}`))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 204 {
+		t.Errorf("status = %d, want 204", rec.Code)
+	}
+}
