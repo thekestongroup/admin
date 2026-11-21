@@ -37,6 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Go goes in before init so CodeQL can trace the build.
+      - uses: actions/setup-go@v5
+        if: matrix.language == 'go'
+        with:
+          go-version-file: api/go.mod
+
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
@@ -54,11 +60,6 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
           pnpm build
-
-      - uses: actions/setup-go@v5
-        if: matrix.language == 'go'
-        with:
-          go-version-file: api/go.mod
 
       - name: Build Go
         if: matrix.language == 'go'
