@@ -37,10 +37,7 @@ func Handler(dir, idURL string) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("X-Frame-Options", "DENY")
-		// Enforced: never framed. The wider policy is only reported for now (see
-		// csp): once the logs stay quiet, send it as Content-Security-Policy.
-		h.Set("Content-Security-Policy", "frame-ancestors 'none'")
-		h.Set("Content-Security-Policy-Report-Only", policy)
+		h.Set("Content-Security-Policy", policy)
 
 		p := path.Clean("/" + r.URL.Path)
 		switch {
