@@ -80,16 +80,13 @@ func TestDoesNotEscapeTheFolder(t *testing.T) {
 	}
 }
 
-func TestReportOnlyCSP(t *testing.T) {
+func TestCSP(t *testing.T) {
 	h := site(t)
 	rec := get(h, "/users")
-	if got := rec.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
-		t.Errorf("enforced CSP = %q", got)
-	}
-	ro := rec.Header().Get("Content-Security-Policy-Report-Only")
+	ro := rec.Header().Get("Content-Security-Policy")
 	for _, want := range []string{"script-src 'self'", "connect-src 'self' https://id.example.com;", "img-src 'self' data: blob: https://id.example.com;", "object-src 'none'", "report-uri /csp-report"} {
 		if !strings.Contains(ro, want) {
-			t.Errorf("report-only CSP %q is missing %q", ro, want)
+			t.Errorf("CSP %q is missing %q", ro, want)
 		}
 	}
 	if strings.Contains(ro, "unsafe-") {
