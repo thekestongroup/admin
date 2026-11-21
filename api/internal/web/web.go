@@ -7,8 +7,10 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,7 +21,14 @@ import (
 // app to sign in with ("" lets the app work it out from its own address).
 func Handler(dir, idURL string) http.Handler {
 	config, _ := json.Marshal(map[string]string{"idUrl": strings.TrimRight(idURL, "/"), "apiUrl": ""})
+	policy := csp(idURL)
 	return gzipped(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/csp-report" {
+			body, _ := io.ReadAll(http.MaxBytesReader(w, r.Body, 8<<10))
+			slog.Warn("csp violation", "report", string(body))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -28,7 +37,10 @@ func Handler(dir, idURL string) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("X-Frame-Options", "DENY")
+		// Enforced: never framed. The wider policy is only reported for now (see
+		// csp): once the logs stay quiet, send it as Content-Security-Policy.
 		h.Set("Content-Security-Policy", "frame-ancestors 'none'")
+		h.Set("Content-Security-Policy-Report-Only", policy)
 
 		p := path.Clean("/" + r.URL.Path)
 		switch {
@@ -55,6 +67,21 @@ func Handler(dir, idURL string) http.Handler {
 		h.Set("Cache-Control", "no-cache")
 		serveFile(w, r, filepath.Join(dir, "index.html"))
 	}))
+}
+
+// csp is the policy for the app's pages: scripts, styles and fonts only from
+// this origin, no plugins, no inline script. The app also talks to Keston ID
+// (sign-in, and people's pictures), so its address is allowed for requests and
+// images. Unknown (the app then works it out itself): any https address.
+// Violations are POSTed to /csp-report and logged.
+func csp(idURL string) string {
+	id := "https:"
+	if u, err := url.Parse(idURL); err == nil && u.Scheme != "" && u.Host != "" {
+		id = u.Scheme + "://" + u.Host
+	}
+	return "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: " + id + "; " +
+		"font-src 'self'; connect-src 'self' " + id + "; manifest-src 'self'; form-action 'self'; " +
+		"base-uri 'none'; object-src 'none'; frame-ancestors 'none'; report-uri /csp-report"
 }
 
 // serveFile sends a file, or says false (nothing sent) when it isn't one.
