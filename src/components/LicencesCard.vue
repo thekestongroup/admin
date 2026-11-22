@@ -31,7 +31,7 @@ onMounted(async () => {
 })
 watch(licences, (v) => (chosen.value = [...v]))
 
-const changed = computed(() => [...chosen.value].sort().join() !== [...licences.value].sort().join())
+const changed = computed(() => chosen.value.toSorted().join() !== licences.value.toSorted().join())
 
 
 async function save() {

@@ -291,11 +291,11 @@ function accountSettings() {
     <template #header-trailing>
       <NotificationPane :notifications="notifications" />
     </template>
-    <!-- The organisation switcher: the organisation's name in the account menu. -->
-    <template #account-menu="{ close }">
+    <!-- The organisation switcher: replaces the plain organisation heading at the top of the account menu. -->
+    <template #organisation="{ close }">
       <button
         type="button"
-        class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2"
+        class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-black/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
         :aria-label="t('switcher.switchOrganisation')"
         @click="close(); switcherOpen = true"
       >

@@ -40,11 +40,11 @@ const status = ref<ButtonStatus>('idle')
 const wanted = computed(() => ({
   role: (access.value.role === 'member' ? 'member' : 'global_admin') as 'member' | 'global_admin',
   tkg: access.value.role === 'tkg_admin',
-  roles: access.value.role === 'member' ? [...access.value.roles].sort() : [],
+  roles: access.value.role === 'member' ? access.value.roles.toSorted() : [],
 }))
 const changed = computed(() => {
   const now = fromUser()
-  return access.value.role !== now.role || wanted.value.roles.join() !== [...now.roles].sort().join()
+  return access.value.role !== now.role || wanted.value.roles.join() !== now.roles.toSorted().join()
 })
 
 async function save() {
@@ -58,7 +58,7 @@ async function save() {
         role: wanted.value.role,
         platformAdmin: tkgChanged ? wanted.value.tkg : undefined,
       })
-    if (wanted.value.roles.join() !== [...props.user.roles].sort().join())
+    if (wanted.value.roles.join() !== props.user.roles.toSorted().join())
       await api.setRoles(props.orgId, props.user.id, wanted.value.roles)
     status.value = 'success'
     emit('changed')
