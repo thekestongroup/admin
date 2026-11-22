@@ -265,7 +265,7 @@ const recentDetail = (a: { targetName: string; actorName: string }) =>
     <div v-else-if="!summary" class="flex justify-center py-8"><Spinner :label="t('common.loading')" /></div>
     <template v-else>
       <!-- Stat tiles: fewer columns on narrower screens. -->
-      <ul class="grid grid-cols-1 gap-3 min-[30rem]:grid-cols-2 xl:grid-cols-4" :aria-label="t('dashboard.overview')">
+      <ul class="grid grid-cols-1 gap-6 min-[30rem]:grid-cols-2 xl:grid-cols-4" :aria-label="t('dashboard.overview')">
         <li v-for="tile in tiles" :key="tile.key" class="min-w-0">
           <StatTile
             :as="tile.to ? RouterLink : undefined"
