@@ -90,7 +90,7 @@ async function loadLicences() {
     licenceError.value = message(e)
   }
 }
-const licencesChanged = computed(() => [...chosenLicences.value].sort().join() !== [...given.value].sort().join())
+const licencesChanged = computed(() => chosenLicences.value.toSorted().join() !== given.value.toSorted().join())
 const productName = (id: string) => products.value.find((p) => p.id === id)?.name ?? id
 async function saveLicences() {
   licenceStatus.value = 'loading'
@@ -110,7 +110,7 @@ const permStatus = ref<ButtonStatus>('idle')
 const permissionOptions = computed(() =>
   catalog.value.map((p) => ({ label: p.label, value: p.id, description: p.description, disabled: !canAssign.value || !has(p.id) })),
 )
-const changed = computed(() => [...chosen.value].sort().join() !== [...(group.value?.permissions ?? [])].sort().join())
+const changed = computed(() => chosen.value.toSorted().join() !== (group.value?.permissions ?? []).toSorted().join())
 async function savePermissions() {
   permStatus.value = 'loading'
   try {

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
 
     /* TEMPORARY: Keston UI is linked from ../ui (package.json), which has its own
        copies of these. Use ours, so the types agree. Remove with the link. */
