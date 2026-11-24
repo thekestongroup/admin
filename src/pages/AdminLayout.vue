@@ -287,6 +287,7 @@ function accountSettings() {
     :user="user"
     :link-component="RouterLink"
     :footer="footer"
+    :launcher="{ current: 'admin' }"
     :user-actions="['account-settings', 'switch-account', 'log-out']"
     @account-settings="accountSettings"
     @switch-account="switchUser()"
