@@ -17,6 +17,9 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
+# The footer shows the build: pass the commit with --build-arg APP_BUILD=<sha>.
+ARG APP_BUILD=""
+ENV APP_BUILD=$APP_BUILD
 RUN pnpm build
 
 # ── 2. The server (Go): serves the app, and its own API at /api ─────────────
