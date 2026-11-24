@@ -33,6 +33,9 @@ import { I18nT, useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
+// The footer's name, version and build: the last two are put in at build time (see vite.config.ts).
+const footer = computed(() => ({ appName: t('layout.appName'), version: __APP_VERSION__, build: __APP_BUILD__ || undefined }))
+
 /**
  * Every Keston Admin page: the Keston header (with the notifications bell),
  * and a sidebar with Organisations (Keston support) and the organisation
@@ -283,6 +286,7 @@ function accountSettings() {
     :sections="nav"
     :user="user"
     :link-component="RouterLink"
+    :footer="footer"
     :user-actions="['account-settings', 'switch-account', 'log-out']"
     @account-settings="accountSettings"
     @switch-account="switchUser()"
