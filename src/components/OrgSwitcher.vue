@@ -91,7 +91,7 @@ async function leave() {
         <li v-for="o in list" :key="o.id" class="flex items-center gap-2">
           <button
             type="button"
-            class="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-black/15 bg-surface p-3 text-left hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2"
+            class="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-black/10 bg-surface p-3 text-left shadow-xs hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2"
             :aria-current="o.id === currentId ? 'true' : undefined"
             :disabled="!o.canManage"
             :class="{ 'opacity-60': !o.canManage }"
