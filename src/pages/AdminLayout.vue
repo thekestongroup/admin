@@ -313,7 +313,7 @@ function accountSettings() {
       </button>
     </template>
     <!-- Using a Keston support account in another organisation. -->
-    <div v-if="me.user.support" class="flex flex-wrap items-center gap-3 border-b border-black/15 bg-surface-elevated px-4 py-3 text-sm sm:px-6" role="status">
+    <div v-if="me.user.support" class="flex flex-wrap items-center gap-3 border-b border-black/15 bg-surface-muted px-4 py-3 text-sm sm:px-6" role="status">
       <LifeBuoy class="size-4 shrink-0 text-blue" aria-hidden="true" />
       <span class="flex-1">
         <I18nT :keypath="me.user.expiresAt ? 'layout.supportAccountUntil' : 'layout.supportAccount'" tag="span" scope="global">

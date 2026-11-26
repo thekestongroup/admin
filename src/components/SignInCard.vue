@@ -226,7 +226,7 @@ async function revoke(p: AccessPass) {
   >
     <template #body>
       <div v-if="code" class="flex flex-col gap-4">
-        <p class="rounded bg-surface px-3 py-4 text-center font-mono text-xl font-bold tracking-wide select-all">
+        <p class="rounded bg-surface-muted px-3 py-4 text-center font-mono text-xl font-bold tracking-wide select-all">
           {{ code }}
         </p>
         <I18nT
